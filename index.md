@@ -49,7 +49,7 @@ curl -X POST http://127.0.0.1:3000/embeddings \
      -d '{"input":"雨にも負けず風にも負けず雪にも夏の暑さにも負けぬ丈夫なからだを持ち欲は無く決して瞋からず何時も静かに笑っている"}'
 ```
 
-You may compare the result with enbeddings generated using a different language
+You may compare the result with enbeddings generated using a different language:
 
 ```
 curl -X POST http://127.0.0.1:3000/embeddings \
@@ -57,7 +57,21 @@ curl -X POST http://127.0.0.1:3000/embeddings \
      -d '{"input":"Rain won’t stop me. Wind won’t stop me. Neither will driving snow. Sweltering summer heat will only raise my determination. With a body built for endurance, a heart free of greed, I’ll never lose my temper, trying always to keep a quiet smile on my face."}'
 ```
 
-Finally to terminate the server
+Or, use AI Kit:
+
+```4d
+var $AIClient : cs.AIKit.OpenAI
+$AIClient:=cs.AIKit.OpenAI.new()
+$AIClient.baseURL:="http://127.0.0.1:3000/v1"
+
+var $text : Text
+$text:="The quick brown fox jumps over the lazy dog."
+
+var $responseEmbeddings : cs.AIKit.OpenAIEmbeddingsResult
+$responseEmbeddings:=$AIClient.embeddings.create($text)
+```
+
+Finally to terminate the server:
 
 ```4d
 var $CTranslate2 : cs.CTranslate2.CTranslate2
