@@ -74,7 +74,7 @@ For testing I have uploaded ct2 models in 3 difference sizes.
 |Medium|`768`|[sentence-transformers/paraphrase-multilingual-mpnet-base-v2](https://huggingface.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2)|`296.2 MB`| 
 |Small|`384`|[sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2)|`135.4 MB`| 
 
-You can find more models on [Hugging Face](https://huggingface.co). Search specifically for models that are **transformer-based**. Model names would typically include tags like
+You can find more models on [Hugging Face](https://huggingface.co). Search specifically for models that are **transformer-based**. Matching model names would typically include tags like:
 
 * e5 ([EmbEddings from bidirectional Encoder representations](https://huggingface.co/intfloat/multilingual-e5-large))
 * MiniLM ([Mini Language Model](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2))
