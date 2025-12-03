@@ -64,6 +64,28 @@ $CTranslate2:=cs.CTranslate2.CTranslate2.new()
 $CTranslate2.terminate()
 ```
 
+#### AI Kit compatibility
+
+The API is **not** compatibile with [Open AI](https://platform.openai.com/docs/api-reference/embeddings). Use [`4D.HTTPRequest`](https://developer.4d.com/docs/commands/http-request) and parse the response to get a `4D.Vector` object.
+
+```
+POST /embeddings
+```
+
+* Request
+
+```
+`text` string, required
+```
+
+* Response
+
+```
+`text` string
+`ids` array
+`embeddings` array
+```
+
 #### Models
 
 For testing I have uploaded ct2 models in 3 difference sizes.
