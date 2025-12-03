@@ -48,7 +48,7 @@ curl -X POST http://127.0.0.1:3000/embeddings \
      -d '{"text":"雨にも負けず風にも負けず雪にも夏の暑さにも負けぬ丈夫なからだを持ち欲は無く決して瞋からず何時も静かに笑っている"}'
 ```
 
-You may compare the enbeddings generated from a different language
+You may compare the result with enbeddings generated using a different language
 
 ```
 curl -X POST http://127.0.0.1:3000/embeddings \
