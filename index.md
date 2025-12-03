@@ -75,15 +75,15 @@ POST /embeddings
 * Request
 
 ```
-`text` string, required
+`text: string, required
 ```
 
 * Response
 
 ```
-`text` string
-`ids` array
-`embeddings` array
+text: string
+ids: array
+embeddings: array
 ```
 
 #### Models
@@ -111,3 +111,6 @@ Repositories already conveted to `ct2` would include files like
 * config.json
 * tokenizer_config.json
 * tokenizer.json
+
+If a model is not avaiable in `ct2` format, you can use a `python` utility to convert it. See [miyako/ct2-embedding-cli](https://github.com/miyako/ct2-embedding-cli) for details.
+
