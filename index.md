@@ -12,7 +12,7 @@ layout: default
 
 [**CTranslate2**](https://github.com/OpenNMT/CTranslate2) is an engine highly optimised for fast local inference, especially **quantised transformer-based models**. Compared to general purpose LLM engines such as llama.cpp, it **uses less memory** and for actual embedding models generates **significantly better results** because it is designed specifically for encoder models whereas GGUF is designed for decoder-only LLM architectures unless manually modified.
 
-In short, if your objective is to build an embedding pipeline for semantic database search, **CTranslate2 is far superior compared to general purpose LLM engines with an llama.cpp based backend** (Ollama, for example).
+In short, if your objective is to build an embedding pipeline for semantic database search, **CTranslate2 is far superior compared to general purpose LLM engines with a llama.cpp based backend** (Ollama, for example).
 
 #### Usage
 
