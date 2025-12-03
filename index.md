@@ -17,7 +17,7 @@ In short, if your objective is to build an embedding pipeline for semantic datab
 
 #### Usage
 
-Instantiate `cs.CTranslate2.CTranslate2`  in your *On Startup* database method:
+Instantiate `cs.CTranslate2.CTranslate2` in your *On Startup* database method:
 
 ```4d
 var $CTranslate2 : cs.CTranslate2.CTranslate2
