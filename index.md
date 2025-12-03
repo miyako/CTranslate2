@@ -46,7 +46,7 @@ Now you can test the server:
 ```
 curl -X POST http://127.0.0.1:3000/embeddings \
      -H "Content-Type: application/json" \
-     -d '{"text":"雨にも負けず風にも負けず雪にも夏の暑さにも負けぬ丈夫なからだを持ち欲は無く決して瞋からず何時も静かに笑っている"}'
+     -d '{"input":"雨にも負けず風にも負けず雪にも夏の暑さにも負けぬ丈夫なからだを持ち欲は無く決して瞋からず何時も静かに笑っている"}'
 ```
 
 You may compare the result with enbeddings generated using a different language
@@ -54,7 +54,7 @@ You may compare the result with enbeddings generated using a different language
 ```
 curl -X POST http://127.0.0.1:3000/embeddings \
      -H "Content-Type: application/json" \
-     -d '{"text":"Rain won’t stop me. Wind won’t stop me. Neither will driving snow. Sweltering summer heat will only raise my determination. With a body built for endurance, a heart free of greed, I’ll never lose my temper, trying always to keep a quiet smile on my face."}'
+     -d '{"input":"Rain won’t stop me. Wind won’t stop me. Neither will driving snow. Sweltering summer heat will only raise my determination. With a body built for endurance, a heart free of greed, I’ll never lose my temper, trying always to keep a quiet smile on my face."}'
 ```
 
 Finally to terminate the server
@@ -67,25 +67,7 @@ $CTranslate2.terminate()
 
 #### AI Kit compatibility
 
-The API is **not** compatibile with [Open AI](https://platform.openai.com/docs/api-reference/embeddings). Use [`4D.HTTPRequest`](https://developer.4d.com/docs/commands/http-request) and parse the response to get a `4D.Vector` object.
-
-```
-POST /embeddings
-```
-
-* Request
-
-```
-text: string, required
-```
-
-* Response
-
-```
-text: string
-ids: array
-embeddings: array
-```
+The API is compatibile with [Open AI](https://platform.openai.com/docs/api-reference/embeddings). 
 
 #### Models
 
