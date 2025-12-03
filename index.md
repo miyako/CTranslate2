@@ -75,7 +75,7 @@ POST /embeddings
 * Request
 
 ```
-`text: string, required
+text: string, required
 ```
 
 * Response
