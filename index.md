@@ -85,7 +85,7 @@ The API is compatibile with [Open AI](https://platform.openai.com/docs/api-refer
 
 |Class|API|Availability|
 |-|-|:-:|
-|Models|`/v1/models`|✅|
+|Models|`/v1/models`||
 |Chat|`/v1/chat/completions`||
 |Images|`/v1/images/generations`||
 |Moderations|`/v1/moderations`||
