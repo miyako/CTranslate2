@@ -5,8 +5,9 @@ property dataType : Text
 property automaticRedirections : Boolean
 property folder : 4D:C1709.Folder
 property port : Integer
+property _onResponse : 4D:C1709.Function
 
-Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text)
+Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $formula : 4D:C1709.Function)
 	
 	This:C1470.folder:=$folder
 	This:C1470.URL:=$URL
@@ -15,6 +16,7 @@ Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text)
 	This:C1470.dataType:="blob"
 	This:C1470.automaticRedirections:=True:C214
 	This:C1470.port:=$port
+	This:C1470._onResponse:=$formula
 	
 	If (OB Instance of:C1731(This:C1470.folder; 4D:C1709.Folder))
 		If (Not:C34(This:C1470.folder.exists))
@@ -35,6 +37,10 @@ Function start()
 	$CTranslate2.start({\
 		model: This:C1470.folder; port: This:C1470.port})
 	
+	If (OB Instance of:C1731(This:C1470._onResponse; 4D:C1709.Function))
+		This:C1470._onResponse.call(This:C1470; {success: True:C214})
+	End if 
+	
 	KILL WORKER:C1390
 	
 Function onResponse($request : 4D:C1709.HTTPRequest; $event : Object)
@@ -53,3 +59,7 @@ Function onResponse($request : 4D:C1709.HTTPRequest; $event : Object)
 	End if 
 	
 Function onError($request : 4D:C1709.HTTPRequest; $event : Object)
+	
+	If (OB Instance of:C1731(This:C1470._onResponse; 4D:C1709.Function))
+		This:C1470._onResponse.call(This:C1470; {success: False:C215})
+	End if 

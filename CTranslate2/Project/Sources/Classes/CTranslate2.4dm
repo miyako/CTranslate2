@@ -1,4 +1,4 @@
-Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text)
+Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $formula : 4D:C1709.Function)
 	
 	var $CTranslate2 : cs:C1710._worker
 	$CTranslate2:=cs:C1710._worker.new()
@@ -16,14 +16,14 @@ Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text)
 			$port:=3000
 		End if 
 		
-		CALL WORKER:C1389("Ctranslate2_Start"; This:C1470._Start; $port; $folder; $URL)
+		CALL WORKER:C1389("Ctranslate2_Start"; This:C1470._Start; $port; $folder; $URL; $formula)
 		
 	End if 
 	
-Function _Start($port : Integer; $folder : 4D:C1709.Folder; $URL : Text)
+Function _Start($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $formula : 4D:C1709.Function)
 	
 	var $model : cs:C1710.Model
-	$model:=cs:C1710.Model.new($port; $folder; $URL)
+	$model:=cs:C1710.Model.new($port; $folder; $URL; $formula)
 	
 Function terminate()
 	
