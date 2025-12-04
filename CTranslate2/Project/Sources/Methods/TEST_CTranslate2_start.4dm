@@ -7,7 +7,7 @@ the ct2 model is downloaded automatically if necessary
 ct2-embedding-cli is started in server mode when the model is ready
 */
 
-If (True:C214)
+If (False:C215)
 	$CTranslate2:=cs:C1710.CTranslate2.new()  //default
 Else 
 	var $modelsFolder : 4D:C1709.Folder

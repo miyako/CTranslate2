@@ -37,7 +37,7 @@ Function start()
 	$CTranslate2.start({\
 		model: This:C1470.folder; port: This:C1470.port})
 	
-	If (OB Instance of:C1731(This:C1470._onResponse; 4D:C1709.Function))
+	If (Value type:C1509(This:C1470._onResponse)=Is object:K8:27) && (OB Instance of:C1731(This:C1470._onResponse; 4D:C1709.Function))
 		This:C1470._onResponse.call(This:C1470; {success: True:C214})
 	End if 
 	
@@ -60,6 +60,6 @@ Function onResponse($request : 4D:C1709.HTTPRequest; $event : Object)
 	
 Function onError($request : 4D:C1709.HTTPRequest; $event : Object)
 	
-	If (OB Instance of:C1731(This:C1470._onResponse; 4D:C1709.Function))
+	If (Value type:C1509(This:C1470._onResponse)=Is object:K8:27) && (OB Instance of:C1731(This:C1470._onResponse; 4D:C1709.Function))
 		This:C1470._onResponse.call(This:C1470; {success: False:C215})
 	End if 
