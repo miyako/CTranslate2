@@ -32,7 +32,7 @@ Else
     $URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/medium.zip"
     var $port : Integer
     $port:=8080
-        $CTranslate2:=cs.CTranslate2.new($port; $folder; $URL; Formula(ALERT(This.folder.name+($1.success ? " started!" : " did not start..."))))
+        $CTranslate2:=cs.CTranslate2.CTranslate2.new($port; $folder; $URL; Formula(ALERT(This.folder.name+($1.success ? " started!" : " did not start..."))))
 End if 
 ```
 
