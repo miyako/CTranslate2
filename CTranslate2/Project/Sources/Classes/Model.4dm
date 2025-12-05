@@ -3,25 +3,28 @@ property method : Text
 property headers : Object
 property dataType : Text
 property automaticRedirections : Boolean
-property folder : 4D:C1709.Folder
-property port : Integer
+property file : 4D:C1709.File
+property options : Object
 property _onResponse : 4D:C1709.Function
 
-Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $formula : 4D:C1709.Function)
+Class constructor($port : Integer; $file : 4D:C1709.File; $URL : Text; $options : Object; $formula : 4D:C1709.Function)
 	
-	This:C1470.folder:=$folder
+	This:C1470.file:=$file
 	This:C1470.URL:=$URL
 	This:C1470.method:="GET"
 	This:C1470.headers:={Accept: "application/vnd.github+json"}
 	This:C1470.dataType:="blob"
 	This:C1470.automaticRedirections:=True:C214
-	This:C1470.port:=$port
+	This:C1470.options:=$options#Null:C1517 ? $options : {}
+	This:C1470.options.embeddings:=True:C214
+	This:C1470.options.port:=$port
+	This:C1470.options.model:=$file
 	This:C1470._onResponse:=$formula
 	
-	If (OB Instance of:C1731(This:C1470.folder; 4D:C1709.Folder))
-		If (Not:C34(This:C1470.folder.exists))
-			If (This:C1470.folder.parent#Null:C1517)
-				This:C1470.folder.parent.create()
+	If (OB Instance of:C1731(This:C1470.file; 4D:C1709.File))
+		If (Not:C34(This:C1470.file.exists))
+			If (This:C1470.file.parent#Null:C1517)
+				This:C1470.file.parent.create()
 				4D:C1709.HTTPRequest.new(This:C1470.URL; This:C1470)
 			End if 
 		Else 
@@ -31,30 +34,30 @@ Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $form
 	
 Function start()
 	
-	var $CTranslate2 : cs:C1710._worker
-	$CTranslate2:=cs:C1710._worker.new()
+	var $llama : cs:C1710._worker
+	$llama:=cs:C1710._worker.new()
 	
-	$CTranslate2.start({\
-		model: This:C1470.folder; port: This:C1470.port})
+	$llama.start(This:C1470.options.port; This:C1470.options)
 	
 	If (Value type:C1509(This:C1470._onResponse)=Is object:K8:27) && (OB Instance of:C1731(This:C1470._onResponse; 4D:C1709.Function))
 		This:C1470._onResponse.call(This:C1470; {success: True:C214})
 	End if 
 	
-	KILL WORKER:C1390
+	//KILL WORKER
+	
+Function terminate()
+	
+	var $llama : cs:C1710._worker
+	$llama:=cs:C1710._worker.new()
+	
+	$llama.terminate(This:C1470.options.port)
+	
+	//KILL WORKER
 	
 Function onResponse($request : 4D:C1709.HTTPRequest; $event : Object)
 	
 	If ($request.response.status=200) && ($request.dataType="blob")
-		var $file; $item : 4D:C1709.File
-		$file:=This:C1470.folder.file("model.zip")
-		$file.setContent($request.response.body)
-		var $archive : 4D:C1709.ZipArchive
-		$archive:=ZIP Read archive:C1637($file)
-		For each ($item; $archive.root.files(fk ignore invisible:K87:22))
-			$item.copyTo(This:C1470.folder)
-		End for each 
-		$file.delete()
+		This:C1470.file.setContent($request.response.body)
 		This:C1470.start()
 	End if 
 	
@@ -62,4 +65,5 @@ Function onError($request : 4D:C1709.HTTPRequest; $event : Object)
 	
 	If (Value type:C1509(This:C1470._onResponse)=Is object:K8:27) && (OB Instance of:C1731(This:C1470._onResponse; 4D:C1709.Function))
 		This:C1470._onResponse.call(This:C1470; {success: False:C215})
+		This:C1470.terminate()
 	End if 

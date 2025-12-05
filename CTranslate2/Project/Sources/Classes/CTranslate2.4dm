@@ -3,7 +3,7 @@ Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $form
 	var $CTranslate2 : cs:C1710._worker
 	$CTranslate2:=cs:C1710._worker.new()
 	
-	If (Not:C34($CTranslate2.isRunning()))
+	If (Not:C34($CTranslate2.isRunning($port)))
 		
 		If (Value type:C1509($folder)#Is object:K8:27) || (Not:C34(OB Instance of:C1731($folder; 4D:C1709.Folder))) || ($URL="")
 			var $modelsFolder : 4D:C1709.Folder
@@ -16,7 +16,7 @@ Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $form
 			$port:=3000
 		End if 
 		
-		CALL WORKER:C1389("Ctranslate2_Start"; This:C1470._Start; $port; $folder; $URL; $formula)
+		CALL WORKER:C1389(OB Class:C1730(This:C1470).name; This:C1470._Start; $port; $folder; $URL; $formula)
 		
 	End if 
 	
