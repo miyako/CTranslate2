@@ -38,7 +38,7 @@ End if
 
 Unless the server is already running (in which case the costructor does nothing), the following procedure runs in the background:
 
-1. The specified model is download via HTTP
+1. The specified model is downloaded via HTTP
 2. The `ct2-embedding-cli` program is started in server mode
 
 Now you can test the server:
