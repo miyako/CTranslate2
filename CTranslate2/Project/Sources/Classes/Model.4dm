@@ -11,10 +11,11 @@ property returnResponseBody : Boolean
 property decodeData : Boolean
 property range : Object
 property bufferSize : Integer
+property event : cs:C1710._event
 
-Class constructor($port : Integer; $file : 4D:C1709.File; $URL : Text; $options : Object; $formula : 4D:C1709.Function)
+Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $options : Object; $formula : 4D:C1709.Function; $event : cs:C1710._event)
 	
-	This:C1470.file:=$file
+	This:C1470.file:=$folder.parent.file($folder.name+".zip")
 	This:C1470.URL:=$URL
 	This:C1470.method:="GET"
 	This:C1470.headers:={Accept: "application/vnd.github+json"}
@@ -22,28 +23,21 @@ Class constructor($port : Integer; $file : 4D:C1709.File; $URL : Text; $options 
 	This:C1470.automaticRedirections:=True:C214
 	This:C1470.options:=$options#Null:C1517 ? $options : {}
 	This:C1470.options.port:=$port
-	This:C1470.options.model:=$file
+	This:C1470.options.model:=$folder
 	This:C1470._onResponse:=$formula
 	This:C1470.returnResponseBody:=False:C215
 	This:C1470.decodeData:=False:C215
 	This:C1470.bufferSize:=10*(1024^2)
+	This:C1470.event:=$event
 	
-	Case of 
-		: (OB Instance of:C1731($file; 4D:C1709.File))
-			If (Not:C34(This:C1470.file.exists))
-				If (This:C1470.file.parent#Null:C1517)
-					This:C1470.file.parent.create()
-					This:C1470.head()
-				End if 
-			Else 
-				This:C1470.start()
-			End if 
-		Else 
-			//hugging face mode
-			This:C1470.options.model:=This:C1470.URL
-			This:C1470.file:={name: This:C1470.URL}
-			This:C1470.start()
-	End case 
+	If (Not:C34($folder.exists))
+		If (This:C1470.file.parent#Null:C1517)
+			This:C1470.file.parent.create()
+			This:C1470.head()
+		End if 
+	Else 
+		This:C1470.start()
+	End if 
 	
 Function head()
 	
@@ -74,19 +68,18 @@ Function head()
 	
 Function start()
 	
-	var $llama : cs:C1710._worker
-	$llama:=cs:C1710._worker.new()
-	
+	var $llama : cs:C1710.workers.worker
+	$llama:=cs:C1710.workers.worker.new(cs:C1710._server)
 	$llama.start(This:C1470.options.port; This:C1470.options)
 	
-	If (Value type:C1509(This:C1470._onResponse)=Is object:K8:27) && (OB Instance of:C1731(This:C1470._onResponse; 4D:C1709.Function))
-		This:C1470._onResponse.call(This:C1470; {success: True:C214})
+	If (This:C1470.event#Null:C1517) && (OB Instance of:C1731(This:C1470.event; cs:C1710._event))
+		This:C1470.event.onSuccess.call(This:C1470; This:C1470.options)
 	End if 
 	
 Function terminate()
 	
-	var $llama : cs:C1710._worker
-	$llama:=cs:C1710._worker.new()
+	var $llama : cs:C1710.workers.worker
+	$llama:=cs:C1710.workers.worker.new(cs:C1710._server)
 	
 	$llama.terminate()
 	
@@ -106,6 +99,10 @@ Function onResponse($request : 4D:C1709.HTTPRequest; $event : Object)
 		: (This:C1470.range.end=0)  //simple get
 			If ($request.response.status=200)
 				This:C1470._fileHandle:=Null:C1517
+				$zip:=ZIP Read archive:C1637(This:C1470.file)
+				$zip.root.copyTo(This:C1470.file.parent)
+				This:C1470.file.delete()
+				
 				This:C1470.start()
 			End if 
 		Else   //range get
@@ -120,6 +117,10 @@ Function onResponse($request : 4D:C1709.HTTPRequest; $event : Object)
 					4D:C1709.HTTPRequest.new(This:C1470.URL; This:C1470)
 				Else 
 					This:C1470._fileHandle:=Null:C1517
+					$zip:=ZIP Read archive:C1637(This:C1470.file)
+					$zip.root.copyTo(This:C1470.file.parent)
+					This:C1470.file.delete()
+					
 					This:C1470.start()
 				End if 
 			End if 

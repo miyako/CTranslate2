@@ -22,17 +22,27 @@ Instantiate `cs.CTranslate2.CTranslate2` in your *On Startup* database method:
 ```4d
 var $CTranslate2 : cs.CTranslate2.CTranslate2
 
-If (True)
+If (False)
     $CTranslate2:=cs.CTranslate2.CTranslate2.new()  //default
 Else 
-    var $modelsFolder : 4D.Folder
-    $modelsFolder:=Folder(fk home folder).folder(".CTranslate2")
-    $folder:=$modelsFolder.folder("sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
+    var $homeFolder : 4D.Folder
+    $homeFolder:=Folder(fk home folder).folder(".CTranslate2")
+    $folder:=$homeFolder.folder("sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
     var $URL : Text
     $URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/medium.zip"
     var $port : Integer
-    $port:=8080
-        $CTranslate2:=cs.CTranslate2.CTranslate2.new($port; $folder; $URL; Formula(ALERT(This.folder.name+($1.success ? " started!" : " did not start..."))))
+    $port:=8081
+    
+    var $event : cs.CTranslate2.CTranslate2Event
+    $event:=cs.CTranslate2Event.new()
+    /*
+        Function onError($params : Object; $error : cs._error)
+        Function onSuccess($params : Object)
+    */
+    $event.onError:=Formula(ALERT($2.message))
+    $event.onSuccess:=Formula(ALERT($1.model.name+" loaded!"))
+    
+    $CTranslate2:=cs.CTranslate2.CTranslate2.new($port; $folder; $URL; {}; $event)
 End if 
 ```
 
@@ -79,19 +89,6 @@ $CTranslate2:=cs.CTranslate2.CTranslate2.new()
 $CTranslate2.terminate()
 ```
 
-#### AI Kit compatibility
-
-The API is compatibile with [Open AI](https://platform.openai.com/docs/api-reference/embeddings). 
-
-|Class|API|Availability|
-|-|-|:-:|
-|Models|`/v1/models`||
-|Chat|`/v1/chat/completions`||
-|Images|`/v1/images/generations`||
-|Moderations|`/v1/moderations`||
-|Embeddings|`/v1/embeddings`|✅|
-|Files|`/v1/files`||
-
 #### Models
 
 For testing I have uploaded ct2 models in 3 difference sizes.
@@ -120,3 +117,15 @@ Repositories already conveted to `ct2` would include files like
 
 If a model is not avaiable in `ct2` format, you can use a `python` utility to convert it. See [miyako/ct2-embedding-cli](https://github.com/miyako/ct2-embedding-cli) for details.
 
+#### AI Kit compatibility
+
+The API is compatibile with [Open AI](https://platform.openai.com/docs/api-reference/embeddings). 
+
+|Class|API|Availability|
+|-|-|:-:|
+|Models|`/v1/models`||
+|Chat|`/v1/chat/completions`||
+|Images|`/v1/images/generations`||
+|Moderations|`/v1/moderations`||
+|Embeddings|`/v1/embeddings`|✅|
+|Files|`/v1/files`||

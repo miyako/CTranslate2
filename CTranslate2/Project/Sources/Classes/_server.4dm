@@ -2,15 +2,17 @@ Class extends _CTranslate2
 
 Class constructor($controller : 4D:C1709.Class)
 	
-	Super:C1705("server"; $controller)
+	Super:C1705($controller)
 	
 Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	var $command : Text
 	$command:=This:C1470.escape(This:C1470.executablePath)
 	
+	$command+=" --server "
+	
 	Case of 
-		: (Value type:C1509($option.model)=Is object:K8:27) && (OB Instance of:C1731($option.model; 4D:C1709.File)) && ($option.model.exists)
+		: (Value type:C1509($option.model)=Is object:K8:27) && (OB Instance of:C1731($option.model; 4D:C1709.Folder)) && ($option.model.exists)
 			$command+=" --model "
 			$command+=This:C1470.escape(This:C1470.expand($option.model).path)
 	End case 
@@ -21,8 +23,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	For each ($arg; OB Entries:C1720($option))
 		Case of 
-			: (["model"; "model_url"; \
-				"docker_repo"].includes($arg.key))
+			: (["server"; "model"; "device"; "help"; "version"].includes($arg.key))
 				continue
 		End case 
 		$valueType:=Value type:C1509($arg.value)
@@ -40,6 +41,8 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 				//
 		End case 
 	End for each 
+	
+	//SET TEXT TO PASTEBOARD($command)
 	
 	return This:C1470.controller.execute($command; $isStream ? $option.model : Null:C1517; $option.data).worker
 	

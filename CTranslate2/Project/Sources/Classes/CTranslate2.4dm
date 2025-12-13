@@ -1,7 +1,7 @@
-Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $formula : 4D:C1709.Function)
+Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $options : Object; $event : cs:C1710._event)
 	
-	var $CTranslate2 : cs:C1710._worker
-	$CTranslate2:=cs:C1710._worker.new()
+	var $CTranslate2 : cs:C1710.workers.worker
+	$CTranslate2:=cs:C1710.workers.worker.new()
 	
 	If (Not:C34($CTranslate2.isRunning($port)))
 		
@@ -16,17 +16,40 @@ Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $form
 			$port:=3000
 		End if 
 		
-		CALL WORKER:C1389(OB Class:C1730(This:C1470).name; This:C1470._Start; $port; $folder; $URL; $formula)
+		This:C1470.main($port; $folder; $URL; $options; $event)
 		
 	End if 
 	
-Function _Start($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $formula : 4D:C1709.Function)
+Function onTCP($status : Object; $options : Object)
 	
-	var $model : cs:C1710.Model
-	$model:=cs:C1710.Model.new($port; $folder; $URL; $formula)
+	If ($status.success)
+		
+		var $className : Text
+		$className:=Split string:C1554(Current method name:C684; "."; sk trim spaces:K86:2).first()
+		
+		CALL WORKER:C1389($className; Formula:C1597(start); $options; Formula:C1597(onModel))
+		
+	Else 
+		
+		var $statuses : Text
+		$statuses:="TCP port "+String:C10($status.port)+" is aready used by process "+$status.PID.join(",")
+		var $error : cs:C1710._error
+		$error:=cs:C1710._error.new(1; $statuses)
+		
+		If ($options.event#Null:C1517) && (OB Instance of:C1731($options.event; cs:C1710._event))
+			$options.event.onError.call(This:C1470; $options; $error)
+		End if 
+		
+		This:C1470.terminate()
+		
+	End if 
+	
+Function main($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $options : Object; $event : cs:C1710._event)
+	
+	main({port: $port; folder: $folder; URL: $URL; event: $event; options: $options}; This:C1470.onTCP)
 	
 Function terminate()
 	
-	var $CTranslate2 : cs:C1710._worker
-	$CTranslate2:=cs:C1710._worker.new()
+	var $CTranslate2 : cs:C1710.workers.worker
+	$CTranslate2:=cs:C1710.workers.worker.new(cs:C1710._server)
 	$CTranslate2.terminate()
