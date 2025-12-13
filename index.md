@@ -31,7 +31,7 @@ Else
     var $URL : Text
     $URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/medium.zip"
     var $port : Integer
-    $port:=8081
+    $port:=8080
     
     var $event : cs.CTranslate2.CTranslate2Event
     $event:=cs.CTranslate2Event.new()
@@ -54,7 +54,7 @@ Unless the server is already running (in which case the costructor does nothing)
 Now you can test the server:
 
 ```
-curl -X POST http://127.0.0.1:3000/embeddings \
+curl -X POST http://127.0.0.1:8080/v1/embeddings \
      -H "Content-Type: application/json" \
      -d '{"input":"雨にも負けず風にも負けず雪にも夏の暑さにも負けぬ丈夫なからだを持ち欲は無く決して瞋からず何時も静かに笑っている"}'
 ```

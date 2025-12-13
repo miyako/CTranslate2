@@ -5,11 +5,12 @@ If (False:C215)
 Else 
 	var $homeFolder : 4D:C1709.Folder
 	$homeFolder:=Folder:C1567(fk home folder:K87:24).folder(".CTranslate2")
-	$folder:=$homeFolder.folder("sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
-	var $URL : Text
-	$URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/medium.zip"
+	$folder:=$homeFolder.folder("sentence-transformers/all-MiniLM-L6-v2_f16")
+	$URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/all-MiniLM-L6-v2_f16.zip"
+	$folder:=$homeFolder.folder("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2_f16")
+	$URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/paraphrase-multilingual-MiniLM-L12-v2_f16.zip"
 	var $port : Integer
-	$port:=8081
+	$port:=8080
 	
 	var $event : cs:C1710.CTranslate2Event
 	$event:=cs:C1710.CTranslate2Event.new()
