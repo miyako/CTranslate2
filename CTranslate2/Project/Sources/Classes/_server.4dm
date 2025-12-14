@@ -42,7 +42,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		End case 
 	End for each 
 	
-	SET TEXT TO PASTEBOARD:C523($command)
+	//SET TEXT TO PASTEBOARD($command)
 	
 	return This:C1470.controller.execute($command; $isStream ? $option.model : Null:C1517; $option.data).worker
 	
