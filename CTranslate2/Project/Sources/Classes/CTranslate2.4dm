@@ -8,10 +8,8 @@ Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $opti
 		If (Value type:C1509($folder)#Is object:K8:27) || (Not:C34(OB Instance of:C1731($folder; 4D:C1709.Folder))) || ($URL="")
 			var $homeFolder : 4D:C1709.Folder
 			$homeFolder:=Folder:C1567(fk home folder:K87:24).folder(".CTranslate2")
-			$folder:=$homeFolder.folder("sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
-			$URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/medium.zip"
-			$folder:=$homeFolder.folder("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2_f16")
-			$URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/paraphrase-multilingual-MiniLM-L12-v2_f16.zip"
+			$folder:=$homeFolder.folder("snowflake/arctic-embed-s_int8_float16")
+			$URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/snowflake-arctic-embed-s_int8_float16.zip"
 		End if 
 		
 		If ($port=0) || ($port<0) || ($port>65535)
