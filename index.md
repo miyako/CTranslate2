@@ -27,22 +27,26 @@ If (False)
 Else 
     var $homeFolder : 4D.Folder
     $homeFolder:=Folder(fk home folder).folder(".CTranslate2")
-    $folder:=$homeFolder.folder("sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
-    var $URL : Text
-    $URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/medium.zip"
+    $folder:=$homeFolder.folder("snowflake/arctic-embed-s_int8_float16")
+    $URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/snowflake-arctic-embed-s_int8_float16.zip"
+    
     var $port : Integer
     $port:=8080
     
-    var $event : cs.CTranslate2.CTranslate2Event
-    $event:=cs.CTranslate2Event.new()
+    var $event : cs.event.event
+    $event:=cs.event.event.new()
     /*
-        Function onError($params : Object; $error : cs._error)
-        Function onSuccess($params : Object)
+        Function onError($params : Object; $error : cs.event.error)
+        Function onSuccess($params : Object; $models : cs.event.models)
     */
     $event.onError:=Formula(ALERT($2.message))
-    $event.onSuccess:=Formula(ALERT($1.model.name+" loaded!"))
+    $event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
+    $event.onData:=Formula(MESSAGE(String((This.range.end/This.range.length)*100; "###.00%")))  //onData@4D.HTTPRequest
+    $event.onResponse:=Formula(ERASE WINDOW)  //onResponse@4D.HTTPRequest
     
-    $CTranslate2:=cs.CTranslate2.CTranslate2.new($port; $folder; $URL; {}; $event)
+    $options:={}
+    
+    $CTranslate2:=cs.CTranslate2.CTranslate2.new($port; $folder; $URL; $options; $event)
 End if 
 ```
 

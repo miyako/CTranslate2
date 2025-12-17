@@ -11,14 +11,18 @@ Else
 	var $port : Integer
 	$port:=8080
 	
-	var $event : cs:C1710.CTranslate2Event
-	$event:=cs:C1710.CTranslate2Event.new()
+	var $event : cs:C1710.event.event
+	$event:=cs:C1710.event.event.new()
 /*
-Function onError($params : Object; $error : cs._error)
-Function onSuccess($params : Object)
+Function onError($params : Object; $error : cs.event.error)
+Function onSuccess($params : Object; $models : cs.event.models)
 */
 	$event.onError:=Formula:C1597(ALERT:C41($2.message))
-	$event.onSuccess:=Formula:C1597(ALERT:C41($1.model.name+" loaded!"))
+	$event.onSuccess:=Formula:C1597(ALERT:C41($2.models.extract("name").join(",")+" loaded!"))
+	$event.onData:=Formula:C1597(MESSAGE:C88(String:C10((This:C1470.range.end/This:C1470.range.length)*100; "###.00%")))  //onData@4D.HTTPRequest
+	$event.onResponse:=Formula:C1597(ERASE WINDOW:C160)  //onResponse@4D.HTTPRequest
 	
-	$CTranslate2:=cs:C1710.CTranslate2.new($port; $folder; $URL; {}; $event)
+	$options:={}
+	
+	$CTranslate2:=cs:C1710.CTranslate2.new($port; $folder; $URL; $options; $event)
 End if 
