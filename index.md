@@ -27,8 +27,8 @@ If (False)
 Else 
     var $homeFolder : 4D.Folder
     $homeFolder:=Folder(fk home folder).folder(".CTranslate2")
-    $folder:=$homeFolder.folder("snowflake/arctic-embed-s_int8_float16")
-    $URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/snowflake-arctic-embed-s_int8_float16.zip"
+    $folder:=$homeFolder.folder("BAAI/bge-small-en-v1_5_int8_float16")
+    $URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/bge-small-en-v1.5_int8_float16.zip"
     
     var $port : Integer
     $port:=8080
@@ -38,11 +38,22 @@ Else
     /*
         Function onError($params : Object; $error : cs.event.error)
         Function onSuccess($params : Object; $models : cs.event.models)
+        Function onData($request : 4D.HTTPRequest; $event : Object)
+        Function onResponse($request : 4D.HTTPRequest; $event : Object)
+        Function onTerminate($worker : 4D.SystemWorker; $params : Object)
+        Function onStdOut($worker : 4D.SystemWorker; $params : Object)
+        Function onStdErr($worker : 4D.SystemWorker; $params : Object)
     */
     $event.onError:=Formula(ALERT($2.message))
     $event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
-    $event.onData:=Formula(MESSAGE(String((This.range.end/This.range.length)*100; "###.00%")))  //onData@4D.HTTPRequest
-    $event.onResponse:=Formula(ERASE WINDOW)  //onResponse@4D.HTTPRequest
+    If (False)
+        //MARK: all callbacks are preemptive
+        $event.onData:=Formula(MESSAGE(String((This.range.end/This.range.length)*100; "###.00%")))
+        $event.onResponse:=Formula(ERASE WINDOW)
+    End if 
+    $event.onStdOut:=Formula($2.data)
+    $event.onStdErr:=Formula($2.data)
+    $event.onTerminate:=Formula(ALERT(["process"; $1.pid; "terminated!"].join(" ")))
     
     $options:={}
     
@@ -93,7 +104,7 @@ $CTranslate2:=cs.CTranslate2.CTranslate2.new()
 $CTranslate2.terminate()
 ```
 
-#### `int8_f16` Converted CT2 models:
+#### Converted CT2 models:
 
 |Model|Size|Language| Dimensions|Sequence&nbsp;Length|
 |-|-:|:-:|-:|-:|
@@ -105,19 +116,16 @@ $CTranslate2.terminate()
 |[BAAI/bge-small-en-v1.5](https://huggingface.co/BAAI/bge-small-en-v1.5)|[`29.6 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/bge-small-en-v1.5_int8_float16.zip)| English |`384 `|`512 `
 [BAAI/bge-base-en-v1.5](https://huggingface.co/BAAI/bge-base-en-v1.5)|[`94.8 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/bge-base-en-v1.5_int8_float16.zip)| English| `768`|`512 `
 |[BAAI/bge-large-en-v1.5](https://huggingface.co/BAAI/bge-large-en-v1.5)|[`289.0 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/bge-large-en-v1.5_int8_float16.zip)| English|`1024 `|`512 `
-[Snowflake/snowflake-arctic-embed-s](https://huggingface.co/Snowflake/snowflake-arctic-embed-s)|[`29.3 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/snowflake-arctic-embed-s_int8_float16.zip)| English|`384`|`512`
+[Snowflake/snowflake-arctic-embed-s](https://huggingface.co/Snowflake/snowflake-arctic-embed-s)|[`29.3 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/arctic-embed-s_int8_float16.zip)| English|`384`|`512`
 |[intfloat/multilingual-e5-small](https://huggingface.co/intfloat/multilingual-e5-small)|[`109.8 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/multilingual-e5-small_int8_float16.zip)|`94`|`384`|`512`
 |[intfloat/multilingual-e5-base](https://huggingface.co/intfloat/multilingual-e5-base)|[`251.5 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/multilingual-e5-base_int8_float16.zip)|`94`|`768`|`512`
 |[intfloat/multilingual-e5-large](https://huggingface.co/intfloat/multilingual-e5-large)|[`493.3 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/multilingual-e5-large_int8_float16.zip)|`94 `|`1024 `|`512`
 |[BAAI/bge-m3](https://huggingface.co/BAAI/bge-m3)|[`506.9 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/bge-m3_int8_float16.zip)|`100+`|`1024 `|`8192 `
-|[Snowflake/snowflake-arctic-embed-l-v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0)|[`505.5 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/snowflake-arctic-embed-l-v2.0_int8_float16.zip)|`74`|`1024 `|`8192 `
+|[Snowflake/snowflake-arctic-embed-l-v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0)|[`505.5 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/arctic-embed-l-v2.0_int8_float16.zip)|`74`|`1024 `|`8192 `
 
 You can find more models on [Hugging Face](https://huggingface.co). Search specifically for models that are **transformer-based**. Matching model names would typically include tags like:
 
-* e5 ([EmbEddings from bidirectional Encoder representations](https://huggingface.co/intfloat/multilingual-e5-large))
-* MiniLM ([Mini Language Model](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2))
 * gte ([General Text Embedding](https://huggingface.co/Alibaba-NLP/gte-multilingual-base))
-* bge ([Beijing Academy of AI General Embedding](https://huggingface.co/BAAI/bge-multilingual-gemma2))
 * [MPNet](https://huggingface.co/docs/transformers/main/model_doc/mpnet) ([Masked and Permuted Pre-training for Language Understanding](https://huggingface.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2))
 
 Do **not** choose decoder-only LLMs like LLaMA, GPT, Mistral, or Qwen.
@@ -128,7 +136,7 @@ Do **not** choose decoder-only LLMs like LLaMA, GPT, Mistral, or Qwen.
 * Nomic Embed Text v2: **MoE** (Mixture of Experts) architecture
 * Jina: **JinaBERT** architecture
 * Instructor:  **T5** architecture
-* Qwen2, Mistral, EmbeddingGemma: LLM decoder-based encoder
+* BTE-Qwen2, Mistral, EmbeddingGemma: LLM decoder-based encoder
 * [**ModernBERT**](https://huggingface.co/models?other=base_model:finetune:answerdotai/ModernBERT-base) architecture
 
 CTranslate2 relies on mapping standard model architectures like **BERT**, **RoBERTa**, or **DistilBERT** to its C++ inference engine. Some LLMs have moved on from the standard BERT architecture to a custom architecture. 
@@ -142,17 +150,7 @@ Some developers prefer **CTranslate2** over standard inference engines like **ll
 * It is a specialised encoder-only inference engine 
 * It has a fast inference routine for CPU  
 
-`float16` quantisation is standard for GPU because it cuts VRAM usage by half without sacrificing much precision on the inference.
-
-Most x86 CPUs do not have native `float16` calculation units. That means the `float16` weights are cast to `float32` for computation which adds overhead. 
-
-CTranslate2 uses optimised instruction sets (AVX2, AVX-512, VNNI) to run operations directly on integers which is drastically faster than `float32` on CPUs.
-
-In addition it has a special quantisation recipe called `int8_float16` where the weights are stored in `int8` (which saves VRAM) but de-quantised on the fly for computation in `float16`.
-
-* `int8`: Fast inference on CPU 
-* `float16`: High precision on GPU
-* `int8_float16`: Weights are small (Int8) but compute is fast (FP16)
+Most x86 CPUs do not have native `float16` calculation units. That means the `float16` weights are cast to `float32` for computation which adds overhead. CTranslate2 uses optimised instruction sets (AVX2, AVX-512, VNNI) to run operations directly on integers which is drastically faster than `float32` on CPUs.
  
 #### AI Kit compatibility
 

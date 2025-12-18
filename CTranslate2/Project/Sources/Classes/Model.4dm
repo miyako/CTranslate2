@@ -15,7 +15,7 @@ property event : cs:C1710.event.event
 
 Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $options : Object; $formula : 4D:C1709.Function; $event : cs:C1710.event.event)
 	
-	This:C1470.file:=$folder.parent.file($folder.name+".zip")
+	This:C1470.file:=$folder.parent.file($folder.fullName+".zip")
 	This:C1470.URL:=$URL
 	This:C1470.method:="GET"
 	This:C1470.headers:={Accept: "application/vnd.github+json"}
@@ -29,6 +29,9 @@ Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $opti
 	This:C1470.decodeData:=False:C215
 	This:C1470.bufferSize:=10*(1024^2)
 	This:C1470.event:=$event
+	This:C1470.options.onTerminate:=This:C1470.event.onTerminate
+	This:C1470.options.onStdErr:=This:C1470.event.onStdErr
+	This:C1470.options.onStdOut:=This:C1470.event.onStdOut
 	
 	If (Not:C34($folder.exists))
 		If (This:C1470.file.parent#Null:C1517)
@@ -68,9 +71,9 @@ Function head()
 	
 Function start()
 	
-	var $llama : cs:C1710.workers.worker
-	$llama:=cs:C1710.workers.worker.new(cs:C1710._server)
-	$llama.start(This:C1470.options.port; This:C1470.options)
+	var $CTranslate2 : cs:C1710.workers.worker
+	$CTranslate2:=cs:C1710.workers.worker.new(cs:C1710._server)
+	$CTranslate2.start(This:C1470.options.port; This:C1470.options)
 	
 	If (This:C1470.event#Null:C1517) && (OB Instance of:C1731(This:C1470.event; cs:C1710.event.event))
 		var $model : cs:C1710.event.model
@@ -82,9 +85,10 @@ Function start()
 	
 Function terminate()
 	
-	var $llama : cs:C1710.workers.worker
-	$llama:=cs:C1710.workers.worker.new(cs:C1710._server)
-	$llama.terminate()
+	//other downloaded may be happening, don't terminate
+	//var $CTranslate2 : cs.workers.worker
+	//$CTranslate2:=cs.workers.worker.new(cs._server)
+	//$CTranslate2.terminate()
 	
 Function onData($request : 4D:C1709.HTTPRequest; $event : Object)
 	
