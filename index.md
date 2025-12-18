@@ -27,8 +27,8 @@ If (False)
 Else 
     var $homeFolder : 4D.Folder
     $homeFolder:=Folder(fk home folder).folder(".CTranslate2")
-    $folder:=$homeFolder.folder("BAAI/bge-small-en-v1_5_int8_float16")
-    $URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/bge-small-en-v1.5_int8_float16.zip"
+    $folder:=$homeFolder.folder("snowflake/arctic-embed-s_int8_float16")
+    $URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/snowflake-arctic-embed-s_int8_float16.zip"
     
     var $port : Integer
     $port:=8080
@@ -57,7 +57,6 @@ Else
         //MARK: ALERT is thread safe but dangerous to use on exit...
         $event.onTerminate:=Formula(ALERT(["process"; $1.pid; "terminated!"].join(" ")))
     End if 
-    
     $options:={}
     
     $CTranslate2:=cs.CTranslate2.CTranslate2.new($port; $folder; $URL; $options; $event)
