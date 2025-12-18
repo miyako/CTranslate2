@@ -27,6 +27,8 @@ If (False)
 Else 
     var $homeFolder : 4D.Folder
     $homeFolder:=Folder(fk home folder).folder(".CTranslate2")
+    var $folder : 4D.Folder
+    var $URL : Text
     $folder:=$homeFolder.folder("snowflake/arctic-embed-s_int8_float16")
     $URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/snowflake-arctic-embed-s_int8_float16.zip"
     
@@ -36,31 +38,29 @@ Else
     var $event : cs.event.event
     $event:=cs.event.event.new()
     /*
-        Function onError($params : Object; $error : cs.event.error)
-        Function onSuccess($params : Object; $models : cs.event.models)
-        Function onData($request : 4D.HTTPRequest; $event : Object)
-        Function onResponse($request : 4D.HTTPRequest; $event : Object)
-        Function onTerminate($worker : 4D.SystemWorker; $params : Object)
-        Function onStdOut($worker : 4D.SystemWorker; $params : Object)
-        Function onStdErr($worker : 4D.SystemWorker; $params : Object)
-    */
+                Function onError($params : Object; $error : cs.event.error)
+                Function onSuccess($params : Object; $models : cs.event.models)
+                Function onData($request : 4D.HTTPRequest; $event : Object)
+                Function onResponse($request : 4D.HTTPRequest; $event : Object)
+                Function onTerminate($worker : 4D.SystemWorker; $params : Object)
+                Function onStdOut($worker : 4D.SystemWorker; $params : Object)
+                Function onStdErr($worker : 4D.SystemWorker; $params : Object)
+        */
+    
     $event.onError:=Formula(ALERT($2.message))
     $event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
-    If (False)
-        //MARK: all callbacks are preemptive
-        $event.onData:=Formula(MESSAGE(String((This.range.end/This.range.length)*100; "###.00%")))
-        $event.onResponse:=Formula(ERASE WINDOW)
-    End if 
-    $event.onStdOut:=Formula($2.data)
-    $event.onStdErr:=Formula($2.data)
-    If (False)
-        //MARK: ALERT is thread safe but dangerous to use on exit...
-        $event.onTerminate:=Formula(ALERT(["process"; $1.pid; "terminated!"].join(" ")))
-    End if 
+    $event.onData:=Formula(LOG EVENT(Into 4D debug message; "download:"+String((This.range.end/This.range.length)*100; "###.00%")))
+    $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; "download complete"))
+    $event.onStdOut:=Formula(LOG EVENT(Into 4D debug message; "out:"+$2.data))
+    $event.onStdErr:=Formula(LOG EVENT(Into 4D debug message; "err:"+$2.data))
+    $event.onTerminate:=Formula(LOG EVENT(Into 4D debug message; (["process"; $1.pid; "terminated!"].join(" "))))
+    
+    var $options : Object
     $options:={}
     
     $CTranslate2:=cs.CTranslate2.CTranslate2.new($port; $folder; $URL; $options; $event)
 End if 
+
 ```
 
 Unless the server is already running (in which case the costructor does nothing), the following procedure runs in the background:
