@@ -56,7 +56,7 @@ Else
     If (False)
         //MARK: ALERT is thread safe but dangerous to use on exit...
         $event.onTerminate:=Formula(ALERT(["process"; $1.pid; "terminated!"].join(" ")))
-    End if $event.onTerminate:=Formula(ALERT(["process"; $1.pid; "terminated!"].join(" ")))
+    End if 
     
     $options:={}
     
