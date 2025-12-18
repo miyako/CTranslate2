@@ -16,14 +16,14 @@ Else
 	var $event : cs:C1710.event.event
 	$event:=cs:C1710.event.event.new()
 /*
-        Function onError($params : Object; $error : cs.event.error)
-        Function onSuccess($params : Object; $models : cs.event.models)
-        Function onData($request : 4D.HTTPRequest; $event : Object)
-        Function onResponse($request : 4D.HTTPRequest; $event : Object)
-        Function onTerminate($worker : 4D.SystemWorker; $params : Object)
-        Function onStdOut($worker : 4D.SystemWorker; $params : Object)
-        Function onStdErr($worker : 4D.SystemWorker; $params : Object)
-    */
+Function onError($params : Object; $error : cs.event.error)
+Function onSuccess($params : Object; $models : cs.event.models)
+Function onData($request : 4D.HTTPRequest; $event : Object)
+Function onResponse($request : 4D.HTTPRequest; $event : Object)
+Function onTerminate($worker : 4D.SystemWorker; $params : Object)
+Function onStdOut($worker : 4D.SystemWorker; $params : Object)
+Function onStdErr($worker : 4D.SystemWorker; $params : Object)
+*/
 	
 	$event.onError:=Formula:C1597(ALERT:C41($2.message))
 	$event.onSuccess:=Formula:C1597(ALERT:C41($2.models.extract("name").join(",")+" loaded!"))
