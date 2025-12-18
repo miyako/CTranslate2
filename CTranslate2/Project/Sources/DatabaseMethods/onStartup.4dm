@@ -31,7 +31,10 @@ Function onStdErr($worker : 4D.SystemWorker; $params : Object)
 	End if 
 	$event.onStdOut:=Formula:C1597($2.data)
 	$event.onStdErr:=Formula:C1597($2.data)
-	$event.onTerminate:=Formula:C1597(ALERT:C41(["process"; $1.pid; "terminated!"].join(" ")))
+	If (False:C215)
+		//MARK: ALERT is thread safe but dangerous to use on exit...
+		$event.onTerminate:=Formula:C1597(ALERT:C41(["process"; $1.pid; "terminated!"].join(" ")))
+	End if 
 	
 	$options:={}
 	
