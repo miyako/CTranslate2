@@ -5,7 +5,7 @@ property dataType : Text
 property automaticRedirections : Boolean
 property file : 4D:C1709.File
 property options : Object
-property _onResponse : 4D:C1709.Function
+property _onResponse : 4D:C1709.Function  //onModel
 property _fileHandle : 4D:C1709.FileHandle
 property returnResponseBody : Boolean
 property decodeData : Boolean
