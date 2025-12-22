@@ -16,11 +16,11 @@ Class constructor($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $opti
 			$port:=8080
 		End if 
 		
-		This:C1470.main($port; $folder; $URL; $options; $event)
+		This:C1470._main($port; $folder; $URL; $options; $event)
 		
 	End if 
 	
-Function onTCP($status : Object; $options : Object)
+Function _onTCP($status : Object; $options : Object)
 	
 	If ($status.success)
 		
@@ -42,9 +42,9 @@ Function onTCP($status : Object; $options : Object)
 		
 	End if 
 	
-Function main($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $options : Object; $event : cs:C1710.event.event)
+Function _main($port : Integer; $folder : 4D:C1709.Folder; $URL : Text; $options : Object; $event : cs:C1710.event.event)
 	
-	main({port: $port; folder: $folder; URL: $URL; event: $event; options: $options}; This:C1470.onTCP)
+	main({port: $port; folder: $folder; URL: $URL; event: $event; options: $options}; This:C1470._onTCP)
 	
 Function terminate()
 	
