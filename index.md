@@ -101,41 +101,6 @@ $CTranslate2:=cs.CTranslate2.CTranslate2.new()
 $CTranslate2.terminate()
 ```
 
-#### Converted CT2 models:
-
-|Model|Size|Language| Dimensions|Sequence&nbsp;Length|
-|-|-:|:-:|-:|-:|
-|[sentence-transformers/all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)|[`20.5 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/all-MiniLM-L6-v2_int8_float16.zip)|English|`384 `|`512 `
-|[sentence-transformers/all-MiniLM-L12-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)|[`29.7 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/all-MiniLM-L12-v2_int8_float16.zip)| English|`384`|`512 `
-|[intfloat/e5-small-v2](https://huggingface.co/intfloat/e5-small-v2)|[`29.6 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/e5-small-v2_int8_float16.zip)| English|`384 `|`512`
-|[intfloat/e5-base-v2](https://huggingface.co/intfloat/e5-base-v2)|[`94.59 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/e5-base-v2_int8_float16.zip)| English|`768 `|`512`
-|[intfloat/e5-large-v2](https://huggingface.co/intfloat/e5-large-v2)|[`288.93 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/e5-large-v2_int8_float16.zip)| English|`1024 `|`512`
-|[BAAI/bge-small-en-v1.5](https://huggingface.co/BAAI/bge-small-en-v1.5)|[`29.6 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/bge-small-en-v1.5_int8_float16.zip)| English |`384 `|`512 `
-[BAAI/bge-base-en-v1.5](https://huggingface.co/BAAI/bge-base-en-v1.5)|[`94.8 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/bge-base-en-v1.5_int8_float16.zip)| English| `768`|`512 `
-|[BAAI/bge-large-en-v1.5](https://huggingface.co/BAAI/bge-large-en-v1.5)|[`289.0 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/bge-large-en-v1.5_int8_float16.zip)| English|`1024 `|`512 `
-[Snowflake/snowflake-arctic-embed-s](https://huggingface.co/Snowflake/snowflake-arctic-embed-s)|[`29.3 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/arctic-embed-s_int8_float16.zip)| English|`384`|`512`
-|[intfloat/multilingual-e5-small](https://huggingface.co/intfloat/multilingual-e5-small)|[`109.8 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/multilingual-e5-small_int8_float16.zip)|`94`|`384`|`512`
-|[intfloat/multilingual-e5-base](https://huggingface.co/intfloat/multilingual-e5-base)|[`251.5 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/multilingual-e5-base_int8_float16.zip)|`94`|`768`|`512`
-|[intfloat/multilingual-e5-large](https://huggingface.co/intfloat/multilingual-e5-large)|[`493.3 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/multilingual-e5-large_int8_float16.zip)|`94 `|`1024 `|`512`
-|[BAAI/bge-m3](https://huggingface.co/BAAI/bge-m3)|[`506.9 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/bge-m3_int8_float16.zip)|`100+`|`1024 `|`8192 `
-|[Snowflake/snowflake-arctic-embed-l-v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0)|[`505.5 MB`](https://github.com/miyako/ct2-embedding-cli/releases/download/models/arctic-embed-l-v2.0_int8_float16.zip)|`74`|`1024 `|`8192 `
-
-You can find more models on [Hugging Face](https://huggingface.co). Search specifically for models that are **transformer-based**. Matching model names would typically include tags like:
-
-* gte ([General Text Embedding](https://huggingface.co/Alibaba-NLP/gte-multilingual-base))
-* [MPNet](https://huggingface.co/docs/transformers/main/model_doc/mpnet) ([Masked and Permuted Pre-training for Language Understanding](https://huggingface.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2))
-
-Do **not** choose decoder-only LLMs like LLaMA, GPT, Mistral, or Qwen.
-
-#### Notable Embedding Models not support by CTranslate2:
-
-* Nomic Embed Text v1.x: **NomicBertModel** architecture
-* Nomic Embed Text v2: **MoE** (Mixture of Experts) architecture
-* Jina: **JinaBERT** architecture
-* Instructor:  **T5** architecture
-* BTE-Qwen2, Mistral, EmbeddingGemma: LLM decoder-based encoder
-* [**ModernBERT**](https://huggingface.co/models?other=base_model:finetune:answerdotai/ModernBERT-base) architecture
-
 CTranslate2 relies on mapping standard model architectures like **BERT**, **RoBERTa**, or **DistilBERT** to its C++ inference engine. Some LLMs have moved on from the standard BERT architecture to a custom architecture. 
 
 If a model is not avaiable in `ct2` format, you can use a `python` utility to convert it. See [miyako/ct2-embedding-cli](https://github.com/miyako/ct2-embedding-cli) for details.
