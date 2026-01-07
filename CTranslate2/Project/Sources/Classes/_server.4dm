@@ -14,9 +14,9 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	$command+=" --server "
 	
 	Case of 
-		: (Value type:C1509($option.model)=Is object:K8:27) && (OB Instance of:C1731($option.model; 4D:C1709.Folder)) && ($option.model.exists)
+		: (Value type:C1509($option.embeggings_model)=Is object:K8:27) && (OB Instance of:C1731($option.embeggings_model; 4D:C1709.Folder)) && ($option.embeggings_model.exists)
 			$command+=" --model "
-			$command+=This:C1470.escape(This:C1470.expand($option.model).path)
+			$command+=This:C1470.escape(This:C1470.expand($option.embeggings_model).path)
 	End case 
 	
 	var $arg : Object
@@ -46,5 +46,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	//SET TEXT TO PASTEBOARD($command)
 	
-	return This:C1470.controller.execute($command; $isStream ? $option.model : Null:C1517; $option.data).worker
+	ALERT:C41($command)
+	
+	return This:C1470.controller.execute($command).worker
 	
