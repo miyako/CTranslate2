@@ -20,6 +20,7 @@
 #include <ctranslate2/types.h>
 #include <sentencepiece_processor.h>
 #include <tokenizers_cpp.h>
+#include <ctranslate2/utils.h>
 
 #include "httplib.h"
 #ifdef WIN32
