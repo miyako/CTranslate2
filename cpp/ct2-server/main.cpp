@@ -62,16 +62,15 @@ public:
     // Set intra_threads to the number of physical cores you want to use for *one* batch.
     // If you are processing one batch at a time, set this to total cores (e.g., 4 or 8).
     EmbeddingPipeline(const std::string& model_dir,
-                      int intra_threads = 0,
+                      int num_threads = 0,
                       const std::string& device = "cpu") {
         
         // --- 1. Optimize Threading ---
         // This sets the number of threads used for matrix multiplication (intra-op).
         // If you set this to 4, it uses 4 cores for the math.
-        if (intra_threads > 0) {
-            ctranslate2::set_num_threads(intra_threads);
+        if (num_threads > 0) {
+            ctranslate2::set_num_threads(num_threads);
         }
-        
         // --- 2. Load Tokenizer ---
         fs::path json_path = fs::path(model_dir) / "tokenizer.json";
         std::ifstream file(json_path.string());
@@ -86,21 +85,7 @@ public:
         // B. Device Indices (Must be a vector, even for single device)
         std::vector<int> device_indices = {0};
         // C. Compute Type
-        std::string compute_type_str = "cpu";
-        ctranslate2::ComputeType compute_type = ctranslate2::ComputeType::DEFAULT;
-        if (compute_type_str == "int8") compute_type = ctranslate2::ComputeType::INT8;
-        else if (compute_type_str == "int8_float16") compute_type = ctranslate2::ComputeType::INT8_FLOAT16;
-        else if (compute_type_str == "float16") compute_type = ctranslate2::ComputeType::FLOAT16;
-
-        std::cout << "Initializing Encoder with ComputeType: " << compute_type_str << std::endl;
-        
-        
-        
-        // OPTIMIZATION TIP 2: Compute Type
-        // Use INT8 if your CPU supports AVX2/AVX512.
-        // Even if the model file is float32, this forces int8 computation.
-        compute_type = ctranslate2::ComputeType::INT8;
-
+       
         // We use the simple constructor that is known to compile.
         // It respects the quantization saved in the model.bin file.
         encoder_ = std::make_unique<ctranslate2::Encoder>(model_dir, device_type);
@@ -112,102 +97,91 @@ public:
     }
 
     // OPTIMIZATION TIP 3: Batch Processing
+    // Returns a matrix where each Row is an embedding vector
     std::vector<std::vector<float>> embed_batch(const std::vector<std::string>& texts,
                                                 PoolingStrategy strategy,
                                                 bool l2_normalize = true) {
         if (texts.empty()) return {};
-
-        // 1. Tokenize Batch (Sequential on CPU, but fast)
+        
+        // 1. Tokenize & Prepare Batch
         std::vector<std::vector<size_t>> batch_ids;
         std::vector<size_t> lengths;
         batch_ids.reserve(texts.size());
         lengths.reserve(texts.size());
-
+        
         for (const auto& text : texts) {
             auto ids_int = tokenize_one(text);
-            
-            // Convert int32 to size_t
             std::vector<size_t> ids_size_t;
             ids_size_t.reserve(ids_int.size());
             for (auto id : ids_int) ids_size_t.push_back(static_cast<size_t>(id));
-            
             lengths.push_back(ids_size_t.size());
             batch_ids.push_back(std::move(ids_size_t));
         }
-
-        // 2. Forward Pass
-        // CTranslate2 automatically handles padding for the batch
+        
+        // 2. Forward Pass (Heavy Compute)
         auto future = encoder_->forward_batch_async(batch_ids);
         ctranslate2::EncoderForwardOutput result = future.get();
-
-        // 3. Extract Data
-        // shape: [batch_size, max_seq_len, hidden_dim]
-        const auto& hidden_states = result.last_hidden_state;
-        const float* data = hidden_states.data<float>();
-        const auto& shape = hidden_states.shape();
         
-        size_t batch_size = shape[0];
-        size_t max_seq_len = shape[1];
-        size_t hidden_dim = shape[2];
-        size_t stride_batch = max_seq_len * hidden_dim;
-
-        std::vector<std::vector<float>> output_embeddings;
-        output_embeddings.reserve(batch_size);
-
-        // 4. Pool per item in batch
-        for (size_t b = 0; b < batch_size; ++b) {
-            std::vector<float> embedding(hidden_dim, 0.0f);
-            size_t current_len = lengths[b]; // The actual non-padded length
+        // 3. Move to CPU (if needed)
+        ctranslate2::StorageView hidden_states_cpu = result.last_hidden_state.to(ctranslate2::Device::CPU);
+        
+        // 4. Zero-Copy Eigen Mapping
+        // CT2 Memory Layout: RowMajor [Batch, Time, Dim]
+        float* raw_data = hidden_states_cpu.data<float>();
+        const auto& shape = hidden_states_cpu.shape();
+        
+        long batch_size = shape[0];
+        long max_seq_len = shape[1];
+        long hidden_dim = shape[2];
+        long stride_batch = max_seq_len * hidden_dim;
+        
+        std::vector<std::vector<float>> output_embeddings(batch_size);
+        
+        // 5. Compute Pooling per sentence using Eigen
+        for (long b = 0; b < batch_size; ++b) {
+            long valid_len = lengths[b];
             
-            // Pointer to start of this sentence in the flattened array
-            const float* sentence_data = data + (b * stride_batch);
-
-            if (current_len == 0) {
-                // Handle empty string edge case
-                output_embeddings.push_back(embedding);
+            // Allocate space for the result vector
+            output_embeddings[b].resize(hidden_dim);
+            
+            if (valid_len == 0) {
+                std::fill(output_embeddings[b].begin(), output_embeddings[b].end(), 0.0f);
                 continue;
             }
-
-            if (strategy == PoolingStrategy::CLS) {
-                // First token (index 0)
-                for (size_t i = 0; i < hidden_dim; ++i) {
-                    embedding[i] = sentence_data[i];
-                }
+            
+            // Map the output vector so Eigen can write directly to std::vector memory
+            Eigen::Map<Eigen::VectorXf> target_vec(output_embeddings[b].data(), hidden_dim);
+            
+            // Point to the specific sentence data within the batch
+            float* sentence_ptr = raw_data + (b * stride_batch);
+            
+            if (strategy == PoolingStrategy::MEAN) {
+                // Map the VALID tokens as a Matrix [valid_len, hidden_dim]
+                // Note: CT2 storage is RowMajor. Eigen defaults to ColMajor, so we must specify RowMajor.
+                Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+                mat(sentence_ptr, valid_len, hidden_dim);
+                
+                // Vectorized Mean: Sum columns (colwise), then divide
+                target_vec = mat.colwise().sum() / static_cast<float>(valid_len);
+            }
+            else if (strategy == PoolingStrategy::CLS) {
+                // Map first row
+                Eigen::Map<Eigen::VectorXf> cls_vec(sentence_ptr, hidden_dim);
+                target_vec = cls_vec;
             }
             else if (strategy == PoolingStrategy::LAST_TOKEN) {
-                // Last REAL token (not the padded end)
-                size_t offset = (current_len - 1) * hidden_dim;
-                for (size_t i = 0; i < hidden_dim; ++i) {
-                    embedding[i] = sentence_data[offset + i];
-                }
+                // Map last valid row
+                float* last_ptr = sentence_ptr + ((valid_len - 1) * hidden_dim);
+                Eigen::Map<Eigen::VectorXf> last_vec(last_ptr, hidden_dim);
+                target_vec = last_vec;
             }
-            else if (strategy == PoolingStrategy::MEAN) {
-                // Sum actual tokens only
-                for (size_t t = 0; t < current_len; ++t) {
-                    size_t offset = t * hidden_dim;
-                    for (size_t i = 0; i < hidden_dim; ++i) {
-                        embedding[i] += sentence_data[offset + i];
-                    }
-                }
-                // Average by ACTUAL length
-                float div = static_cast<float>(current_len);
-                for (size_t i = 0; i < hidden_dim; ++i) {
-                    embedding[i] /= div;
-                }
-            }
-
+            
+            // 6. L2 Normalization (Vectorized)
             if (l2_normalize) {
-                float sum_sq = 0.0f;
-                for (float val : embedding) sum_sq += val * val;
-                float norm = std::sqrt(sum_sq);
-                if (norm > 1e-9) {
-                    for (float& val : embedding) val /= norm;
-                }
+                target_vec.normalize(); // In-place normalization
             }
-
-            output_embeddings.push_back(std::move(embedding));
         }
-
+        
         return output_embeddings;
     }
 

@@ -324,6 +324,8 @@
 				OTHER_CFLAGS = (
 					"-Xpreprocessor",
 					"-fopenmp",
+					"-mavx2",
+					"-mfma",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
@@ -353,6 +355,8 @@
 				OTHER_CFLAGS = (
 					"-Xpreprocessor",
 					"-fopenmp",
+					"-mavx2",
+					"-mfma",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
