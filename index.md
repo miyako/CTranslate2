@@ -27,13 +27,9 @@ If (False)
 Else 
     var $homeFolder : 4D.Folder
     $homeFolder:=Folder(fk home folder).folder(".CTranslate2")
-    var $folder : 4D.Folder
+    var $file : 4D.File
     var $URL : Text
-    $folder:=$homeFolder.folder("snowflake/arctic-embed-s_int8_float16")
-    $URL:="https://github.com/miyako/ct2-embedding-cli/releases/download/models/snowflake-arctic-embed-s_int8_float16.zip"
-    
     var $port : Integer
-    $port:=8080
     
     var $event : cs.event.event
     $event:=cs.event.event.new()
@@ -47,14 +43,27 @@ Else
     
     $event.onError:=Formula(ALERT($2.message))
     $event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
-    $event.onData:=Formula(LOG EVENT(Into 4D debug message; "download:"+String((This.range.end/This.range.length)*100; "###.00%")))
-    $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; "download complete"))
+    $event.onData:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
+    $event.onData:=Formula(MESSAGE(This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
+    $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":download complete"))
+    $event.onResponse:=Formula(MESSAGE(This.file.fullName+":download complete"))
     $event.onTerminate:=Formula(LOG EVENT(Into 4D debug message; (["process"; $1.pid; "terminated!"].join(" "))))
     
-    var $options : Object
+    $port:=8080
+    
+    $options:={}
+    var $huggingfaces : cs.event.huggingfaces
+    
+    $folder:=$homeFolder.folder("multilingual-e5-base-ct2-int8_float16")
+    $path:="keisuke-miyako/multilingual-e5-base-ct2-int8_float16"
+    $URL:="keisuke-miyako/multilingual-e5-base-ct2-int8_float16"
+    $embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding")
+    
+    $huggingfaces:=cs.event.huggingfaces.new([$embeddings])
     $options:={}
     
-    $CTranslate2:=cs.CTranslate2.CTranslate2.new($port; $folder; $URL; $options; $event)
+    $CTranslate2:=cs.CTranslate2.CTranslate2.new($port; $huggingfaces; $homeFolder; $options; $event)
+    
 End if 
 ```
 
@@ -120,7 +129,7 @@ The API is compatibile with [Open AI](https://platform.openai.com/docs/api-refer
 
 |Class|API|Availability|
 |-|-|:-:|
-|Models|`/v1/models`||
+|Models|`/v1/models`|✅|
 |Chat|`/v1/chat/completions`||
 |Images|`/v1/images/generations`||
 |Moderations|`/v1/moderations`||

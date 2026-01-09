@@ -32,9 +32,9 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$options:={}
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	
-	$folder:=$homeFolder.folder("all-MiniLM-L6-v2-ct2-int8_float16")
-	$path:="keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16"
-	$URL:="keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16"
+	$folder:=$homeFolder.folder("multilingual-e5-base-ct2-int8_float16")
+	$path:="keisuke-miyako/multilingual-e5-base-ct2-int8_float16"
+	$URL:="keisuke-miyako/multilingual-e5-base-ct2-int8_float16"
 	$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding")
 	
 	$huggingfaces:=cs:C1710.event.huggingfaces.new([$embeddings])
