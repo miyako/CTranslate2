@@ -7,13 +7,6 @@
 
 #include "ct2-server.h"
 
-// Enum for selecting the pooling strategy
-enum class PoolingStrategy {
-    CLS,        // Use the first token (usually [CLS])
-    LAST_TOKEN, // Use the last token
-    MEAN        // Average of all tokens
-};
-
 namespace fs = std::filesystem;
 
 static // Helper: Read entire file into a string (Blob)
@@ -488,7 +481,7 @@ int main(int argc, OPTARG_T argv[]) {
     OPTARG_T output_path = NULL;      // -o
     OPTARG_T chat_template_path = NULL;
         
-    PoolingMode pooling_mode = POOLING_MEAN;
+    PoolingStrategy pooling_mode = PoolingStrategy::MEAN;
     
     // Server mode flags
     bool server_mode = false;         // -s
@@ -530,16 +523,16 @@ int main(int argc, OPTARG_T argv[]) {
                 port = std::stoi(optarg);
                 break;
             case 'b':
-                pooling_mode = POOLING_COLBERT;
+//                pooling_mode = POOLING_COLBERT;
                 break;
             case 'c':
-                pooling_mode = POOLING_CLS;
+                pooling_mode = PoolingStrategy::CLS;
                 break;
             case 'l':
-                pooling_mode = POOLING_LAST_TOKEN;
+                pooling_mode = PoolingStrategy::LAST_TOKEN;
                 break;
             case 'd':
-                pooling_mode = POOLING_E2E;
+//                pooling_mode = POOLING_E2E;
                 break;
             case 'h':
 #ifdef WIN32
@@ -695,7 +688,7 @@ int main(int argc, OPTARG_T argv[]) {
                 }
                 std::string text;
                 before_run_embeddings(req.body, text);
-                auto embeddings = pipeline->embed_batch({text}, PoolingStrategy::MEAN, true);
+                auto embeddings = pipeline->embed_batch({text}, pooling_mode, true);
                 Json::Value rootNode(Json::objectValue);
                 Json::Value embeddingsNode(Json::arrayValue);
                 for (float val : embeddings[0]) {
@@ -765,7 +758,7 @@ int main(int argc, OPTARG_T argv[]) {
         
         try {
             before_run_embeddings(request_str, text);
-            auto embeddings = pipeline->embed_batch({text}, PoolingStrategy::MEAN, true);
+            auto embeddings = pipeline->embed_batch({text}, pooling_mode, true);
             Json::Value rootNode(Json::objectValue);
             Json::Value embeddingsNode(Json::arrayValue);
             for (float val : embeddings[0]) {

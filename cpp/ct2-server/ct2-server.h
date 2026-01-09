@@ -101,21 +101,11 @@ extern "C" {
 #endif  /* _WINGETOPT_H_ */
 #endif
 
-enum PoolingMode {
-    POOLING_MEAN,         // E5, BGE, Ruri, Sentence-BERT, Sarashina
-    POOLING_COLBERT,      // JaColBERT / ColBERTv2
-    POOLING_CLS,          //BGE-M3
-    POOLING_LAST_TOKEN,   //GEMMA
-    POOLING_E2E
+// Enum for selecting the pooling strategy
+enum class PoolingStrategy {
+    CLS,        // Use the first token (usually [CLS])
+    LAST_TOKEN, // Use the last token
+    MEAN        // Average of all tokens
 };
-
-#pragma mark -
-
-static std::string create_stream_chunk(int n,
-                                       const std::string& id,
-                                       const std::string& model,
-                                       const std::string& content,
-                                       const std::string& fingerprint,
-                                       bool finish = false);
 
 #endif  /* __ONNX_GENAI_H__ */

@@ -11,5 +11,5 @@ layout: default
 ## Apple Silicon
  
 ``` 
--march=native
+-Xpreprocessor -fopenmp -march=native
 ```
