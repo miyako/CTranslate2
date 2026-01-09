@@ -24,8 +24,25 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	End if 
 	
 	If (Value type:C1509($option.host)=Is text:K8:3) && ($option.host#"")
-		$command+=" -p "
+		$command+=" -h "
 		$command+=$option.host
+	End if 
+	
+	If (Value type:C1509($option.pooling)=Is text:K8:3) && ($option.pooling#"")
+		Case of 
+			: ($option.pooling="cls")
+				$command+=" -c "
+			: ($option.pooling="mean")
+				//default
+			: ($option.pooling="last-token")
+				$command+=" -l "
+			: ($option.pooling="multi-vector")  //ColBERT
+				//not implemented
+			: ($option.pooling="splade")
+				//not implemented
+			: ($option.pooling="e2e")  //Universal Sentence Encoder
+				//not implemented
+		End case 
 	End if 
 	
 	var $arg : Object
@@ -34,7 +51,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	For each ($arg; OB Entries:C1720($option))
 		Case of 
-			: (["server"; "model"; "device"; "help"; "version"; "port"; "host"].includes($arg.key))
+			: (["server"; "model"; "device"; "help"; "version"; "port"; "host"; "pooling"].includes($arg.key))
 				continue
 		End case 
 		$valueType:=Value type:C1509($arg.value)
