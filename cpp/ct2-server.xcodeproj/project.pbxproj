@@ -1,0 +1,389 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D157F3122E612DD500DF46D3 /* libjsoncpp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D157F30C2E612DD500DF46D3 /* libjsoncpp.a */; };
+		D18C69672EFEEAC400A4774A /* libomp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C69662EFEEAC400A4774A /* libomp.a */; };
+		D18C69692EFFE31600A4774A /* libtokenizers_c.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C69682EFFE31600A4774A /* libtokenizers_c.a */; };
+		D18C696B2EFFE32E00A4774A /* libsentencepiece.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C696A2EFFE32E00A4774A /* libsentencepiece.a */; };
+		D18C696D2EFFE33600A4774A /* libtokenizers_cpp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C696C2EFFE33600A4774A /* libtokenizers_cpp.a */; };
+		D190B5EE2F115CBC00F8D023 /* libcpu_features.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D190B5ED2F115CB200F8D023 /* libcpu_features.a */; };
+		D190B5EF2F115CBC00F8D023 /* libctranslate2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D190B5EC2F115CB200F8D023 /* libctranslate2.a */; };
+		D190B5F12F115EB800F8D023 /* libopenblas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D190B5F02F115EB800F8D023 /* libopenblas.a */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D16478922E611F7700FC9914 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		D178B3E62EF9E91B00F0F0A7 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		D157F30C2E612DD500DF46D3 /* libjsoncpp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libjsoncpp.a; path = a/libjsoncpp.a; sourceTree = "<group>"; };
+		D16478942E611F7700FC9914 /* ct2-server */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "ct2-server"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D164789E2E61216B00FC9914 /* ct2-server.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "ct2-server.xcconfig"; sourceTree = "<group>"; };
+		D18C69662EFEEAC400A4774A /* libomp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libomp.a; path = a/libomp.a; sourceTree = "<group>"; };
+		D18C69682EFFE31600A4774A /* libtokenizers_c.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtokenizers_c.a; path = a/libtokenizers_c.a; sourceTree = "<group>"; };
+		D18C696A2EFFE32E00A4774A /* libsentencepiece.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libsentencepiece.a; path = a/libsentencepiece.a; sourceTree = "<group>"; };
+		D18C696C2EFFE33600A4774A /* libtokenizers_cpp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtokenizers_cpp.a; path = a/libtokenizers_cpp.a; sourceTree = "<group>"; };
+		D190B5EC2F115CB200F8D023 /* libctranslate2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libctranslate2.a; path = a/libctranslate2.a; sourceTree = "<group>"; };
+		D190B5ED2F115CB200F8D023 /* libcpu_features.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcpu_features.a; path = a/libcpu_features.a; sourceTree = "<group>"; };
+		D190B5F02F115EB800F8D023 /* libopenblas.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libopenblas.a; path = a/libopenblas.a; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D16478962E611F7700FC9914 /* ct2-server */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "ct2-server";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D16478912E611F7700FC9914 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D190B5F12F115EB800F8D023 /* libopenblas.a in Frameworks */,
+				D18C696D2EFFE33600A4774A /* libtokenizers_cpp.a in Frameworks */,
+				D190B5EF2F115CBC00F8D023 /* libctranslate2.a in Frameworks */,
+				D190B5EE2F115CBC00F8D023 /* libcpu_features.a in Frameworks */,
+				D18C696B2EFFE32E00A4774A /* libsentencepiece.a in Frameworks */,
+				D18C69692EFFE31600A4774A /* libtokenizers_c.a in Frameworks */,
+				D18C69672EFEEAC400A4774A /* libomp.a in Frameworks */,
+				D157F3122E612DD500DF46D3 /* libjsoncpp.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D157F30B2E612DD500DF46D3 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D190B5F02F115EB800F8D023 /* libopenblas.a */,
+				D190B5ED2F115CB200F8D023 /* libcpu_features.a */,
+				D190B5EC2F115CB200F8D023 /* libctranslate2.a */,
+				D18C696C2EFFE33600A4774A /* libtokenizers_cpp.a */,
+				D18C696A2EFFE32E00A4774A /* libsentencepiece.a */,
+				D18C69682EFFE31600A4774A /* libtokenizers_c.a */,
+				D18C69662EFEEAC400A4774A /* libomp.a */,
+				D157F30C2E612DD500DF46D3 /* libjsoncpp.a */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		D164788B2E611F7700FC9914 = {
+			isa = PBXGroup;
+			children = (
+				D164789E2E61216B00FC9914 /* ct2-server.xcconfig */,
+				D16478962E611F7700FC9914 /* ct2-server */,
+				D157F30B2E612DD500DF46D3 /* Frameworks */,
+				D16478952E611F7700FC9914 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D16478952E611F7700FC9914 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D16478942E611F7700FC9914 /* ct2-server */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D16478932E611F7700FC9914 /* ct2-server */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D164789B2E611F7700FC9914 /* Build configuration list for PBXNativeTarget "ct2-server" */;
+			buildPhases = (
+				D16478902E611F7700FC9914 /* Sources */,
+				D16478912E611F7700FC9914 /* Frameworks */,
+				D16478922E611F7700FC9914 /* CopyFiles */,
+				D178B3E62EF9E91B00F0F0A7 /* Embed Libraries */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D16478962E611F7700FC9914 /* ct2-server */,
+			);
+			name = "ct2-server";
+			packageProductDependencies = (
+			);
+			productName = "opc-parser";
+			productReference = D16478942E611F7700FC9914 /* ct2-server */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D164788C2E611F7700FC9914 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1610;
+				TargetAttributes = {
+					D16478932E611F7700FC9914 = {
+						CreatedOnToolsVersion = 16.1;
+					};
+				};
+			};
+			buildConfigurationList = D164788F2E611F7700FC9914 /* Build configuration list for PBXProject "ct2-server" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D164788B2E611F7700FC9914;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D16478952E611F7700FC9914 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D16478932E611F7700FC9914 /* ct2-server */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D16478902E611F7700FC9914 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		D16478992E611F7700FC9914 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D164789E2E61216B00FC9914 /* ct2-server.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD)";
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/";
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SYMROOT = "";
+			};
+			name = Debug;
+		};
+		D164789A2E611F7700FC9914 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D164789E2E61216B00FC9914 /* ct2-server.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD)";
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/";
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SYMROOT = "";
+			};
+			name = Release;
+		};
+		D164789C2E611F7700FC9914 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D164789E2E61216B00FC9914 /* ct2-server.xcconfig */;
+			buildSettings = {
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = Y69CWUC25B;
+				ENABLE_HARDENED_RUNTIME = YES;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/a",
+					"$(PROJECT_DIR)/macOS",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 11.5;
+				OTHER_CFLAGS = (
+					"-Xpreprocessor",
+					"-fopenmp",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SYSTEM_HEADER_SEARCH_PATHS = (
+					include,
+					include/onnxruntime/core/session,
+				);
+			};
+			name = Debug;
+		};
+		D164789D2E611F7700FC9914 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D164789E2E61216B00FC9914 /* ct2-server.xcconfig */;
+			buildSettings = {
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = Y69CWUC25B;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/a",
+					"$(PROJECT_DIR)/macOS",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 11.5;
+				OTHER_CFLAGS = (
+					"-Xpreprocessor",
+					"-fopenmp",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SYSTEM_HEADER_SEARCH_PATHS = (
+					include,
+					include/onnxruntime/core/session,
+				);
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D164788F2E611F7700FC9914 /* Build configuration list for PBXProject "ct2-server" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D16478992E611F7700FC9914 /* Debug */,
+				D164789A2E611F7700FC9914 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D164789B2E611F7700FC9914 /* Build configuration list for PBXNativeTarget "ct2-server" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D164789C2E611F7700FC9914 /* Debug */,
+				D164789D2E611F7700FC9914 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D164788C2E611F7700FC9914 /* Project object */;
+}

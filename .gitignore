@@ -3,3 +3,4 @@ CTranslate2/Project/DerivedData/*
 CTranslate2/userPreferences.*
 CTranslate2/Libraries/lib4d-arm64.dylib
 CTranslate2/Resources/en.lproj/syntaxEN.json
+cpp/.build/*
