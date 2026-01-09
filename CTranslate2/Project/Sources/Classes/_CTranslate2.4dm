@@ -20,7 +20,7 @@ Class constructor($class : 4D:C1709.Class)
 		$superclass:=$superclass.superclass
 	End while 
 	
-	Super:C1705("ct2-embedding-cli"; $controller)
+	Super:C1705("ct2-server"; $controller)
 	
 Function bind($option : Object; $properties : Collection) : cs:C1710._CLI
 	

@@ -11,13 +11,22 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	var $command : Text
 	$command:=This:C1470.escape(This:C1470.executablePath)
 	
-	$command+=" --server "
+	$command+=" -s "
 	
-	Case of 
-		: (Value type:C1509($option.embeggings_model)=Is object:K8:27) && (OB Instance of:C1731($option.embeggings_model; 4D:C1709.Folder)) && ($option.embeggings_model.exists)
-			$command+=" --model "
-			$command+=This:C1470.escape(This:C1470.expand($option.embeggings_model).path)
-	End case 
+	If (Value type:C1509($option.embeggings_model)=Is object:K8:27) && (OB Instance of:C1731($option.embeggings_model; 4D:C1709.Folder)) && ($option.embeggings_model.exists)
+		$command+=" -e "
+		$command+=This:C1470.escape(This:C1470.expand($option.embeggings_model).path)
+	End if 
+	
+	If (Value type:C1509($option.port)=Is real:K8:4) && ($option.port#0)
+		$command+=" -p "
+		$command+=String:C10($option.port)
+	End if 
+	
+	If (Value type:C1509($option.host)=Is text:K8:3) && ($option.host#"")
+		$command+=" -p "
+		$command+=$option.host
+	End if 
 	
 	var $arg : Object
 	var $valueType : Integer
@@ -25,7 +34,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	For each ($arg; OB Entries:C1720($option))
 		Case of 
-			: (["server"; "model"; "device"; "help"; "version"].includes($arg.key))
+			: (["server"; "model"; "device"; "help"; "version"; "port"; "host"].includes($arg.key))
 				continue
 		End case 
 		$valueType:=Value type:C1509($arg.value)
@@ -45,6 +54,8 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	End for each 
 	
 	//SET TEXT TO PASTEBOARD($command)
+	
+	ALERT:C41($command)
 	
 	return This:C1470.controller.execute($command).worker
 	
