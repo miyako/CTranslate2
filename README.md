@@ -65,8 +65,8 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/sarashina-embedding-v1-1b-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/sarashina-embedding-v2-1b-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/ruri-base-v2-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/ruri-large-v2-ct2-int8_float16
+- ~~ruri-base-v2~~
+- ~~ruri-large-v2~~
 - ~~ruri-v3-30m~~
 - ~~ruri-v3-70m~~
 - ~~ruri-v3-130m~~
