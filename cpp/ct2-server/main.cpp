@@ -8,6 +8,7 @@
 #include "ct2-server.h"
 
 namespace fs = std::filesystem;
+using namespace tokenizers;
 
 static // Helper: Read entire file into a string (Blob)
 std::string LoadBytesFromFile(const std::string& path) {
@@ -49,13 +50,84 @@ std::unique_ptr<tokenizers::Tokenizer> LoadTokenizer(const std::string& model_pa
     return 0;
 }
 
+class TranslationService {
+    public:
+    TranslationService(const std::string& model_dir,
+                       const std::string& source_sp_path,
+                       int num_threads = 4,
+                       const std::string& device = "cpu") {
+        
+        // --- 1. Optimize Threading ---
+        // This sets the number of threads used for matrix multiplication (intra-op).
+        // If you set this to 4, it uses 4 cores for the math.
+        if (num_threads > 0) {
+            ctranslate2::set_num_threads(num_threads);
+        }
+        // --- 2. Load Tokenizer ---
+        fs::path sp_model_path = source_sp_path.length() == 0 ? fs::path(model_dir) / "tokenizer.model" : fs::path(source_sp_path);
+        
+        tokenizer_ = std::make_unique<sentencepiece::SentencePieceProcessor>();
+        const auto status = tokenizer_->Load(sp_model_path.c_str());
+        
+        if (!status.ok()) {
+            throw std::runtime_error("Failed to load SentencePiece model: " + status.ToString());
+        }
+        
+        ctranslate2::Device device_type = (device == "cuda") ?
+        ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
+        translator_ = std::make_unique<ctranslate2::Translator>(
+                                                                model_dir,
+                                                                device_type
+        );
+    }
+
+    std::string translate_batch(const std::vector<std::string>& texts,
+                                const ctranslate2::TranslationOptions& options) {
+        
+        std::vector<std::vector<std::string>> batch_tokens;
+        for (const auto& text : texts) {
+            std::vector<std::string> tokens;
+            tokenizer_->Encode(text, &tokens);
+            batch_tokens.push_back(tokens);
+        }
+
+        auto results = translator_->translate_batch(batch_tokens, options);
+        
+        Json::Value rootNode(Json::objectValue);
+        Json::Value translationsNode(Json::arrayValue);
+        
+        for (size_t i = 0; i < results.size(); ++i) {
+            const auto& result = results[i];
+            Json::Value translationNode(Json::objectValue);
+            translationNode["score"] = result.scores[0];
+            Json::Value hypothesesNode(Json::arrayValue);
+            for (const auto& hyp : result.hypotheses) {
+                std::string detokenized;
+                tokenizer_->Decode(hyp, &detokenized);
+                hypothesesNode.append(detokenized);
+            }
+            translationNode["tokens"] = hypothesesNode;
+            translationsNode.append(translationNode);
+        }
+
+        rootNode["translations"] = translationsNode;
+        Json::StreamWriterBuilder writer;
+        writer["indentation"] = "";
+
+        return Json::writeString(writer, rootNode);;
+    }
+private:
+    std::unique_ptr<ctranslate2::Translator> translator_;
+    std::unique_ptr<sentencepiece::SentencePieceProcessor> tokenizer_;
+};
+
 class EmbeddingPipeline {
 public:
     // OPTIMIZATION TIP 1: intra_threads
     // Set intra_threads to the number of physical cores you want to use for *one* batch.
     // If you are processing one batch at a time, set this to total cores (e.g., 4 or 8).
     EmbeddingPipeline(const std::string& model_dir,
-                      int num_threads = 0,
+                      int num_threads = 4,
                       const std::string& device = "cpu") {
         
         // --- 1. Optimize Threading ---
@@ -71,16 +143,9 @@ public:
         std::stringstream buffer;
         buffer << file.rdbuf();
         tokenizer_ = LoadTokenizer(model_dir);
-        // 3. Prepare CTranslate2 Parameters
-        // A. Device
+
         ctranslate2::Device device_type = (device == "cuda") ?
         ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
-        // B. Device Indices (Must be a vector, even for single device)
-        std::vector<int> device_indices = {0};
-        // C. Compute Type
-       
-        // We use the simple constructor that is known to compile.
-        // It respects the quantization saved in the model.bin file.
         encoder_ = std::make_unique<ctranslate2::Encoder>(model_dir, device_type);
     }
 
@@ -91,7 +156,7 @@ public:
 
     // OPTIMIZATION TIP 3: Batch Processing
     // Returns a matrix where each Row is an embedding vector
-    std::vector<std::vector<float>> embed_batch(const std::vector<std::string>& texts,
+    std::string embed_batch(const std::vector<std::string>& texts,
                                                 PoolingStrategy strategy,
                                                 bool l2_normalize = true) {
         if (texts.empty()) return {};
@@ -175,16 +240,23 @@ public:
             }
         }
         
-        return output_embeddings;
+        Json::Value rootNode(Json::objectValue);
+        Json::Value embeddingsNode(Json::arrayValue);
+        for (float val : output_embeddings[0]) {
+            embeddingsNode.append(val);
+        }
+        rootNode["embedding"] = embeddingsNode;
+        rootNode["index"] = 0;
+        Json::StreamWriterBuilder writer;
+        writer["indentation"] = "";
+        
+        return Json::writeString(writer, rootNode);
     }
 
 private:
     std::unique_ptr<ctranslate2::Encoder> encoder_;
     std::unique_ptr<tokenizers::Tokenizer> tokenizer_;
 };
-
-namespace fs = std::filesystem;
-using namespace tokenizers; // mlc-ai namespace
 
 #ifdef WIN32
 static std::wstring utf8_to_wstring(const std::string& str) {
@@ -366,11 +438,11 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:e:i:o:sp:jt:bcld-h"
+#define ARGS (OPTARG_T)L"m:e:i:o:sp:jt:bcldf:-h"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:e:i:o:sp:jt:bcld-h"
+#define ARGS "m:e:i:o:sp:jt:bcldf:-h"
 #define _atoi atoi
 #define _atof atof
 #endif
@@ -432,6 +504,87 @@ static std::string get_openai_style_id() {
 
 #pragma mark -
 
+static void parse_request_translate(const std::string &json,
+                                    std::vector<std::string> &inputs,
+                                    size_t *num_hypotheses,
+                                    size_t *sampling_topk,
+                                    size_t *beam_size,
+                                    size_t *max_decoding_length,
+                                    size_t *min_decoding_length,
+                                    double *sampling_topp,
+                                    double *repetition_penalty) {
+    
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    
+    Json::CharReader *reader = builder.newCharReader();
+    bool parse = reader->parse(json.c_str(),
+                               json.c_str() + json.size(),
+                               &root,
+                               &errors);
+    delete reader;
+    
+    if(parse)
+    {
+        if(root.isObject())
+        {
+            Json::Value input_node = root["text"];
+            if(input_node.isString())
+            {
+                inputs.push_back(input_node.asString());
+            }
+            if(input_node.isArray())
+            {
+                for (Json::ValueIterator i = input_node.begin(); i != input_node.end(); ++i)
+                {
+                    Json::Value node = *i;
+                    if(node.isString())
+                    {
+                        inputs.push_back(node.asString());
+                    }
+                    
+                }
+            }
+            Json::Value num_hypotheses_node = root["num_hypotheses"];
+            if(num_hypotheses_node.isNumeric())
+            {
+                *num_hypotheses = num_hypotheses_node.asDouble();
+            }
+            Json::Value sampling_topk_node = root["sampling_topk"];
+            if(sampling_topk_node.isNumeric())
+            {
+                *sampling_topk = sampling_topk_node.asDouble();
+            }
+            Json::Value beam_size_node = root["beam_size"];
+            if(beam_size_node.isNumeric())
+            {
+                *beam_size = beam_size_node.asDouble();
+            }
+            Json::Value max_decoding_length_node = root["max_decoding_length"];
+            if(max_decoding_length_node.isNumeric())
+            {
+                *max_decoding_length = max_decoding_length_node.asDouble();
+            }
+            Json::Value min_decoding_length_node = root["min_decoding_length"];
+            if(min_decoding_length_node.isNumeric())
+            {
+                *min_decoding_length = min_decoding_length_node.asDouble();
+            }
+            Json::Value sampling_topp_node = root["sampling_topp"];
+            if(sampling_topp_node.isNumeric())
+            {
+                *sampling_topp = sampling_topp_node.asDouble();
+            }
+            Json::Value repetition_penalty_node = root["repetition_penalty"];
+            if(repetition_penalty_node.isNumeric())
+            {
+                *repetition_penalty = repetition_penalty_node.asDouble();
+            }
+        }
+    }
+}
+
 static void parse_request_embeddings(const std::string &json,
                                      std::string &input) {
     
@@ -459,6 +612,27 @@ static void parse_request_embeddings(const std::string &json,
     }
 }
 
+static void before_run_translate(
+                                  const std::string& request_body,
+                                 std::vector<std::string> &inputs,
+                                 size_t *num_hypotheses,
+                                 size_t *sampling_topk,
+                                 size_t *beam_size,
+                                 size_t *max_decoding_length,
+                                 size_t *min_decoding_length,
+                                 double *sampling_topp,
+                                 double *repetition_penalty
+                                  ) {
+    parse_request_translate(request_body, inputs,
+                            num_hypotheses,
+                            sampling_topk,
+                            beam_size,
+                            max_decoding_length,
+                            min_decoding_length,
+                            sampling_topp,
+                            repetition_penalty);
+}
+
 static void before_run_embeddings(
                                   const std::string& request_body,
                                   std::string &input
@@ -473,6 +647,7 @@ int main(int argc, OPTARG_T argv[]) {
 #ifdef WIN32
     std::wstring model_path_u16;
     std::wstring embedding_model_path_u16;
+    std::wstring source_sp_path_u16;
 #endif
     std::string model_path;           // -m
     std::string embedding_model_path; // -e
@@ -480,7 +655,8 @@ int main(int argc, OPTARG_T argv[]) {
     OPTARG_T input_path  = NULL;      // -i
     OPTARG_T output_path = NULL;      // -o
     OPTARG_T chat_template_path = NULL;
-        
+    std::string source_sp_path;       // -f
+    
     PoolingStrategy pooling_mode = PoolingStrategy::MEAN;
     
     // Server mode flags
@@ -508,6 +684,14 @@ int main(int argc, OPTARG_T argv[]) {
                 embedding_model_path = wchar_to_utf8(embedding_model_path_u16.c_str());
 #else
                 embedding_model_path = optarg;
+#endif
+                break;
+            case 'f':
+#ifdef WIN32
+                source_sp_path_u16 = optarg;
+                source_sp_path = wchar_to_utf8(source_sp_path_u16.c_str());
+#else
+                source_sp_path = optarg;
 #endif
                 break;
             case 'i':
@@ -583,15 +767,22 @@ int main(int argc, OPTARG_T argv[]) {
     long long model_created = 0;
     std::string modelName;
     
+    std::unique_ptr<TranslationService> translation_pipeline;
+    
     if (model_path.length() != 0) {
         if (fs::exists(model_path)) {
             if (fs::is_directory(model_path)) {
                 // 1.a Initialize Model and Tokenizer (Load once)
-                std::cerr << "[Chat] Loading from " << model_path << std::endl;
+                std::cerr << "[Translate] Loading from " << model_path << std::endl;
                 fingerprint = get_system_fingerprint(model_path, "directml");
                 modelName = get_model_name(model_path);
                 try {
-//==========================================================
+#ifdef WIN32
+                    modelName = get_model_name(wchar_to_utf8(fs::path(model_path).c_str()));
+#else
+                    modelName = get_model_name(fs::path(model_path));
+#endif
+                    translation_pipeline = std::make_unique<TranslationService>(model_path, source_sp_path);
                     model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to load model: " << e.what() << std::endl;
@@ -604,11 +795,6 @@ int main(int argc, OPTARG_T argv[]) {
     std::string embedding_fingerprint;
     long long embedding_model_created = 0;
     std::string embedding_modelName;
-    std::vector<std::string> input_node_names;
-    std::vector<std::string> output_node_names;
-    std::vector<int64_t> input_shape = {1}; // Batch size 1
-    std::vector<const char*> input_names_c_array;
-    std::vector<const char*> output_names_c_array;
 
     std::unique_ptr<EmbeddingPipeline> pipeline;
     
@@ -677,6 +863,67 @@ int main(int argc, OPTARG_T argv[]) {
             res.status = 200;
         });
         
+        // Route: /v1/translate
+        svr.Post("/v1/translate", [&](const httplib::Request& req, httplib::Response& res) {
+            
+            std::cout << "[Server] /v1/translate request received." << std::endl;
+            
+            try {
+                
+                size_t num_hypotheses = 1;
+                size_t sampling_topk = 40;
+                size_t beam_size = 50;
+                size_t max_decoding_length = 512;
+                size_t min_decoding_length = 1;
+                double sampling_topp = 1;
+                double repetition_penalty = 1.0;
+
+                std::vector<std::string> texts;
+                before_run_translate(req.body, texts,
+                                     &num_hypotheses,
+                                     &sampling_topk,
+                                     &beam_size,
+                                     &max_decoding_length,
+                                     &min_decoding_length,
+                                     &sampling_topp,
+                                     &repetition_penalty);
+                
+                // --- Extract Translation Parameters ---
+                ctranslate2::TranslationOptions options;
+                // Map common JSON parameters to CTranslate2 options
+                options.num_hypotheses = num_hypotheses;
+                options.sampling_topk = sampling_topk;
+                options.beam_size = beam_size;
+                options.max_decoding_length = max_decoding_length;
+                options.sampling_topp = sampling_topp;
+                options.repetition_penalty = repetition_penalty;
+ 
+                std::string response_json = translation_pipeline->translate_batch(texts, options);
+                
+                res.set_content(response_json, "application/json");
+                res.status = 200;
+                
+            } catch (const std::exception& e) {
+                // Build Error JSON
+                Json::Value rootNode(Json::objectValue);
+                Json::Value errorNode(Json::objectValue);
+                errorNode["message"] = e.what();
+                errorNode["type"] = "invalid_request_error";
+                errorNode["param"] = Json::nullValue;
+                errorNode["code"] = Json::nullValue;
+                rootNode["error"] = errorNode;
+                
+                Json::StreamWriterBuilder writer;
+                writer["indentation"] = "";
+                std::string error_str = Json::writeString(writer, rootNode);
+                
+                res.set_content(error_str, "application/json");
+                res.status = 400; // Bad Request as per requirement
+                std::cerr << "[Server] Error: " << e.what() << std::endl;
+            }
+            
+        });
+                 
         // Route: /v1/embeddings
         svr.Post("/v1/embeddings", [&](const httplib::Request& req, httplib::Response& res) {
             
@@ -688,17 +935,7 @@ int main(int argc, OPTARG_T argv[]) {
                 }
                 std::string text;
                 before_run_embeddings(req.body, text);
-                auto embeddings = pipeline->embed_batch({text}, pooling_mode, true);
-                Json::Value rootNode(Json::objectValue);
-                Json::Value embeddingsNode(Json::arrayValue);
-                for (float val : embeddings[0]) {
-                    embeddingsNode.append(val);
-                }
-                rootNode["embedding"] = embeddingsNode;
-                rootNode["index"] = 0;
-                Json::StreamWriterBuilder writer;
-                writer["indentation"] = "";
-                std::string response_json = Json::writeString(writer, rootNode);
+                std::string response_json = pipeline->embed_batch({text}, pooling_mode, true);
                 res.set_content(response_json, "application/json");
                 res.status = 200;
             } catch (const std::exception& e) {
@@ -758,17 +995,7 @@ int main(int argc, OPTARG_T argv[]) {
         
         try {
             before_run_embeddings(request_str, text);
-            auto embeddings = pipeline->embed_batch({text}, pooling_mode, true);
-            Json::Value rootNode(Json::objectValue);
-            Json::Value embeddingsNode(Json::arrayValue);
-            for (float val : embeddings[0]) {
-                embeddingsNode.append(val);
-            }
-            rootNode["embedding"] = embeddingsNode;
-            rootNode["index"] = 0;
-            Json::StreamWriterBuilder writer;
-            writer["indentation"] = "";
-            response = Json::writeString(writer, rootNode);
+            std::string response = pipeline->embed_batch({text}, pooling_mode, true);
         } catch (const std::exception& e) {
             // CLI Error Format
             Json::Value rootNode(Json::objectValue);
