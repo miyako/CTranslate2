@@ -1,4 +1,6 @@
 property embeggings_model : 4D:C1709.Folder
+property translate_model : 4D:C1709.Folder
+property translate_sp_model : Text
 
 Class extends _models
 
@@ -35,6 +37,9 @@ Function onDownload($oid : Text)
 		Case of 
 			: ($downloaded.domain="embedding")
 				This:C1470.options.embeggings_model:=$model
+			: ($downloaded.domain="translate")
+				This:C1470.options.translate_model:=$model
+				This:C1470.options.translate_sp_model:=$downloaded.name
 		End case 
 	End if 
 	

@@ -37,7 +37,12 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$URL:="keisuke-miyako/multilingual-e5-base-ct2-int8_float16"
 	$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding")
 	
-	$huggingfaces:=cs:C1710.event.huggingfaces.new([$embeddings])
+	$folder:=$homeFolder.folder("NMT-EN-FR-CT2")
+	$path:="ymoslem/NMT-EN-FR-CT2"
+	$URL:="ymoslem/NMT-EN-FR-CT2"
+	$translate:=cs:C1710.event.huggingface.new($folder; $URL; $path; "translate"; "source.spm.model")
+	
+	$huggingfaces:=cs:C1710.event.huggingfaces.new([$embeddings; $translate])
 	$options:={}
 	
 	$CTranslate2:=cs:C1710.CTranslate2.new($port; $huggingfaces; $homeFolder; $options; $event)

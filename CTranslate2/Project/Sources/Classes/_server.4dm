@@ -18,6 +18,13 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		$command+=This:C1470.escape(This:C1470.expand($option.embeggings_model).path)
 	End if 
 	
+	If (Value type:C1509($option.translate_model)=Is object:K8:27) && (OB Instance of:C1731($option.translate_model; 4D:C1709.Folder)) && ($option.translate_model.exists)
+		$command+=" -m "
+		$command+=This:C1470.escape(This:C1470.expand($option.translate_model).path)
+		$command+=" -f "
+		$command+=This:C1470.escape(This:C1470.expand($option.translate_model.file($option.translate_sp_model)).path)
+	End if 
+	
 	If (Value type:C1509($option.port)=Is real:K8:4) && ($option.port#0)
 		$command+=" -p "
 		$command+=String:C10($option.port)
@@ -51,7 +58,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	For each ($arg; OB Entries:C1720($option))
 		Case of 
-			: (["server"; "model"; "device"; "help"; "version"; "port"; "host"; "pooling"].includes($arg.key))
+			: (["server"; "model"; "device"; "help"; "version"; "port"; "host"; "pooling"; "translate_model"; "translate_sp_model"].includes($arg.key))
 				continue
 		End case 
 		$valueType:=Value type:C1509($arg.value)
@@ -71,6 +78,8 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	End for each 
 	
 	//SET TEXT TO PASTEBOARD($command)
+	
+	ALERT:C41($command)
 	
 	return This:C1470.controller.execute($command).worker
 	
