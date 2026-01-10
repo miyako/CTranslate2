@@ -9,7 +9,7 @@ Usage:  ct2-server -s -e embedding_model -p port
  -e path     : embedding model (pooling=mean)
  -j          : (not implemented)
  -t path     : (not implemented)
- -f path     : source sentencepeice model
+ -f path     : source sentencepiece model
 
  -l          : pooling=last-token (Llama)
  -c          : pooling=cls
