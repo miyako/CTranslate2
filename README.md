@@ -60,6 +60,6 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - ~~granite-embedding-small-english-r2~~
 - ~~granite-embedding-english-r2~~
 - https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-ct2-int8_float16
-- ~~granite-embedding-125m-english~~
+- https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-ct2-int8_float16
