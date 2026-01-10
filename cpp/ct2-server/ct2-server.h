@@ -109,4 +109,6 @@ enum class PoolingStrategy {
     MEAN        // Average of all tokens
 };
 
+static std::string wchar_to_utf8(const wchar_t* wstr);
+
 #endif  /* __ONNX_GENAI_H__ */

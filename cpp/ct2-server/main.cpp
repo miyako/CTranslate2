@@ -67,8 +67,9 @@ class TranslationService {
         fs::path sp_model_path = source_sp_path.length() == 0 ? fs::path(model_dir) / "tokenizer.model" : fs::path(source_sp_path);
         
         tokenizer_ = std::make_unique<sentencepiece::SentencePieceProcessor>();
-#if WIN32
-const auto status = tokenizer_->Load(utf8_to_wstring(sp_model_path.c_str()));
+#ifdef WIN32
+        std::string s = wchar_to_utf8(sp_model_path.c_str());
+const auto status = tokenizer_->Load(s.c_str());
 #else
 const auto status = tokenizer_->Load(sp_model_path.c_str());
 #endif
