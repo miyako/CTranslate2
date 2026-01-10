@@ -59,7 +59,7 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - ~~universal-sentence-encoder-multilingual-large~~
 - ~~granite-embedding-small-english-r2~~
 - ~~granite-embedding-english-r2~~
-- ~~granite-embedding-30m-english~~
+- https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-ct2-int8_float16
 - ~~granite-embedding-125m-english~~
-- ~~granite-embedding-107m-multilingual~~
+- https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-ct2-int8_float16
 - ~~granite-embedding-278m-multilingual~~
