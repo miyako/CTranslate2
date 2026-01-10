@@ -5,11 +5,11 @@ CTranslate2 Inference Engine
 ```
 Usage:  ct2-server -s -e embedding_model -p port 
 
- -m path     : chat completion model (not implemented)
+ -m path     : translation model 
  -e path     : embedding model (pooling=mean)
- -j          : read chat template from stdin (not implemented)
- -t path     : read chat template from path (not implemented)
-
+ -j          : (not implemented)
+ -t path     : (not implemented)
+ -f path     : source sentencepiece model
 
  -l          : pooling=last-token (Llama)
  -c          : pooling=cls
