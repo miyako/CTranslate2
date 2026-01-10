@@ -54,18 +54,18 @@
       <CommandLineArguments>
          <CommandLineArgument
             argument = "-m"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = ""
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-t"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "source.spm"
+            argument = "/Users/miyako/Desktop/ct2"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-f"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/Desktop/ct2/source.spm.model"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
@@ -86,11 +86,11 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-e"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.CTranslate2/all-MiniLM-L6-v2-ct2-int8_float16"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-d"

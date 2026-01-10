@@ -102,16 +102,20 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
         Json::Value translationsNode(Json::arrayValue);
         
         for (size_t i = 0; i < results.size(); ++i) {
-            const auto& result = results[i];
+            const ctranslate2::TranslationResult result = results.at(i);
             Json::Value translationNode(Json::objectValue);
-            translationNode["score"] = result.scores[0];
+            if(result.scores.size() != 0) {
+                translationNode["score"] = result.scores[0];
+            }else{
+                translationNode["score"] = Json::nullValue;
+            }
             Json::Value hypothesesNode(Json::arrayValue);
             for (const auto& hyp : result.hypotheses) {
                 std::string detokenized;
                 tokenizer_->Decode(hyp, &detokenized);
                 hypothesesNode.append(detokenized);
             }
-            translationNode["tokens"] = hypothesesNode;
+            translationNode["text"] = hypothesesNode;
             translationsNode.append(translationNode);
         }
 
