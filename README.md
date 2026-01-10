@@ -35,3 +35,21 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - https://huggingface.co/keisuke-miyako/e5-small-v2-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/e5-base-v2-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/e5-large-v2-ct2-int8_float16
+- https://huggingface.co/keisuke-miyako/multilingual-e5-small-ct2-int8_float16
+- https://huggingface.co/keisuke-miyako/multilingual-e5-base-ct2-int8_float16
+- https://huggingface.co/keisuke-miyako/multilingual-e5-large-ct2-int8_float16
+- https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-ct2-int8_float16
+- https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-v2.0-ct2-int8_float16
+- ~~nomic-embed-text-v1-onnx~~
+- ~~nomic-embed-text-v1.5-onnx~~
+- https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16
+- https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-ct2-int8_float16
+- ~~embeddinggemma-300m-onnx~~
+- ~~amber-base-onnx~~
+- ~~amber-large-onnx~~
+- ~~gte-base-en-v1.5-onnx~~
+- ~~gte-large-en-v1.5-onnx~~
+- ~~gte-multilingual-base-onnx~~
+- ~~gte-modernbert-base-onnx~~
+- ~~gte-Qwen2-1.5B-instruct-onnx~~
+  
