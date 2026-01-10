@@ -67,8 +67,12 @@ class TranslationService {
         fs::path sp_model_path = source_sp_path.length() == 0 ? fs::path(model_dir) / "tokenizer.model" : fs::path(source_sp_path);
         
         tokenizer_ = std::make_unique<sentencepiece::SentencePieceProcessor>();
-        const auto status = tokenizer_->Load(sp_model_path.c_str());
-        
+#if WIN32
+const auto status = tokenizer_->Load(utf8_to_wstring(sp_model_path.c_str()));
+#else
+const auto status = tokenizer_->Load(sp_model_path.c_str());
+#endif
+
         if (!status.ok()) {
             throw std::runtime_error("Failed to load SentencePiece model: " + status.ToString());
         }
