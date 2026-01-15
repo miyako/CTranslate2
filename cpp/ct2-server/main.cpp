@@ -170,6 +170,8 @@ public:
                                                 bool l2_normalize = true) {
         if (texts.empty()) return {};
         
+        Json::Value rootNode(Json::objectValue);
+        
         // 1. Tokenize & Prepare Batch
         std::vector<std::vector<size_t>> batch_ids;
         std::vector<size_t> lengths;
@@ -249,16 +251,20 @@ public:
             }
         }
         
-        Json::Value rootNode(Json::objectValue);
+        Json::Value dataNode(Json::objectValue);
         Json::Value embeddingsNode(Json::arrayValue);
         for (float val : output_embeddings[0]) {
             embeddingsNode.append(val);
         }
-        rootNode["embedding"] = embeddingsNode;
-        rootNode["index"] = 0;
+        dataNode["embedding"] = embeddingsNode;
+        dataNode["index"] = 0;
+        Json::Value listNode = Json::arrayValue;
+        listNode.append(dataNode);
+        rootNode["data"] = listNode;
+        rootNode["object"] = "list";
+        
         Json::StreamWriterBuilder writer;
         writer["indentation"] = "";
-        
         return Json::writeString(writer, rootNode);
     }
 
