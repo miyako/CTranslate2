@@ -49,7 +49,7 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - ~~amber-large~~
 - ~~gte-base-en-v1.5~~
 - ~~gte-large-en-v1.5~~
-- ~~gte-multilingual-base~~
+- ~~https://huggingface.co/keisuke-miyako/gte-multilingual-base-ct2-int8_float16~~
 - ~~gte-modernbert-base~~
 - ~~gte-Qwen2-1.5B-instruct~~
 - ~~gte-Qwen2-7B-instruct~~
