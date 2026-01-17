@@ -49,7 +49,7 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - ~~amber-large~~
 - ~~gte-base-en-v1.5~~
 - ~~gte-large-en-v1.5~~
-- ~~https://huggingface.co/keisuke-miyako/gte-multilingual-base-ct2-int8_float16~~
+- ~~[gte-multilingual-base](https://huggingface.co/keisuke-miyako/gte-multilingual-base-ct2-int8_float16)~~
 - ~~gte-modernbert-base~~
 - ~~gte-Qwen2-1.5B-instruct~~
 - ~~gte-Qwen2-7B-instruct~~
@@ -63,8 +63,8 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-ct2-int8_float16
-- ~~https://huggingface.co/keisuke-miyako/sarashina-embedding-v1-1b-ct2-int8_float16~~
-- ~~https://huggingface.co/keisuke-miyako/sarashina-embedding-v2-1b-ct2-int8_float16~~
+- ~~[sarashina-embedding-v1-1b](https://huggingface.co/keisuke-miyako/sarashina-embedding-v1-1b-ct2-int8_float16)~~
+- ~~[sarashina-embedding-v2-1b](https://huggingface.co/keisuke-miyako/sarashina-embedding-v2-1b-ct2-int8_float16)~~
 - ~~ruri-base-v2~~
 - ~~ruri-large-v2~~
 - ~~ruri-v3-30m~~
