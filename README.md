@@ -51,7 +51,7 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - ~~gte-large-en-v1.5~~
 - ~~[gte-multilingual-base](https://huggingface.co/keisuke-miyako/gte-multilingual-base-ct2-int8_float16)~~
 - ~~gte-modernbert-base~~
-- ~~gte-Qwen2-1.5B-instruct~~
+- https://huggingface.co/keisuke-miyako/gte-Qwen2-1.5B-instruct-ct2-int8_float16
 - ~~gte-Qwen2-7B-instruct~~
 - ~~universal-sentence-encoder~~
 - ~~universal-sentence-encoder-large~~
