@@ -71,3 +71,4 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - ~~ruri-v3-70m~~
 - ~~ruri-v3-130m~~
 - ~~ruri-v3-310m~~
+- ~~jina-embeddings-v3~~
