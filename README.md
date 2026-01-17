@@ -75,4 +75,3 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - ~~modernbert-ja-70m~~
 - ~~modernbert-ja-130m~~
 - ~~modernbert-ja-310m~~
-- ~~jina-embeddings-v3~~
