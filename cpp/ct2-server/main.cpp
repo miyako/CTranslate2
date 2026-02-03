@@ -181,8 +181,18 @@ public:
         for (const auto& text : texts) {
             auto ids_int = tokenize_one(text);
             std::vector<size_t> ids_size_t;
-            ids_size_t.reserve(ids_int.size());
+            size_t ids_int_size = ids_int.size();
+            if(strategy == PoolingStrategy::CLS) {
+                ids_int_size += 2;
+            }
+            ids_size_t.reserve(ids_int_size);
+            if(strategy == PoolingStrategy::CLS) {
+                ids_size_t.push_back(0);
+            }
             for (auto id : ids_int) ids_size_t.push_back(static_cast<size_t>(id));
+            if(strategy == PoolingStrategy::CLS) {
+                ids_size_t.push_back(2);
+            }
             lengths.push_back(ids_size_t.size());
             batch_ids.push_back(std::move(ids_size_t));
         }
