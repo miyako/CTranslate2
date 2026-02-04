@@ -40,15 +40,15 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - https://huggingface.co/keisuke-miyako/multilingual-e5-large-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-v2.0-ct2-int8_float16
-- ~~nomic-embed-text-v1~~
-- ~~nomic-embed-text-v1.5~~
+- ~~nomic-embed-text-v1~~ ⚠️ **CTranslate2** doesn't support NomicBertModel
+- ~~nomic-embed-text-v1.5~~ ⚠️ **CTranslate2** doesn't support NomicBertModel
 - https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-ct2-int8_float16
-- ~~embeddinggemma-300m~~
-- ~~amber-base~~
-- ~~amber-large~~
-- ~~gte-base-en-v1.5~~
-- ~~gte-large-en-v1.5~~
+- ~~embeddinggemma-300m~~ ⚠️ **CTranslate2** doesn't support Gemma3TextModel
+- ~~amber-base~~ ⚠️ **CTranslate2** doesn't support ModernBertModel
+- ~~amber-large~~ ⚠️ **CTranslate2** doesn't support ModernBertModel
+- ~~gte-base-en-v1.5~~ ⚠️ **CTranslate2** doesn't support NewModel
+- ~~gte-large-en-v1.5~~ ⚠️ **CTranslate2** doesn't support NewModel
 - ~~[gte-multilingual-base](https://huggingface.co/keisuke-miyako/gte-multilingual-base-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
 - ~~gte-modernbert-base~~ ⚠️ **CTranslate2** doesn't support ModernBERT
 - ~~[gte-Qwen2-1.5B-instruct](https://huggingface.co/keisuke-miyako/gte-Qwen2-1.5B-instruct-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
