@@ -50,7 +50,7 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - ~~gte-base-en-v1.5~~
 - ~~gte-large-en-v1.5~~
 - ~~[gte-multilingual-base](https://huggingface.co/keisuke-miyako/gte-multilingual-base-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
-- ~~gte-modernbert-base~~
+- ~~gte-modernbert-base~~ ⚠️ **CTranslate2** doesn't support ModernBERT
 - ~~[gte-Qwen2-1.5B-instruct](https://huggingface.co/keisuke-miyako/gte-Qwen2-1.5B-instruct-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
 - ~~gte-Qwen2-7B-instruct~~
 - ~~universal-sentence-encoder~~
@@ -65,8 +65,8 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-ct2-int8_float16
 - ~~[sarashina-embedding-v1-1b](https://huggingface.co/keisuke-miyako/sarashina-embedding-v1-1b-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
 - ~~[sarashina-embedding-v2-1b](https://huggingface.co/keisuke-miyako/sarashina-embedding-v2-1b-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
-- ~~ruri-base-v2~~
-- ~~ruri-large-v2~~
+- ~~ruri-base-v2~~ ⚠️ **CTranslate2** doesn't support BertJapaneseTokenizer
+- ~~ruri-large-v2~~ ⚠️ **CTranslate2** doesn't support BertJapaneseTokenizer
 - ~~ruri-v3-30m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
 - ~~ruri-v3-70m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
 - ~~ruri-v3-130m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
