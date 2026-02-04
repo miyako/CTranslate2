@@ -67,11 +67,11 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - ~~[sarashina-embedding-v2-1b](https://huggingface.co/keisuke-miyako/sarashina-embedding-v2-1b-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
 - ~~ruri-base-v2~~
 - ~~ruri-large-v2~~
-- ~~ruri-v3-30m~~
-- ~~ruri-v3-70m~~
-- ~~ruri-v3-130m~~
-- ~~ruri-v3-310m~~
-- ~~modernbert-ja-30m~~
-- ~~modernbert-ja-70m~~
-- ~~modernbert-ja-130m~~
-- ~~modernbert-ja-310m~~
+- ~~ruri-v3-30m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
+- ~~ruri-v3-70m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
+- ~~ruri-v3-130m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
+- ~~ruri-v3-310m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
+- ~~modernbert-ja-30m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
+- ~~modernbert-ja-70m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
+- ~~modernbert-ja-130m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
+- ~~modernbert-ja-310m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
