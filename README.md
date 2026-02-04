@@ -53,10 +53,10 @@ https://huggingface.co/collections/keisuke-miyako/ctranslate2
 - ~~gte-modernbert-base~~ ⚠️ **CTranslate2** doesn't support ModernBERT
 - ~~[gte-Qwen2-1.5B-instruct](https://huggingface.co/keisuke-miyako/gte-Qwen2-1.5B-instruct-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
 - ~~gte-Qwen2-7B-instruct~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
-- ~~universal-sentence-encoder~~
-- ~~universal-sentence-encoder-large~~
-- ~~universal-sentence-encoder-multilingual~~
-- ~~universal-sentence-encoder-multilingual-large~~
+- ~~universal-sentence-encoder~~ ⚠️ **CTranslate2** doesn't support TensorFlow
+- ~~universal-sentence-encoder-large~~ ⚠️ **CTranslate2** doesn't support TensorFlow
+- ~~universal-sentence-encoder-multilingual~~ ⚠️ **CTranslate2** doesn't support TensorFlow
+- ~~universal-sentence-encoder-multilingual-large~~ ⚠️ **CTranslate2** doesn't support TensorFlow
 - ~~granite-embedding-small-english-r2~~ ⚠️ **CTranslate2** doesn't support ModernBertModel
 - ~~granite-embedding-english-r2~~ ⚠️ **CTranslate2** doesn't support ModernBertModel
 - https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-ct2-int8_float16
