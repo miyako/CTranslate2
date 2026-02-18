@@ -105,6 +105,11 @@ As of February 2026, **CTranslate2** does not support several notable model arch
 
 - embeddinggemma-300m
 
+### DeBERTa-v2
+
+- mixedbread-ai/mxbai-rerank-large-v1
+- mixedbread-ai/mxbai-rerank-base-v1
+
 #### [ModernBERT](https://github.com/OpenNMT/CTranslate2/issues/1837) 
 
 - ruri-v3-30m 
