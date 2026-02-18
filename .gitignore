@@ -27,3 +27,4 @@ cpp/ct2-server/x64/Release/ct2-server.tlog/unsuccessfulbuild
 cpp/macOS/ct2-server.dmg
 cpp/macOS/ct2-server.dSYM/*
 cpp/x64/ct2-server
+cpp/macOS/ct2-server
