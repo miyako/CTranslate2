@@ -26,6 +26,10 @@ Usage:  ct2-server -s -e embedding_model -p port
 - `/v1/chat/completions` (not implemented)
 - `/v1/embeddings`
 
+## Cohere Compatible Endpoints
+
+- `/v1/rerank`
+
 ## Converted CT2 Models
 
 ### Rerank
