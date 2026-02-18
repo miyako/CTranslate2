@@ -68,19 +68,22 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 - https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-v2.0-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-ct2-int8_float16
-- ~~[gte-multilingual-base](https://huggingface.co/keisuke-miyako/gte-multilingual-base-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
-- ~~[gte-Qwen2-1.5B-instruct](https://huggingface.co/keisuke-miyako/gte-Qwen2-1.5B-instruct-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
-- ~~[gte-Qwen2-7B-instruct](https://huggingface.co/keisuke-miyako/gte-Qwen2-7B-instruct-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
 - https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-ct2-int8_float16
-- ~~[sarashina-embedding-v1-1b](https://huggingface.co/keisuke-miyako/sarashina-embedding-v1-1b-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
-- ~~[sarashina-embedding-v2-1b](https://huggingface.co/keisuke-miyako/sarashina-embedding-v2-1b-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
 - ~~ruri-base-v2~~ ⚠️ **CTranslate2** doesn't support BertJapaneseTokenizer
 - ~~ruri-large-v2~~ ⚠️ **CTranslate2** doesn't support BertJapaneseTokenizer
 
-As of February 2026, **CTranslate2** does not support several notable model architectures :
+**CTranslate2** does not store or return the dense vector representation of the sentence, which is necessary for using decodes for embeddings. That excludes:
+
+- gte-multilingual-base
+- gte-Qwen2-7B-instruct
+- gte-Qwen2-1.5B-instruct
+- sarashina-embedding-v1-1b
+- sarashina-embedding-v2-1b
+
+As of February 2026, **CTranslate2** does not support several notable model architectures:
 
 #### NomicBertModel
 
