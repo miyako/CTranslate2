@@ -52,24 +52,28 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 |[`jinaai/jina-reranker-v3`](https://huggingface.co/jinaai/jina-reranker-v3)|[`598`](https://huggingface.co/keisuke-miyako/jina-reranker-v3-ct2-int8)|[`598`](https://huggingface.co/keisuke-miyako/jina-reranker-v3-ct2-int8_float16)|[`1190`](https://huggingface.co/keisuke-miyako/jina-reranker-v3-ct2-float16)|`131072`|`1024`|`28`|
 |[`Qwen/Qwen3-Reranker-0.6B`](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B)|[`597`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-ct2-int8)|[`597`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-ct2-int8_float16)|[`1190`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-ct2-float16)|`32768`|`1024`|`28`|
 
-- https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/bge-m3-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/e5-small-v2-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/e5-base-v2-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/e5-large-v2-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/multilingual-e5-small-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/multilingual-e5-base-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/multilingual-e5-large-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-v2.0-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-ct2-int8_float16
-- https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-ct2-int8_float16
+### Embedding
+
+||`int8`|`int8_float16`|`float16`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`|`pooling`
+|-|-:|-:|-:|-:|-:|-:|-:
+|[`BAAI/bge-small-en-v1.5`](https://huggingface.co/BAAI/bge-small-en-v1.5)|[``](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-ct2-float16)|`512`|`384`|`12`|`cls`
+|[`BAAI/bge-base-en-v1.5`](https://huggingface.co/BAAI/bge-base-en-v1.5)|[``](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-ct2-float16)|`512`|`768`|`12`|`cls`
+|[`BAAI/bge-large-en-v1.5`](https://huggingface.co/BAAI/bge-large-en-v1.5)|[``](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-ct2-float16)|`512`|`1024`|`24`|`cls`
+|[`BAAI/bge-m3`](https://huggingface.co/BAAI/bge-m3)|[``](https://huggingface.co/keisuke-miyako/bge-m3-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/bge-m3-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/bge-m3-ct2-float16)|`8192`|`1024`|`24`|`cls`
+|[`intfloat/e5-small-v2`](https://huggingface.co/intfloat/e5-small-v2)|[``](https://huggingface.co/keisuke-miyako/e5-small-v2-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/e5-small-v2-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/e5-small-v2-ct2-float16)|`512`|`384`|`12`|`mean`
+|[`intfloat/e5-base-v2`](https://huggingface.co/intfloat/e5-base-v2)|[``](https://huggingface.co/keisuke-miyako/e5-base-v2-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/e5-base-v2-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/e5-base-v2-ct2-float16)|`512`|`768`|`12`|`mean`
+|[`intfloat/e5-large-v2`](https://huggingface.co/intfloat/e5-large-v2)|[``](https://huggingface.co/keisuke-miyako/e5-large-v2-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/e5-large-v2-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/e5-large-v2-ct2-float16)|`512`|`1024`|`24`|`mean`
+|[`intfloat/multilingual-e5-small`](https://huggingface.co/intfloat/multilingual-e5-small)|[``](https://huggingface.co/keisuke-miyako/multilingual-e5-small-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/multilingual-e5-small-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/multilingual-e5-small-ct2-float16)|`512`|`384`|`12`|`mean`
+|[`intfloat/multilingual-e5-base`](https://huggingface.co/intfloat/multilingual-e5-base)|[``](https://huggingface.co/keisuke-miyako/multilingual-e5-base-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/multilingual-e5-base-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/multilingual-e5-base-ct2-float16)|`512`|`768`|`12`|`mean`
+|[`intfloat/multilingual-e5-large`](https://huggingface.co/intfloat/multilingual-e5-large)|[``](https://huggingface.co/keisuke-miyako/multilingual-e5-large-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/multilingual-e5-large-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/multilingual-e5-large-ct2-float16)|`512`|`1024`|`24`|`mean`
+|[`Snowflake/snowflake-arctic-embed-s`](https://huggingface.co/Snowflake/snowflake-arctic-embed-s)|[``](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-ct2-float16)|`512`|`384`|`12`|`cls`
+|[`Snowflake/snowflake-arctic-embed-l`](https://huggingface.co/Snowflake/snowflake-arctic-embed-l)|[``](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-v2.0-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-v2.0-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-v2.0-ct2-float16)|`512`|`1024`|`24`|`cls`
+|[`sentence-transformers/all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)|[``](https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-ct2-float16)|`512`|`384`|`6`|`mean`
+|[`sentence-transformers/all-MiniLM-L12-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)|[``](https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-ct2-float16)|`512`|`384`|`12`|`mean`
+|[`ibm-granite/granite-embedding-30m-english`](https://huggingface.co/ibm-granite/granite-embedding-30m-english)|[``](https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-ct2-float16)|`512`|`384`|`6`|`cls`
+|[`ibm-granite/granite-embedding-125m-english`](https://huggingface.co/ibm-granite/granite-embedding-125m-english)|[``](https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-ct2-float16)|`512`|`768`|`12`|`cls`
+|[`ibm-granite/granite-embedding-107m-multilingual`](https://huggingface.co/ibm-granite/granite-embedding-107m-multilingual)|[``](https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-ct2-float16)|`512`|`384`|`6`|`cls`
+|[`ibm-granite/granite-embedding-278m-multilingual`](https://huggingface.co/ibm-granite/granite-embedding-278m-multilingual)|[``](https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-ct2-float16)|`512`|`768`|`12`|`cls`
 
 **CTranslate2** can't use models that depend on external python code for tokenisation:
 
