@@ -101,7 +101,7 @@ As of February 2026, **CTranslate2** does not support several notable model arch
 - gte-base-en-v1.5
 - gte-large-en-v1.5
 
-#### [Gemma3TextModel](https://github.com/OpenNMT/CTranslate2/issues/1866)
+#### Gemma3TextModel
 
 - embeddinggemma-300m
 
