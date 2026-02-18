@@ -13,9 +13,13 @@ layout: default
 
 [**CTranslate2**](https://github.com/OpenNMT/CTranslate2) is an engine highly optimised for fast local inference, especially **quantised transformer-based models**. Compared to general purpose LLM engines such as llama.cpp, it **uses less memory** and for actual embedding models generates **significantly better results** because it is designed specifically for encoder models whereas GGUF is designed for decoder-only LLM architectures unless manually modified.
 
-`int8_float16` model weights may be automatically converted at runtime.
+#### Quantisation
 
->  The compute type inferred from the saved model is int8_float16, but the target device or backend do not support efficient `int8_float16` computation. The model weights have been automatically converted to use the `float32` compute type instead.
+The `int8_float16` format is primarily designed for **NVIDIA GPUs**. It stores weights in 8-bit integers but converts them to 16-bit floating point for calculation. The M1 CPU does not have the specific kernels to do this efficiently in CTranslate2, so it falls back to float32, defeating the purpose. 
+
+The `float16` format is also designed for GPUs that support native 16-bit maths. The CPU backend of **CTranslate2** usually performs calculations in `float32` even on a CPU like Apple Silicon that actually has native 16-bit maths. The weights are internally converted to 32-bit which adds to the computation time.
+
+The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `AVX2` `AVX-512` `VNNI` instructions on Intel or AMD to **accelerate maths**. **You should always use the `int8` format on a PC or Mac with no GPU**.
 
 #### Usage
 
