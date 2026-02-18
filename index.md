@@ -21,6 +21,13 @@ The `float16` format is also designed for GPUs that support native 16-bit maths.
 
 The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `AVX2` `AVX-512` `VNNI` instructions on Intel or AMD to **accelerate maths**. **You should always use the `int8` format on a PC or Mac with no GPU**.
 
+### RAG Examples
+
+#### `bge-m3`+`bge-reranker-v2-m3`
+* **Size**: `594`+`595`  
+* **Maximum context**: `8192`
+* **Vector length**: `1024`
+
 #### Usage
 
 Instantiate `cs.CTranslate2.CTranslate2` in your *On Startup* database method:
