@@ -23,7 +23,6 @@ Usage:  ct2-server -s -e embedding_model -p port
 ## OpenAI Compatible Endpoints
 
 - `/v1/models`
-- `/v1/chat/completions` (not implemented)
 - `/v1/embeddings`
 
 ## Cohere Compatible Endpoints
