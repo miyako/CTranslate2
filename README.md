@@ -52,6 +52,7 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 |[`jinaai/jina-reranker-v3`](https://huggingface.co/jinaai/jina-reranker-v3)|[`598`](https://huggingface.co/keisuke-miyako/jina-reranker-v3-ct2-int8)|[`598`](https://huggingface.co/keisuke-miyako/jina-reranker-v3-ct2-int8_float16)|[`1190`](https://huggingface.co/keisuke-miyako/jina-reranker-v3-ct2-float16)|`131072`|`1024`|`28`|
 |[`Qwen/Qwen3-Reranker-0.6B`](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B)|[`597`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-ct2-int8)|[`597`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-ct2-int8_float16)|[`1190`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-ct2-float16)|`32768`|`1024`|`28`|
 |[`Qwen/Qwen3-Reranker-4B`](https://huggingface.co/Qwen/Qwen3-Reranker-4B)|[``](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-4B-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-4B-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-4B-ct2-float16)|`40960`|`2560`|`36`|
+|[`zeroentropy/zerank-2`](https://huggingface.co/zeroentropy/zerank-2)|[``](https://huggingface.co/keisuke-miyako/zerank-2-ct2-int8)|[``](https://huggingface.co/keisuke-miyako/zerank-2-ct2-int8_float16)|[``](https://huggingface.co/keisuke-miyako/zerank-2-ct2-float16)|`40960`|`2560`|`36`
 
 - https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-ct2-int8_float16
