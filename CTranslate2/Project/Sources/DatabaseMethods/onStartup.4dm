@@ -32,7 +32,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$options:={}
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	
-	$folder:=$homeFolder.folder("multilingual-e5-base-ct2-int8_float16")
+	$folder:=$homeFolder.folder("multilingual-e5-base")
 	$path:="keisuke-miyako/multilingual-e5-base-ct2-int8_float16"
 	$URL:="keisuke-miyako/multilingual-e5-base-ct2-int8_float16"
 	$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding")
@@ -42,7 +42,12 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$URL:="ymoslem/NMT-EN-FR-CT2"
 	$translate:=cs:C1710.event.huggingface.new($folder; $URL; $path; "translate"; "source.spm.model")
 	
-	$huggingfaces:=cs:C1710.event.huggingfaces.new([$embeddings; $translate])
+	$folder:=$homeFolder.folder("mmarco-mMiniLMv2-L12-H384-v1")
+	$path:="mmarco-mMiniLMv2-L12-H384-v1-ct2-int8_float16"
+	$URL:="keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-ct2-int8_float16"
+	$rerank:=cs:C1710.event.huggingface.new($folder; $URL; $path; "rerank"; "source.spm.model")
+	
+	$huggingfaces:=cs:C1710.event.huggingfaces.new([$embeddings; $translate; $rerank])
 	$options:={}
 	
 	$CTranslate2:=cs:C1710.CTranslate2.new($port; $huggingfaces; $homeFolder; $options; $event)

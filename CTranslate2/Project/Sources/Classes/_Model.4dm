@@ -1,6 +1,7 @@
 property embeggings_model : 4D:C1709.Folder
 property translate_model : 4D:C1709.Folder
 property translate_sp_model : Text
+property rerank_model : 4D:C1709.Folder
 
 Class extends _models
 
@@ -40,6 +41,8 @@ Function onDownload($oid : Text)
 			: ($downloaded.domain="translate")
 				This:C1470.options.translate_model:=$model
 				This:C1470.options.translate_sp_model:=$downloaded.name
+			: ($downloaded.domain="rerank")
+				This:C1470.options.rerank_model:=$model
 		End case 
 	End if 
 	
