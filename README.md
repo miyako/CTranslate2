@@ -71,20 +71,15 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 - https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-ct2-int8_float16
 - ~~embeddinggemma-300m~~ ⚠️ **CTranslate2** doesn't support Gemma3TextModel
-- ~~amber-base~~ ⚠️ **CTranslate2** doesn't support ModernBertModel
-- ~~amber-large~~ ⚠️ **CTranslate2** doesn't support ModernBertModel
 - ~~gte-base-en-v1.5~~ ⚠️ **CTranslate2** doesn't support NewModel
 - ~~gte-large-en-v1.5~~ ⚠️ **CTranslate2** doesn't support NewModel
 - ~~[gte-multilingual-base](https://huggingface.co/keisuke-miyako/gte-multilingual-base-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
-- ~~gte-modernbert-base~~ ⚠️ **CTranslate2** doesn't support ModernBERT
 - ~~[gte-Qwen2-1.5B-instruct](https://huggingface.co/keisuke-miyako/gte-Qwen2-1.5B-instruct-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
 - ~~[gte-Qwen2-7B-instruct](https://huggingface.co/keisuke-miyako/gte-Qwen2-7B-instruct-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
 - ~~universal-sentence-encoder~~ ⚠️ **CTranslate2** doesn't support TensorFlow
 - ~~universal-sentence-encoder-large~~ ⚠️ **CTranslate2** doesn't support TensorFlow
 - ~~universal-sentence-encoder-multilingual~~ ⚠️ **CTranslate2** doesn't support TensorFlow
 - ~~universal-sentence-encoder-multilingual-large~~ ⚠️ **CTranslate2** doesn't support TensorFlow
-- ~~granite-embedding-small-english-r2~~ ⚠️ **CTranslate2** doesn't support ModernBertModel
-- ~~granite-embedding-english-r2~~ ⚠️ **CTranslate2** doesn't support ModernBertModel
 - https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-ct2-int8_float16
@@ -93,11 +88,21 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 - ~~[sarashina-embedding-v2-1b](https://huggingface.co/keisuke-miyako/sarashina-embedding-v2-1b-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
 - ~~ruri-base-v2~~ ⚠️ **CTranslate2** doesn't support BertJapaneseTokenizer
 - ~~ruri-large-v2~~ ⚠️ **CTranslate2** doesn't support BertJapaneseTokenizer
-- ~~ruri-v3-30m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
-- ~~ruri-v3-70m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
-- ~~ruri-v3-130m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
-- ~~ruri-v3-310m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
-- ~~modernbert-ja-30m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
-- ~~modernbert-ja-70m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
-- ~~modernbert-ja-130m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
-- ~~modernbert-ja-310m~~ ⚠️ **CTranslate2** doesn't support ModernBERT
+
+As of February 2026, **CTranslate2** does not support several notable model architectures :
+
+#### [ModernBERT](https://github.com/OpenNMT/CTranslate2/issues/1837) 
+
+- ruri-v3-30m 
+- ruri-v3-70m 
+- ruri-v3-130m 
+- ruri-v3-310m 
+- modernbert-ja-30m 
+- modernbert-ja-70m 
+- modernbert-ja-130m 
+- modernbert-ja-310m
+- gte-modernbert-base
+- amber-base
+- amber-large
+- granite-embedding-small-english-r2
+- granite-embedding-english-r2
