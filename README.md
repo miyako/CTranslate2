@@ -83,9 +83,15 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 
 **CTranslate2** does not store or return the dense vector representation of the sentence, which is necessary for using decodes for embeddings. That excludes:
 
-- gte-multilingual-base
-- gte-Qwen2-7B-instruct
+#### Qwen2ForCausalLM
+
+- mixedbread-ai/mxbai-rerank-base-v2
+- mixedbread-ai/mxbai-rerank-large-v2
 - gte-Qwen2-1.5B-instruct
+- gte-Qwen2-7B-instruct
+
+#### LlamaModel
+
 - sarashina-embedding-v1-1b
 - sarashina-embedding-v2-1b
 
@@ -101,14 +107,13 @@ As of February 2026, **CTranslate2** does not support several notable model arch
 - gte-base-en-v1.5
 - gte-large-en-v1.5
 
+#### NewForTokenClassification
+ 
+- gte-multilingual-base
+
 #### Gemma3TextModel
 
 - embeddinggemma-300m
-
-### DeBERTa-v2
-
-- mixedbread-ai/mxbai-rerank-large-v1
-- mixedbread-ai/mxbai-rerank-base-v1
 
 #### [ModernBERT](https://github.com/OpenNMT/CTranslate2/issues/1837) 
 
@@ -125,3 +130,8 @@ As of February 2026, **CTranslate2** does not support several notable model arch
 - amber-large
 - granite-embedding-small-english-r2
 - granite-embedding-english-r2
+
+#### DebertaV2ForSequenceClassification
+
+- mixedbread-ai/mxbai-rerank-base-v1
+- mixedbread-ai/mxbai-rerank-large-v1
