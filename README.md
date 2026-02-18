@@ -66,13 +66,8 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 - https://huggingface.co/keisuke-miyako/multilingual-e5-large-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-v2.0-ct2-int8_float16
-- ~~nomic-embed-text-v1~~ ⚠️ **CTranslate2** doesn't support NomicBertModel
-- ~~nomic-embed-text-v1.5~~ ⚠️ **CTranslate2** doesn't support NomicBertModel
 - https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-ct2-int8_float16
-- ~~embeddinggemma-300m~~ ⚠️ **CTranslate2** doesn't support Gemma3TextModel
-- ~~gte-base-en-v1.5~~ ⚠️ **CTranslate2** doesn't support NewModel
-- ~~gte-large-en-v1.5~~ ⚠️ **CTranslate2** doesn't support NewModel
 - ~~[gte-multilingual-base](https://huggingface.co/keisuke-miyako/gte-multilingual-base-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
 - ~~[gte-Qwen2-1.5B-instruct](https://huggingface.co/keisuke-miyako/gte-Qwen2-1.5B-instruct-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
 - ~~[gte-Qwen2-7B-instruct](https://huggingface.co/keisuke-miyako/gte-Qwen2-7B-instruct-ct2-int8_float16)~~ ⚠️ **CTranslate2** can't use Decoder for embeddings
@@ -90,6 +85,20 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 - ~~ruri-large-v2~~ ⚠️ **CTranslate2** doesn't support BertJapaneseTokenizer
 
 As of February 2026, **CTranslate2** does not support several notable model architectures :
+
+#### NomicBertModel
+
+- nomic-embed-text-v1
+- nomic-embed-text-v1.5
+
+#### NewModel
+
+- gte-base-en-v1.5
+- gte-large-en-v1.5
+
+#### [Gemma3TextModel](https://github.com/OpenNMT/CTranslate2/issues/1866)
+
+- embeddinggemma-300m
 
 #### [ModernBERT](https://github.com/OpenNMT/CTranslate2/issues/1837) 
 
