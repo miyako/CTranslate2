@@ -7,6 +7,69 @@
 
 #include "ct2-server.h"
 
+static int GetOptimalIntraOpThreads() {
+    int threads = 0;
+
+    // --- macOS Implementation ---
+    #if defined(__APPLE__)
+        int32_t core_count = 0;
+        size_t size = sizeof(core_count);
+        
+        // 1. Try to get "Performance Level 0" cores (P-Cores on Apple Silicon)
+        // This is critical for M1/M2/M3 to avoid using slow E-Cores.
+        if (sysctlbyname("hw.perflevel0.physicalcpu", &core_count, &size, NULL, 0) == 0) {
+            threads = core_count;
+        }
+        // 2. Fallback: Standard Physical Cores (Intel Mac or if perflevel fails)
+        else if (sysctlbyname("hw.physicalcpu", &core_count, &size, NULL, 0) == 0) {
+            threads = core_count;
+        }
+        else {
+            // Absolute fallback
+            threads = std::thread::hardware_concurrency();
+        }
+
+    // --- Windows Implementation ---
+    #elif defined(_WIN32)
+        // Getting strictly physical cores on Windows is complex (requires iterating SYSTEM_LOGICAL_PROCESSOR_INFORMATION).
+        // For a simple implementation, hardware_concurrency (Logical Cores) is often acceptable,
+        // but dividing by 2 is a common heuristic for Hyper-threaded Intel/AMD CPUs to estimate physical cores.
+        
+        unsigned int logical_cores = std::thread::hardware_concurrency();
+        // Heuristic: If we have many cores, assume Hyper-threading and divide by 2.
+        // Otherwise, use all.
+        if (logical_cores > 4) {
+            threads = logical_cores / 2;
+        } else {
+            threads = logical_cores;
+        }
+
+    // --- Linux / Generic Implementation ---
+    #else
+        // Similar heuristic for Linux
+        unsigned int logical_cores = std::thread::hardware_concurrency();
+        if (logical_cores > 4) {
+             threads = logical_cores / 2;
+        } else {
+             threads = logical_cores;
+        }
+    #endif
+
+    // Safety clamp: Ensure we have at least 1 thread and not an insane amount (cap at 16 for client devices)
+    return std::max(1, std::min(threads, 16));
+}
+
+struct RerankResult {
+    int index;          // Original index in the document list
+    float score;        // Relevance score
+    std::string text;   // (Optional) The document text
+};
+
+struct RerankItem {
+    std::vector<int> ids;
+    std::vector<int> type_ids;
+};
+
 namespace fs = std::filesystem;
 using namespace tokenizers;
 
@@ -17,6 +80,115 @@ std::string LoadBytesFromFile(const std::string& path) {
     
     std::string data((std::istreambuf_iterator<char>(fs)), std::istreambuf_iterator<char>());
     return data;
+}
+
+static // Helper to read the template file from the model directory
+int LoadMaxPositionEmbeddings(const std::string& model_path) {
+    fs::path path(model_path);
+    fs::path config_path = path;
+
+    if (fs::is_directory(path)) {
+        config_path = path / "config.json";
+    }
+    
+    if (fs::exists(config_path) && config_path.extension() == ".json") {
+//        std::cout << "Loading max_position_embeddings from: " << config_path << std::endl;
+        
+        std::string json = LoadBytesFromFile(config_path.string());
+        
+        Json::Value root;
+        Json::CharReaderBuilder builder;
+        std::string errors;
+        
+        Json::CharReader *reader = builder.newCharReader();
+        bool parse = reader->parse(json.c_str(),
+                                   json.c_str() + json.size(),
+                                   &root,
+                                   &errors);
+        delete reader;
+        
+        if(parse)
+        {
+            if(root.isObject())
+            {
+                Json::Value max_position_embeddings_node = root["max_position_embeddings"];
+                if(max_position_embeddings_node.isNumeric())
+                {
+                    return  max_position_embeddings_node.asInt();
+                }
+            }
+        }
+    }
+    
+    return 512;
+}
+
+static // Helper to read the template file from the model directory
+RerankingMode LoadRerankingMode(const std::string& model_path) {
+    fs::path path(model_path);
+    fs::path config_path = path;
+
+    if (fs::is_directory(path)) {
+        config_path = path / "config.json";
+    }
+    
+    if (fs::exists(config_path) && config_path.extension() == ".json") {
+//        std::cout << "Loading model_type from: " << config_path << std::endl;
+        
+        std::string json = LoadBytesFromFile(config_path.string());
+        
+        Json::Value root;
+        Json::CharReaderBuilder builder;
+        std::string errors;
+        
+        Json::CharReader *reader = builder.newCharReader();
+        bool parse = reader->parse(json.c_str(),
+                                   json.c_str() + json.size(),
+                                   &root,
+                                   &errors);
+        delete reader;
+        
+        if(parse)
+        {
+            if(root.isObject())
+            {
+                Json::Value model_type_node = root["model_type"];
+                if(model_type_node.isString())
+                {
+                    std::string model_type = model_type_node.asString();
+                    // RERANKING_ROBERTA
+                    if(model_type == "xlm-roberta") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (roberta)" << std::endl;
+                        return RERANKING_ROBERTA;
+                    }
+                    if(model_type == "roberta") {
+                        std::cout << "[Rerank] model_type: " << model_type << std::endl;
+                        return RERANKING_ROBERTA;
+                    }
+                    if(model_type == "camembert") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (roberta)" << std::endl;
+                        return RERANKING_ROBERTA;
+                    }
+                    // RERANKING_BERT
+                    if(model_type == "bert") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (bert)" << std::endl;
+                        return RERANKING_BERT;
+                    }
+                    if(model_type == "mpnet") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (bert)" << std::endl;
+                        return RERANKING_BERT;
+                    }
+                    if(model_type == "deberta-v2") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (bert)" << std::endl;
+                        return RERANKING_BERT;
+                    }
+                }
+            }
+        }
+    }
+    
+    std::cout << "[Rerank] model_type: default (roberta)" << std::endl;
+    return RERANKING_ROBERTA;
 }
 
 static // Unified Loader
@@ -50,9 +222,260 @@ std::unique_ptr<tokenizers::Tokenizer> LoadTokenizer(const std::string& model_pa
     return 0;
 }
 
-class TranslationService {
+class RerankerPipeline {
     public:
-    TranslationService(const std::string& model_dir,
+    RerankerPipeline(const std::string& model_dir,
+                       int num_threads = 4,
+                   const std::string& device = "cpu") {
+        
+        // --- 1. Optimize Threading ---
+        // This sets the number of threads used for matrix multiplication (intra-op).
+        // If you set this to 4, it uses 4 cores for the math.
+        if (num_threads > 0) {
+            ctranslate2::set_num_threads(num_threads);
+        }
+        // --- 2. Load Tokenizer ---
+        tokenizer_ = LoadTokenizer(model_dir);
+        if (!tokenizer_) throw std::runtime_error("No tokenizer.json found");
+        
+        reranking_mode_ = LoadRerankingMode(model_dir);
+        max_position_embeddings_ = LoadMaxPositionEmbeddings(model_dir);
+        
+        try {
+            ctranslate2::Device device_type = (device == "cuda") ?
+            ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
+            encoder_ = std::make_unique<ctranslate2::Encoder>(model_dir, device_type);
+        } catch (const std::exception& e) {
+            throw std::runtime_error("Failed to load CTranslate2 model: " + std::string(e.what()));
+        }
+        
+        LoadRerankHead(model_dir);
+    }
+    std::string rerank_batch(const std::string& query, int top_n,
+                             const std::vector<std::string>& documents,
+                             // 1. CHANGE DEFAULT TO CLS
+                             PoolingStrategy pooling_mode = PoolingStrategy::CLS) {
+        
+        std::vector<std::vector<std::string>> batch_input_tokens;
+        std::vector<int> batch_original_indices;
+        
+        // 1. Tokenize Query ONCE
+        std::vector<int> q_ids = tokenizer_->Encode(query);
+        
+        batch_input_tokens.reserve(documents.size());
+        batch_original_indices.reserve(documents.size());
+        
+        for (size_t i = 0; i < documents.size(); ++i) {
+            std::vector<int> doc_ids = tokenizer_->Encode(documents[i]);
+            std::vector<int> ids;
+            
+            // 2. ALWAYS CONSTRUCT CROSS-ENCODER PAIRS
+            // Do not switch() here. Rerankers ALWAYS need special tokens.
+            
+            if(reranking_mode_ == RERANKING_ROBERTA) {
+                // RoBERTa / BGE / Jina / XLM-R format
+                // <s> Q </s> </s> D </s>
+                ids.reserve(q_ids.size() + doc_ids.size() + 4);
+                ids.push_back(0); // <s>
+                ids.insert(ids.end(), q_ids.begin(), q_ids.end());
+                ids.push_back(2); // </s>
+                ids.push_back(2); // </s>
+                ids.insert(ids.end(), doc_ids.begin(), doc_ids.end());
+                ids.push_back(2); // </s>
+            }
+            else {
+                // BERT / MiniLM format
+                // [CLS] Q [SEP] D [SEP]
+                ids.reserve(q_ids.size() + doc_ids.size() + 3);
+                ids.push_back(101); // [CLS]
+                ids.insert(ids.end(), q_ids.begin(), q_ids.end());
+                ids.push_back(102); // [SEP]
+                ids.insert(ids.end(), doc_ids.begin(), doc_ids.end());
+                ids.push_back(102); // [SEP]
+            }
+            
+            // 3. Truncation Logic
+            if (ids.size() > max_position_embeddings_) {
+                // Simple truncation from the end (removes end of Doc)
+                // Ensure we keep the final special token
+                int end_token = ids.back();
+                ids.resize(max_position_embeddings_ - 1);
+                ids.push_back(end_token);
+            }
+
+            // 4. Convert IDs to Strings for CTranslate2
+            std::vector<std::string> token_strs;
+            token_strs.reserve(ids.size());
+            for(int id : ids) {
+                // CRITICAL: Ensure IdToToken returns the exact vocab string
+                auto token = tokenizer_->IdToToken(id);
+                if (token.empty()) {
+                    // Fallback for special tokens if tokenizer json is weird
+                    if (id == 101) token = "[CLS]";
+                    else if (id == 102) token = "[SEP]";
+                    else if (id == 0) token = "<s>";
+                    else if (id == 2) token = "</s>";
+                }
+                token_strs.push_back(std::move(token));
+            }
+            
+            batch_input_tokens.push_back(std::move(token_strs));
+            batch_original_indices.push_back((int)i);
+        }
+        
+        // 5. Run Inference
+        if (batch_input_tokens.empty()) return "{\"results\": []}";
+        
+        auto future = encoder_->forward_batch_async(batch_input_tokens);
+        ctranslate2::EncoderForwardOutput enc_output = future.get();
+        
+        // Move to CPU
+        ctranslate2::StorageView hidden_states = enc_output.last_hidden_state.to(ctranslate2::Device::CPU);
+        
+        // Access raw pointer
+        const float* raw_data = hidden_states.data<float>();
+        const auto& shape = hidden_states.shape();
+        long batch_size = shape[0];
+        long max_time = shape[1];
+        long hidden_dim = shape[2];
+        long stride_batch = max_time * hidden_dim;
+        
+        std::vector<RerankResult> results;
+        results.reserve(batch_size);
+        
+        for (long b = 0; b < batch_size; ++b) {
+            float* batch_ptr = const_cast<float*>(raw_data + (b * stride_batch));
+            
+            Eigen::VectorXf embedding(hidden_dim);
+            embedding = Eigen::Map<Eigen::VectorXf>(batch_ptr, hidden_dim);
+
+            float logits = 0.0f;
+            
+            if (has_dense_layer_) {
+                // Layer 1: Dense (Linear)
+                // embedding: [1, D], weights: [D, D]
+                // Result = (Embedding * Weights) + Bias
+                Eigen::VectorXf dense_out = (embedding.transpose() * dense_weights_).transpose();
+                dense_out += dense_bias_;
+                
+                // Layer 2: Activation (Tanh)
+                // Eigen's unaryExpr allows applying std::tanh per element
+                dense_out = dense_out.unaryExpr([](float x) { return std::tanh(x); });
+                
+                // Layer 3: Out Projection (Linear)
+                logits = dense_out.dot(out_weights_) + out_bias_;
+            }
+            else {
+                // Simple Linear Head (MiniLM style)
+                logits = embedding.dot(out_weights_) + out_bias_;
+            }
+            
+            // 3. Sigmoid
+            float score = 1.0f / (1.0f + std::exp(-logits));
+            
+            results.push_back({ batch_original_indices[b], score });
+        }
+        
+        // 6. Sort and Top-N
+        auto sorter = [](const RerankResult& a, const RerankResult& b) {
+            return a.score > b.score; // Descending
+        };
+        
+        if (top_n > 0 && top_n < (int)results.size()) {
+            // Partial sort is O(N * log(k)) - faster than full sort
+            std::partial_sort(results.begin(), results.begin() + top_n, results.end(), sorter);
+            results.resize(top_n);
+        } else {
+            std::sort(results.begin(), results.end(), sorter);
+        }
+        
+        // 7. JSON Serialization
+            Json::Value rootNode(Json::objectValue);
+            Json::Value listNode(Json::arrayValue);
+            
+            for (const auto& result : results) {
+                Json::Value dataNode = Json::objectValue;
+                dataNode["index"] = result.index;
+                dataNode["relevance_score"] = result.score;
+                listNode.append(dataNode);
+            }
+            
+            rootNode["results"] = listNode;
+            rootNode["object"] = "list";
+            
+            Json::StreamWriterBuilder writer;
+            writer["indentation"] = "";
+            return Json::writeString(writer, rootNode);
+    }
+private:
+    std::unique_ptr<ctranslate2::Encoder> encoder_;
+    std::unique_ptr<tokenizers::Tokenizer> tokenizer_;
+   
+    RerankingMode reranking_mode_;
+    int max_position_embeddings_;
+    
+    // Head Weights
+    bool has_dense_layer_ = false;
+    Eigen::MatrixXf dense_weights_; // [Hidden, Hidden]
+    Eigen::VectorXf dense_bias_;    // [Hidden]
+    Eigen::VectorXf out_weights_;   // [Hidden]
+    float out_bias_ = 0.0f;
+
+    void LoadRerankHead(const std::string& model_dir) {
+            fs::path bin_path = fs::path(model_dir) / "rerank_head.bin";
+            std::ifstream file(bin_path.string(), std::ios::binary);
+            if (!file.is_open()) throw std::runtime_error("rerank_head.bin not found");
+
+            // 1. Read Version
+            int32_t version = 0;
+            file.read(reinterpret_cast<char*>(&version), sizeof(int32_t));
+            
+            // 2. Read Hidden Dimension
+            int32_t dim = 0;
+            file.read(reinterpret_cast<char*>(&dim), sizeof(int32_t));
+
+            if (version == 2) {
+                has_dense_layer_ = true;
+                
+                // Allocate and Read Dense Weights (Matrix [Dim x Dim])
+                // PyTorch stores weights as [OutFeatures, InFeatures].
+                // We want to perform: Vec(1xD) * Mat(DxD).
+                // So we need to be careful with Transpose.
+                // PyTorch Linear(x) = x * W^T + b.
+                // So the file contains W (Out x In). Since Out=Dim and In=Dim.
+                // We read it into a flat buffer.
+                std::vector<float> dense_w_buf(dim * dim);
+                file.read(reinterpret_cast<char*>(dense_w_buf.data()), dense_w_buf.size() * sizeof(float));
+                
+                std::vector<float> dense_b_buf(dim);
+                file.read(reinterpret_cast<char*>(dense_b_buf.data()), dim * sizeof(float));
+                
+                // Map to Eigen
+                // RowMajor is important here because PyTorch exports row-by-row.
+                // MatrixXf is ColMajor by default.
+                // We load it as RowMajor, then let Eigen handle it.
+                dense_weights_ = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>::Map(dense_w_buf.data(), dim, dim);
+                
+                // To compute x * W^T, we can just do x * W.transpose()
+                // Or if we loaded W as [Out, In], x * W^T is equivalent to W * x if x is col vector.
+                // Let's stick to standard math: dense_weights_ is [Dim, Dim].
+                dense_weights_.transposeInPlace(); // Prepare for x * W multiplication style
+                
+                dense_bias_ = Eigen::VectorXf::Map(dense_b_buf.data(), dim);
+            }
+
+            // 3. Read Out Layer
+            file.read(reinterpret_cast<char*>(&out_bias_), sizeof(float));
+            
+            std::vector<float> out_w_buf(dim);
+            file.read(reinterpret_cast<char*>(out_w_buf.data()), dim * sizeof(float));
+            out_weights_ = Eigen::VectorXf::Map(out_w_buf.data(), dim);
+        }
+};
+
+class TranslationPipeline {
+    public:
+    TranslationPipeline(const std::string& model_dir,
                        const std::string& source_sp_path,
                        int num_threads = 4,
                        const std::string& device = "cpu") {
@@ -132,9 +555,6 @@ private:
 
 class EmbeddingPipeline {
 public:
-    // OPTIMIZATION TIP 1: intra_threads
-    // Set intra_threads to the number of physical cores you want to use for *one* batch.
-    // If you are processing one batch at a time, set this to total cores (e.g., 4 or 8).
     EmbeddingPipeline(const std::string& model_dir,
                       int num_threads = 4,
                       const std::string& device = "cpu") {
@@ -146,141 +566,160 @@ public:
             ctranslate2::set_num_threads(num_threads);
         }
         // --- 2. Load Tokenizer ---
-        fs::path json_path = fs::path(model_dir) / "tokenizer.json";
-        std::ifstream file(json_path.string());
-        if (!file.is_open()) throw std::runtime_error("No tokenizer.json found");
-        std::stringstream buffer;
-        buffer << file.rdbuf();
         tokenizer_ = LoadTokenizer(model_dir);
-
-        ctranslate2::Device device_type = (device == "cuda") ?
-        ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
-        encoder_ = std::make_unique<ctranslate2::Encoder>(model_dir, device_type);
+        if (!tokenizer_) throw std::runtime_error("No tokenizer.json found");
+        
+        max_position_embeddings_ = LoadMaxPositionEmbeddings(model_dir);
+        
+        try {
+            ctranslate2::Device device_type = (device == "cuda") ?
+            ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
+            encoder_ = std::make_unique<ctranslate2::Encoder>(model_dir, device_type);
+        } catch (const std::exception& e) {
+            throw std::runtime_error("Failed to load CTranslate2 model: " + std::string(e.what()));
+        }
     }
-
+    
     // Helper to tokenize single string
     std::vector<int32_t> tokenize_one(const std::string& text) {
         return tokenizer_->Encode(text);
     }
-
-    // OPTIMIZATION TIP 3: Batch Processing
-    // Returns a matrix where each Row is an embedding vector
+    
     std::string embed_batch(const std::vector<std::string>& texts,
-                                                PoolingStrategy strategy,
-                                                bool l2_normalize = true) {
-        if (texts.empty()) return {};
-        
-        Json::Value rootNode(Json::objectValue);
-        
+                            PoolingStrategy strategy,
+                            bool l2_normalize = true) {
+        if (texts.empty()) return "{}";
+                
         // 1. Tokenize & Prepare Batch
         std::vector<std::vector<size_t>> batch_ids;
-        std::vector<size_t> lengths;
+        //        std::vector<size_t> lengths;
         batch_ids.reserve(texts.size());
-        lengths.reserve(texts.size());
+        //        lengths.reserve(texts.size());
         
         for (const auto& text : texts) {
             auto ids_int = tokenize_one(text);
+            
             std::vector<size_t> ids_size_t;
-            size_t ids_int_size = ids_int.size();
-            if(strategy == PoolingStrategy::CLS) {
-                ids_int_size += 2;
+            size_t input_len = ids_int.size();
+            // Truncate if necessary to fit [CLS] ... [SEP]
+            if (input_len > max_position_embeddings_ - 2) {
+                input_len = max_position_embeddings_ - 2;
             }
-            ids_size_t.reserve(ids_int_size);
-            if(strategy == PoolingStrategy::CLS) {
-                ids_size_t.push_back(0);
-            }
-            for (auto id : ids_int) ids_size_t.push_back(static_cast<size_t>(id));
-            if(strategy == PoolingStrategy::CLS) {
-                ids_size_t.push_back(2);
-            }
-            lengths.push_back(ids_size_t.size());
+            ids_size_t.reserve(input_len + 2);
+            
+            // Add Special Tokens (Manual construction based on prompt logic)
+            if(strategy == PoolingStrategy::CLS) ids_size_t.push_back(0); // [CLS] (101 for bert, 0 for some)
+            for(size_t i=0; i<input_len; ++i) ids_size_t.push_back(static_cast<size_t>(ids_int[i]));
+            if(strategy == PoolingStrategy::CLS) ids_size_t.push_back(2); // [SEP]
+            
             batch_ids.push_back(std::move(ids_size_t));
         }
         
-        // 2. Forward Pass (Heavy Compute)
+        // 2. Forward Pass
         auto future = encoder_->forward_batch_async(batch_ids);
         ctranslate2::EncoderForwardOutput result = future.get();
-        
-        // 3. Move to CPU (if needed)
         ctranslate2::StorageView hidden_states_cpu = result.last_hidden_state.to(ctranslate2::Device::CPU);
         
-        // 4. Zero-Copy Eigen Mapping
-        // CT2 Memory Layout: RowMajor [Batch, Time, Dim]
+        // 3. Zero-Copy Setup
         float* raw_data = hidden_states_cpu.data<float>();
         const auto& shape = hidden_states_cpu.shape();
         
         long batch_size = shape[0];
-        long max_seq_len = shape[1];
+        long max_seq_len = shape[1]; // Padded length of this batch
         long hidden_dim = shape[2];
         long stride_batch = max_seq_len * hidden_dim;
         
-        std::vector<std::vector<float>> output_embeddings(batch_size);
+        // MATH OPTIMIZATION 1: Single Flat Allocation
+        // Allocating N vectors is slow. Allocate one big block for the results.
+        std::vector<float> all_embeddings(batch_size * hidden_dim);
         
-        // 5. Compute Pooling per sentence using Eigen
+        // 4. Compute Pooling
         for (long b = 0; b < batch_size; ++b) {
-            long valid_len = lengths[b];
+            // Get valid length for this specific sentence (excluding padding, created in step 1)
+            long valid_len = batch_ids[b].size();
+            if (valid_len == 0) valid_len = 1; // Safety
             
-            // Allocate space for the result vector
-            output_embeddings[b].resize(hidden_dim);
+            // Map the destination memory for this batch item
+            // Using Map allows Eigen to write directly into our pre-allocated 'all_embeddings'
+            Eigen::Map<Eigen::VectorXf> target_vec(all_embeddings.data() + (b * hidden_dim), hidden_dim);
             
-            if (valid_len == 0) {
-                std::fill(output_embeddings[b].begin(), output_embeddings[b].end(), 0.0f);
-                continue;
-            }
-            
-            // Map the output vector so Eigen can write directly to std::vector memory
-            Eigen::Map<Eigen::VectorXf> target_vec(output_embeddings[b].data(), hidden_dim);
-            
-            // Point to the specific sentence data within the batch
+            // Pointer to start of this sentence in CT2 output
             float* sentence_ptr = raw_data + (b * stride_batch);
             
             if (strategy == PoolingStrategy::MEAN) {
-                // Map the VALID tokens as a Matrix [valid_len, hidden_dim]
-                // Note: CT2 storage is RowMajor. Eigen defaults to ColMajor, so we must specify RowMajor.
+                // MATH OPTIMIZATION 2: Cache-Friendly Accumulation
+                // CT2 output is RowMajor [Seq, Dim].
+                // Previous code used colwise().sum().
+                // On RowMajor data, accessing columns is strided (slow cache access).
+                // Faster approach: Read row by row (sequential) and add to accumulator.
+                
+                // 1. Map the valid matrix portion [valid_len, hidden_dim]
                 Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
                 mat(sentence_ptr, valid_len, hidden_dim);
                 
-                // Vectorized Mean: Sum columns (colwise), then divide
-                target_vec = mat.colwise().sum() / static_cast<float>(valid_len);
+                // 2. Initialize target with zeros
+                target_vec.setZero();
+                
+                // 3. Accumulate Rows (Sequential Memory Access)
+                // target_vec += row makes Eigen iterate contiguous memory for the row
+                for (long i = 0; i < valid_len; ++i) {
+                    target_vec += mat.row(i);
+                }
+                
+                // 4. Divide
+                target_vec /= static_cast<float>(valid_len);
             }
             else if (strategy == PoolingStrategy::CLS) {
-                // Map first row
-                Eigen::Map<Eigen::VectorXf> cls_vec(sentence_ptr, hidden_dim);
-                target_vec = cls_vec;
+                // First token vector
+                target_vec = Eigen::Map<Eigen::VectorXf>(sentence_ptr, hidden_dim);
             }
             else if (strategy == PoolingStrategy::LAST_TOKEN) {
-                // Map last valid row
+                // Last token vector
                 float* last_ptr = sentence_ptr + ((valid_len - 1) * hidden_dim);
-                Eigen::Map<Eigen::VectorXf> last_vec(last_ptr, hidden_dim);
-                target_vec = last_vec;
+                target_vec = Eigen::Map<Eigen::VectorXf>(last_ptr, hidden_dim);
             }
-            
-            // 6. L2 Normalization (Vectorized)
+            // 5. L2 Normalization
             if (l2_normalize) {
-                target_vec.normalize(); // In-place normalization
+                // Eigen uses SIMD instructions here if -march=native is enabled
+                target_vec.normalize();
             }
         }
         
-        Json::Value dataNode(Json::objectValue);
-        Json::Value embeddingsNode(Json::arrayValue);
-        for (float val : output_embeddings[0]) {
-            embeddingsNode.append(val);
+        // 5. Build JSON Response
+        Json::Value rootNode(Json::objectValue);
+        Json::Value listNode(Json::arrayValue);
+        
+        for (long b = 0; b < batch_size; ++b) {
+            Json::Value dataNode(Json::objectValue);
+            Json::Value embeddingsNode(Json::arrayValue);
+            
+            // Pointer arithmetic to get start of this embedding in flat vector
+            size_t start_idx = b * hidden_dim;
+            
+            // Note: converting float to json value is costly, but unavoidable here
+            for (long i = 0; i < hidden_dim; ++i) {
+                embeddingsNode.append(all_embeddings[start_idx + i]);
+            }
+            
+            dataNode["embedding"] = embeddingsNode;
+            dataNode["index"] = (int)b;
+            listNode.append(dataNode);
         }
-        dataNode["embedding"] = embeddingsNode;
-        dataNode["index"] = 0;
-        Json::Value listNode = Json::arrayValue;
-        listNode.append(dataNode);
+        
         rootNode["data"] = listNode;
         rootNode["object"] = "list";
         
         Json::StreamWriterBuilder writer;
         writer["indentation"] = "";
+        
         return Json::writeString(writer, rootNode);
     }
 
 private:
     std::unique_ptr<ctranslate2::Encoder> encoder_;
     std::unique_ptr<tokenizers::Tokenizer> tokenizer_;
+
+    int max_position_embeddings_;
 };
 
 #ifdef WIN32
@@ -400,12 +839,16 @@ Eigen::VectorXf mean_pool(
 
 static void usage(void)
 {
-    fprintf(stderr, "Usage:  ct2-server -e model -i input\n\n");
-    fprintf(stderr, "onnx-genai\n\n");
-    fprintf(stderr, " -%c path     : %s\n", 'm' , "model");
-    fprintf(stderr, " -%c path     : %s\n", 'e' , "embedding model");
-    fprintf(stderr, " -%c          : %s\n", 'j' , "chat template from stdin");
-    fprintf(stderr, " -%c path     : %s\n", 't' , "chat template");
+    fprintf(stderr, "Usage:  ct2-server -s -e embedding_model -p port\n\n");
+    fprintf(stderr, " -%c path     : %s\n", 'm' , "translation model");
+    fprintf(stderr, " -%c path     : %s\n", 'e' , "embedding model (pooling=mean)");
+    fprintf(stderr, " -%c path     : %s\n", 'r' , "reranker model");
+    fprintf(stderr, " -%c path     : %s\n", 'f' , "source sentencepiece model");
+    fprintf(stderr, " %c           : %s\n", 'l' , "pooling=last-token (Llama)");
+    fprintf(stderr, " %c           : %s\n", 'c' , "pooling=cls (Qwen)");
+    fprintf(stderr, " %c           : %s\n", 's' , "server (OpenAI compatible endpoint)");
+    fprintf(stderr, " %c           : %s\n", 'p' , "server listening port (default=8080)");
+    fprintf(stderr, " %c           : %s\n", 'h' , "server host (default=127.0.0.1)  ");
     fprintf(stderr, " -%c path     : %s\n", 'i' , "input");
     fprintf(stderr, " %c           : %s\n", '-' , "use stdin for input");
     fprintf(stderr, " -%c path     : %s\n", 'o' , "output (default=stdout)");
@@ -463,11 +906,11 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:e:i:o:sp:jt:bcldf:-h"
+#define ARGS (OPTARG_T)L"m:e:r:f:i:o:sp:jt:bcld-h"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:e:i:o:sp:jt:bcldf:-h"
+#define ARGS "m:e:r:f:i:o:sp:jt:bcld-h"
 #define _atoi atoi
 #define _atof atof
 #endif
@@ -610,6 +1053,54 @@ static void parse_request_translate(const std::string &json,
     }
 }
 
+static void parse_request_reranking(const std::string &json,
+                                     std::string &query,
+                                     int *top_n,
+                                     std::vector<std::string> &documents
+                                     ) {
+    
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    
+    Json::CharReader *reader = builder.newCharReader();
+    bool parse = reader->parse(json.c_str(),
+                               json.c_str() + json.size(),
+                               &root,
+                               &errors);
+    delete reader;
+    
+    if(parse)
+    {
+        if(root.isObject())
+        {
+            Json::Value query_node = root["query"];
+            if(query_node.isString())
+            {
+                query = query_node.asString();
+            }
+            Json::Value top_n_node = root["top_n"];
+            if(top_n_node.isNumeric())
+            {
+                *top_n = top_n_node.asInt();
+            }
+            
+            Json::Value documents_node = root["documents"];
+            if(documents_node.isArray())
+            {
+                for(Json::Value::const_iterator it = documents_node.begin() ; it != documents_node.end() ; it++)
+                {
+                    if(it->isString())
+                    {
+                        std::string document = it->asString();
+                        documents.push_back(document);
+                    }
+                }
+            }
+        }
+    }
+}
+
 static void parse_request_embeddings(const std::string &json,
                                      std::string &input) {
     
@@ -658,6 +1149,15 @@ static void before_run_translate(
                             repetition_penalty);
 }
 
+static void before_run_reranking(
+                                 const std::string& request_body,
+                                 std::string &query,
+                                 int *top_n,
+                                 std::vector<std::string> &documents
+                                 ) {
+    parse_request_reranking(request_body, query, top_n, documents);
+}
+
 static void before_run_embeddings(
                                   const std::string& request_body,
                                   std::string &input
@@ -673,9 +1173,11 @@ int main(int argc, OPTARG_T argv[]) {
     std::wstring model_path_u16;
     std::wstring embedding_model_path_u16;
     std::wstring source_sp_path_u16;
+    std::wstring reranker_model_path_u16;
 #endif
     std::string model_path;           // -m
     std::string embedding_model_path; // -e
+    std::string reranker_model_path;  // -r
     std::string chat_template;        // -j
     OPTARG_T input_path  = NULL;      // -i
     OPTARG_T output_path = NULL;      // -o
@@ -709,6 +1211,14 @@ int main(int argc, OPTARG_T argv[]) {
                 embedding_model_path = wchar_to_utf8(embedding_model_path_u16.c_str());
 #else
                 embedding_model_path = optarg;
+#endif
+                break;
+            case 'r':
+#ifdef WIN32
+                reranker_model_path_u16 = optarg;
+                reranker_model_path = wchar_to_utf8(reranker_model_path_u16.c_str());
+#else
+                reranker_model_path = optarg;
 #endif
                 break;
             case 'f':
@@ -788,11 +1298,14 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
+    int intra_op_threads = GetOptimalIntraOpThreads();
+    std::cout << "Detected " << intra_op_threads << " Intra-Op threads." << std::endl;
+    
     std::string fingerprint;
     long long model_created = 0;
     std::string modelName;
     
-    std::unique_ptr<TranslationService> translation_pipeline;
+    std::unique_ptr<TranslationPipeline> translation_pipeline;
     
     if (model_path.length() != 0) {
         if (fs::exists(model_path)) {
@@ -807,7 +1320,7 @@ int main(int argc, OPTARG_T argv[]) {
 #else
                     modelName = get_model_name(fs::path(model_path));
 #endif
-                    translation_pipeline = std::make_unique<TranslationService>(model_path, source_sp_path);
+                    translation_pipeline = std::make_unique<TranslationPipeline>(model_path, source_sp_path, intra_op_threads);
                     model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to load model: " << e.what() << std::endl;
@@ -835,8 +1348,36 @@ int main(int argc, OPTARG_T argv[]) {
 #else
                     embedding_modelName = get_model_name(fs::path(embedding_model_path));
 #endif
-                    pipeline = std::make_unique<EmbeddingPipeline>(embedding_model_path);
+                    pipeline = std::make_unique<EmbeddingPipeline>(embedding_model_path, intra_op_threads);
                     embedding_model_created = get_created_timestamp();
+                } catch (const std::exception& e) {
+                    std::cerr << "Failed to load model: " << e.what() << std::endl;
+                    return 1;
+                }
+            }
+        }
+    }
+    
+    std::string reranking_fingerprint;
+    long long reranking_model_created = 0;
+    std::string reranking_modelName;
+
+    std::unique_ptr<RerankerPipeline> rerank_pipeline;
+    
+    if (reranker_model_path.length() != 0) {
+        if (fs::exists(reranker_model_path)) {
+            if (fs::is_directory(reranker_model_path)) {
+                // 1.b Initialize Rerank and Session (Load once)
+                std::cerr << "[Rerank] Loading from " << reranker_model_path << std::endl;
+                reranking_fingerprint = get_system_fingerprint(reranker_model_path, "directml");
+                try {
+#ifdef WIN32
+                    reranking_modelName = get_model_name(wchar_to_utf8(fs::path(reranker_model_path).c_str()));
+#else
+                    reranking_modelName = get_model_name(fs::path(reranker_model_path));
+#endif
+                    rerank_pipeline = std::make_unique<RerankerPipeline>(reranker_model_path, intra_op_threads);
+                    reranking_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to load model: " << e.what() << std::endl;
                     return 1;
@@ -876,6 +1417,14 @@ int main(int argc, OPTARG_T argv[]) {
                 modelCard["id"] = embedding_modelName;
                 modelCard["object"] = "model";
                 modelCard["created"] = embedding_model_created;
+                modelCard["owned_by"] = "system";
+                root["data"].append(modelCard);
+            }
+            if(reranking_model_created != 0) {
+                Json::Value modelCard(Json::objectValue);
+                modelCard["id"] = reranking_modelName;
+                modelCard["object"] = "model";
+                modelCard["created"] = reranking_model_created;
                 modelCard["owned_by"] = "system";
                 root["data"].append(modelCard);
             }
@@ -949,6 +1498,45 @@ int main(int argc, OPTARG_T argv[]) {
             
         });
                  
+        // Route: /v1/rerank
+        svr.Post("/v1/rerank", [&](const httplib::Request& req, httplib::Response& res) {
+         
+            std::cout << "[Server] /v1/rerank request received." << std::endl;
+            
+            try {
+                
+                if(reranking_model_created == 0) {
+                    throw std::invalid_argument("[Rerank] Model not loaded.");
+                }
+                
+                std::string query;
+                int top_n = -1;
+                std::vector<std::string> documents;
+                before_run_reranking(req.body, query, &top_n, documents);
+                std::string response_json = rerank_pipeline->rerank_batch(query, top_n, documents, pooling_mode);
+                res.set_content(response_json, "application/json");
+                res.status = 200;
+            } catch (const std::exception& e) {
+         
+                // Build Error JSON
+                Json::Value rootNode(Json::objectValue);
+                Json::Value errorNode(Json::objectValue);
+                errorNode["message"] = e.what();
+                errorNode["type"] = "invalid_request_error";
+                errorNode["param"] = Json::nullValue;
+                errorNode["code"] = Json::nullValue;
+                rootNode["error"] = errorNode;
+                
+                Json::StreamWriterBuilder writer;
+                writer["indentation"] = "";
+                std::string error_str = Json::writeString(writer, rootNode);
+                
+                res.set_content(error_str, "application/json");
+                res.status = 400; // Bad Request as per requirement
+                std::cerr << "[Server] Error: " << e.what() << std::endl;
+            }
+        });
+        
         // Route: /v1/embeddings
         svr.Post("/v1/embeddings", [&](const httplib::Request& req, httplib::Response& res) {
             
@@ -960,7 +1548,7 @@ int main(int argc, OPTARG_T argv[]) {
                 }
                 std::string text;
                 before_run_embeddings(req.body, text);
-                std::string response_json = pipeline->embed_batch({text}, pooling_mode, true);
+                std::string response_json = pipeline->embed_batch({text}, pooling_mode);
                 res.set_content(response_json, "application/json");
                 res.status = 200;
             } catch (const std::exception& e) {
@@ -1020,7 +1608,7 @@ int main(int argc, OPTARG_T argv[]) {
         
         try {
             before_run_embeddings(request_str, text);
-            std::string response = pipeline->embed_batch({text}, pooling_mode, true);
+            std::string response = pipeline->embed_batch({text}, pooling_mode);
         } catch (const std::exception& e) {
             // CLI Error Format
             Json::Value rootNode(Json::objectValue);

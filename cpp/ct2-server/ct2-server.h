@@ -58,6 +58,12 @@ extern "C" {
 
 #define BUFLEN 4096
 
+// Platform-specific headers
+#if defined(__APPLE__)
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
+
 #ifdef __GNUC__
 #define _fopen fopen
 #define _fseek fseek
@@ -107,6 +113,12 @@ enum class PoolingStrategy {
     CLS,        // Use the first token (usually [CLS])
     LAST_TOKEN, // Use the last token
     MEAN        // Average of all tokens
+};
+
+enum RerankingMode {
+    RERANKING_BERT,       // MiniLM, TinyBERT
+    RERANKING_ROBERTA,    // BGE-M3, BGE-Reranker, XLM)
+    RERANKING_LLM
 };
 
 static std::string wchar_to_utf8(const wchar_t* wstr);
