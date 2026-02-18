@@ -72,8 +72,13 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 - https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-ct2-int8_float16
 - https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-ct2-int8_float16
-- ~~ruri-base-v2~~ ⚠️ **CTranslate2** doesn't support BertJapaneseTokenizer
-- ~~ruri-large-v2~~ ⚠️ **CTranslate2** doesn't support BertJapaneseTokenizer
+
+**CTranslate2** can't use models that depend on external python code for tokenisation:
+
+#### BertJapaneseTokenizer
+
+- ruri-base-v2
+- ruri-large-v2
 
 **CTranslate2** does not store or return the dense vector representation of the sentence, which is necessary for using decodes for embeddings. That excludes:
 
