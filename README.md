@@ -18,6 +18,10 @@ Usage:  ct2-server -s -e embedding_model -p port
  -h host     : server host (default=127.0.0.1)    
 ```
 
+## Dependencies
+
+- `ctranslate2-4.7.1`
+ 
 ## OpenAI Compatible Endpoints
 
 - `/v1/models`
