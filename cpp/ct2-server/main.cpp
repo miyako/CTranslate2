@@ -252,9 +252,7 @@ class RerankerPipeline {
         LoadRerankHead(model_dir);
     }
     std::string rerank_batch(const std::string& query, int top_n,
-                             const std::vector<std::string>& documents,
-                             // 1. CHANGE DEFAULT TO CLS
-                             PoolingStrategy pooling_mode = PoolingStrategy::CLS) {
+                             const std::vector<std::string>& documents) {
         
         std::vector<std::vector<std::string>> batch_input_tokens;
         std::vector<int> batch_original_indices;
@@ -1513,7 +1511,7 @@ int main(int argc, OPTARG_T argv[]) {
                 int top_n = -1;
                 std::vector<std::string> documents;
                 before_run_reranking(req.body, query, &top_n, documents);
-                std::string response_json = rerank_pipeline->rerank_batch(query, top_n, documents, pooling_mode);
+                std::string response_json = rerank_pipeline->rerank_batch(query, top_n, documents);
                 res.set_content(response_json, "application/json");
                 res.status = 200;
             } catch (const std::exception& e) {
