@@ -48,8 +48,6 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 |[`BAAI/bge-reranker-v2-m3`](https://huggingface.co/BAAI/bge-reranker-v2-m3)|[`594`](https://huggingface.co/keisuke-miyako/bge-reranker-v2-m3-ct2-int8)|[`577`](https://huggingface.co/keisuke-miyako/bge-reranker-v2-m3-ct2-int8_float16)|[`1130`](https://huggingface.co/keisuke-miyako/bge-reranker-v2-m3-ct2-float16)|`8192`|`1024`|`24`|
 |[`BAAI/bge-reranker-base`](https://huggingface.co/BAAI/bge-reranker-base)|[`280`](https://huggingface.co/keisuke-miyako/bge-reranker-base-ct2-int8)|[`279`](https://huggingface.co/keisuke-miyako/bge-reranker-base-ct2-int8_float16)|[`555`](https://huggingface.co/keisuke-miyako/bge-reranker-base-ct2-float16)|`8192`|`768`|`12`|
 |[`BAAI/bge-reranker-large`](https://huggingface.co/BAAI/bge-reranker-large)|[`563`](https://huggingface.co/keisuke-miyako/bge-reranker-large-ct2-int8)|[`561`](https://huggingface.co/keisuke-miyako/bge-reranker-large-ct2-int8_float16)|[`1120`](https://huggingface.co/keisuke-miyako/bge-reranker-large-ct2-float16)|`8192`|`1024`|`24`
-|[`jinaai/jina-reranker-v3`](https://huggingface.co/jinaai/jina-reranker-v3)|[`598`](https://huggingface.co/keisuke-miyako/jina-reranker-v3-ct2-int8)|[`598`](https://huggingface.co/keisuke-miyako/jina-reranker-v3-ct2-int8_float16)|[`1190`](https://huggingface.co/keisuke-miyako/jina-reranker-v3-ct2-float16)|`131072`|`1024`|`28`|
-|[`Qwen/Qwen3-Reranker-0.6B`](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B)|[`597`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-ct2-int8)|[`597`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-ct2-int8_float16)|[`1190`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-ct2-float16)|`32768`|`1024`|`28`|
 
 ### Embedding
 
