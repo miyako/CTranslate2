@@ -286,17 +286,22 @@ class RerankerPipeline {
     }
     ctranslate2::StorageView forward_bert_reranker_batch(
                                                          const std::vector<std::vector<int64_t>>& batch_ids,
-                                                         int64_t pad_id = 1) {
+                                                         int64_t pad_id,
+                                                         const std::vector<std::vector<size_t>>& batch_type_ids
+                                                         ) {
         
         if (batch_ids.empty()) return {};
 
         size_t batch_size = batch_ids.size();
+        
+        // 1. Calculate Max Sequence Length
         size_t max_seq_len = 0;
         for (const auto& seq : batch_ids) {
             max_seq_len = std::max(max_seq_len, seq.size());
         }
         
-        // 1. Prepare Flattened ID buffer with Padding
+        // 2. Prepare Flattened Buffers
+        // Initialize with pad_id
         std::vector<int32_t> flattened_ids(batch_size * max_seq_len, (int32_t)pad_id);
         std::vector<int32_t> lengths;
         lengths.reserve(batch_size);
@@ -310,14 +315,24 @@ class RerankerPipeline {
         
         ctranslate2::StorageView ids_view({static_cast<int64_t>(batch_size),
             static_cast<int64_t>(max_seq_len)},
-                                          flattened_ids, ctranslate2::Device::CPU);
-        ctranslate2::StorageView lengths_view({static_cast<int64_t>(batch_size)},
-                                              lengths, ctranslate2::Device::CPU);
+                                          flattened_ids,
+                                          ctranslate2::Device::CPU);
         
-        auto future = encoder_->forward_batch_async(ids_view, lengths_view);
+        ctranslate2::StorageView lengths_view({static_cast<int64_t>(batch_size)},
+                                              lengths,
+                                              ctranslate2::Device::CPU);
+        // 5. Forward Pass
+        std::future<ctranslate2::EncoderForwardOutput> future;
+        
+        if (!batch_type_ids.empty()) {
+            future = encoder_->forward_batch_async(ids_view, lengths_view, batch_type_ids);
+        } else {
+            future = encoder_->forward_batch_async(ids_view, lengths_view);
+        }
+        
         ctranslate2::EncoderForwardOutput enc_output = future.get();
         
-    return enc_output.last_hidden_state.to(ctranslate2::Device::CPU);
+        return enc_output.last_hidden_state.to(ctranslate2::Device::CPU);
 }
     
     std::string rerank_batch(const std::string& query, int top_n,
@@ -326,6 +341,7 @@ class RerankerPipeline {
         std::vector<std::vector<std::string>> batch_input_tokens;
         std::vector<int> batch_original_indices;
         std::vector<std::vector<int64_t>> batch_ids;
+        std::vector<std::vector<size_t>> batch_type_ids;
         
         // 1. Tokenize Query ONCE
         std::vector<int> q_ids = tokenizer_->Encode(query);
@@ -333,6 +349,7 @@ class RerankerPipeline {
         switch (reranking_mode_) {
                 case RERANKING_BERT:
                 batch_ids.reserve(documents.size());
+                batch_type_ids.reserve(documents.size());
                 break;
             case RERANKING_ROBERTA:
             case RERANKING_LLM:
@@ -363,16 +380,17 @@ class RerankerPipeline {
                     type_ids.reserve(ids.capacity());
                     ids.push_back(101); // [CLS]
                     type_ids.push_back(0);
-                    ids.insert(ids.end(), q_ids.begin(), q_ids.end());
+                    for(int x : q_ids) { ids.push_back(x); type_ids.push_back(0); }
                     ids.push_back(102); // [SEP]
                     type_ids.push_back(0);
-                    ids.insert(ids.end(), doc_ids.begin(), doc_ids.end());
+                    for(int x : doc_ids) { ids.push_back(x); type_ids.push_back(1); }
                     ids.push_back(102); // [SEP]
                     type_ids.push_back(1);
                     break;
                 case RERANKING_LLM:
                 default:
                     ids = tokenizer_->Encode(query + "\n" + documents[i]);
+                    type_ids.resize(ids.size(), 0);
                     break;
             }
             
@@ -384,38 +402,19 @@ class RerankerPipeline {
                 type_ids.resize(max_position_embeddings_ - 1);
                 type_ids.push_back(end_type_id);
             }
-            
-            if(reranking_mode_ == RERANKING_BERT){
-                batch_ids.push_back(std::vector<int64_t>(ids.begin(), ids.end()));
-            }else{
-                std::vector<std::string> token_strs;
-                token_strs.reserve(ids.size());
-                for(int id : ids) {
-                    auto token = tokenizer_->IdToToken(id);
-                    if (token.empty()) {
-                        // Fallback for special tokens if tokenizer json is weird
-                        if (id == 101) token = "[CLS]";
-                        else if (id == 102) token = "[SEP]";
-                        else if (id == 0) token = "<s>";
-                        else if (id == 2) token = "</s>";
-                    }
-                    token_strs.push_back(std::move(token));
-                }
-                batch_input_tokens.push_back(std::move(token_strs));
-            }
+            batch_ids.push_back(std::vector<int64_t>(ids.begin(), ids.end()));
+            batch_type_ids.push_back(type_ids);
             batch_original_indices.push_back((int)i);
         }
+        
+        if (batch_ids.empty()) return "{\"results\": []}";
         
         ctranslate2::StorageView hidden_states;
         
         if(reranking_mode_ == RERANKING_BERT){
-            if (batch_ids.empty()) return "{\"results\": []}";
-            hidden_states = forward_bert_reranker_batch(batch_ids);
+            hidden_states = forward_bert_reranker_batch(batch_ids, 0, batch_type_ids);
         }else{
-            if (batch_input_tokens.empty()) return "{\"results\": []}";
-            auto future = encoder_->forward_batch_async(batch_input_tokens);
-            ctranslate2::EncoderForwardOutput enc_output = future.get();
-            hidden_states = enc_output.last_hidden_state.to(ctranslate2::Device::CPU);
+            hidden_states = forward_bert_reranker_batch(batch_ids, 1, std::vector<std::vector<size_t>>());
         }
         
         // Access raw pointer
