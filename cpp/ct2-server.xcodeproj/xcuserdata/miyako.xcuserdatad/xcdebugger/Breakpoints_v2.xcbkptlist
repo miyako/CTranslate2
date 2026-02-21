@@ -174,8 +174,8 @@
             filePath = "ct2-server/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "647"
-            endingLineNumber = "647"
+            startingLineNumber = "780"
+            endingLineNumber = "780"
             landmarkName = "embed_batch(texts, strategy)"
             landmarkType = "7">
          </BreakpointContent>
