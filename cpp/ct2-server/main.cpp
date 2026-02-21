@@ -284,84 +284,139 @@ class RerankerPipeline {
         
         LoadRerankHead(model_dir);
     }
+    ctranslate2::StorageView forward_bert_reranker_batch(
+                                                         const std::vector<std::vector<int64_t>>& batch_ids,
+                                                         int64_t pad_id = 1) {
+        
+        if (batch_ids.empty()) return {};
+
+        size_t batch_size = batch_ids.size();
+        size_t max_seq_len = 0;
+        for (const auto& seq : batch_ids) {
+            max_seq_len = std::max(max_seq_len, seq.size());
+        }
+        
+        // 1. Prepare Flattened ID buffer with Padding
+        std::vector<int32_t> flattened_ids(batch_size * max_seq_len, (int32_t)pad_id);
+        std::vector<int32_t> lengths;
+        lengths.reserve(batch_size);
+        
+        for (size_t i = 0; i < batch_size; ++i) {
+            lengths.push_back(static_cast<int32_t>(batch_ids[i].size()));
+            for (size_t j = 0; j < batch_ids[i].size(); ++j) {
+                flattened_ids[i * max_seq_len + j] = (int32_t)batch_ids[i][j];
+            }
+        }
+        
+        ctranslate2::StorageView ids_view({static_cast<int64_t>(batch_size),
+            static_cast<int64_t>(max_seq_len)},
+                                          flattened_ids, ctranslate2::Device::CPU);
+        ctranslate2::StorageView lengths_view({static_cast<int64_t>(batch_size)},
+                                              lengths, ctranslate2::Device::CPU);
+        
+        auto future = encoder_->forward_batch_async(ids_view, lengths_view);
+        ctranslate2::EncoderForwardOutput enc_output = future.get();
+        
+    return enc_output.last_hidden_state.to(ctranslate2::Device::CPU);
+}
+    
     std::string rerank_batch(const std::string& query, int top_n,
                              const std::vector<std::string>& documents) {
         
         std::vector<std::vector<std::string>> batch_input_tokens;
         std::vector<int> batch_original_indices;
+        std::vector<std::vector<int64_t>> batch_ids;
         
         // 1. Tokenize Query ONCE
         std::vector<int> q_ids = tokenizer_->Encode(query);
         
-        batch_input_tokens.reserve(documents.size());
-        batch_original_indices.reserve(documents.size());
-        
+        switch (reranking_mode_) {
+                case RERANKING_BERT:
+                batch_ids.reserve(documents.size());
+                break;
+            case RERANKING_ROBERTA:
+            case RERANKING_LLM:
+            default:
+                batch_input_tokens.reserve(documents.size());
+                batch_original_indices.reserve(documents.size());
+                break;
+        }
+                
         for (size_t i = 0; i < documents.size(); ++i) {
             std::vector<int> doc_ids = tokenizer_->Encode(documents[i]);
             std::vector<int> ids;
+            std::vector<size_t> type_ids;
             
-            // 2. ALWAYS CONSTRUCT CROSS-ENCODER PAIRS
-            // Do not switch() here. Rerankers ALWAYS need special tokens.
-            
-            if(reranking_mode_ == RERANKING_ROBERTA) {
-                // RoBERTa / BGE / Jina / XLM-R format
-                // <s> Q </s> </s> D </s>
-                ids.reserve(q_ids.size() + doc_ids.size() + 4);
-                ids.push_back(0); // <s>
-                ids.insert(ids.end(), q_ids.begin(), q_ids.end());
-                ids.push_back(2); // </s>
-                ids.push_back(2); // </s>
-                ids.insert(ids.end(), doc_ids.begin(), doc_ids.end());
-                ids.push_back(2); // </s>
+            switch (reranking_mode_) {
+                case RERANKING_ROBERTA:
+                    ids.reserve(q_ids.size() + doc_ids.size() + 4);
+                    ids.push_back(0); // <s>
+                    ids.insert(ids.end(), q_ids.begin(), q_ids.end());
+                    ids.push_back(2); // </s>
+                    ids.push_back(2); // </s>
+                    ids.insert(ids.end(), doc_ids.begin(), doc_ids.end());
+                    ids.push_back(2); // </s>
+                    type_ids.resize(ids.size(), 0);
+                    break;
+                case RERANKING_BERT:
+                    ids.reserve(q_ids.size() + doc_ids.size() + 3);
+                    type_ids.reserve(ids.capacity());
+                    ids.push_back(101); // [CLS]
+                    type_ids.push_back(0);
+                    ids.insert(ids.end(), q_ids.begin(), q_ids.end());
+                    ids.push_back(102); // [SEP]
+                    type_ids.push_back(0);
+                    ids.insert(ids.end(), doc_ids.begin(), doc_ids.end());
+                    ids.push_back(102); // [SEP]
+                    type_ids.push_back(1);
+                    break;
+                case RERANKING_LLM:
+                default:
+                    ids = tokenizer_->Encode(query + "\n" + documents[i]);
+                    break;
             }
-            else {
-                // BERT / MiniLM format
-                // [CLS] Q [SEP] D [SEP]
-                ids.reserve(q_ids.size() + doc_ids.size() + 3);
-                ids.push_back(101); // [CLS]
-                ids.insert(ids.end(), q_ids.begin(), q_ids.end());
-                ids.push_back(102); // [SEP]
-                ids.insert(ids.end(), doc_ids.begin(), doc_ids.end());
-                ids.push_back(102); // [SEP]
-            }
             
-            // 3. Truncation Logic
             if (ids.size() > max_position_embeddings_) {
-                // Simple truncation from the end (removes end of Doc)
-                // Ensure we keep the final special token
                 int end_token = ids.back();
+                size_t end_type_id = type_ids.back();
                 ids.resize(max_position_embeddings_ - 1);
                 ids.push_back(end_token);
-            }
-
-            // 4. Convert IDs to Strings for CTranslate2
-            std::vector<std::string> token_strs;
-            token_strs.reserve(ids.size());
-            for(int id : ids) {
-                // CRITICAL: Ensure IdToToken returns the exact vocab string
-                auto token = tokenizer_->IdToToken(id);
-                if (token.empty()) {
-                    // Fallback for special tokens if tokenizer json is weird
-                    if (id == 101) token = "[CLS]";
-                    else if (id == 102) token = "[SEP]";
-                    else if (id == 0) token = "<s>";
-                    else if (id == 2) token = "</s>";
-                }
-                token_strs.push_back(std::move(token));
+                type_ids.resize(max_position_embeddings_ - 1);
+                type_ids.push_back(end_type_id);
             }
             
-            batch_input_tokens.push_back(std::move(token_strs));
-            batch_original_indices.push_back((int)i);
+            if(reranking_mode_ == RERANKING_BERT){
+                batch_ids.push_back(std::vector<int64_t>(ids.begin(), ids.end()));
+            }else{
+                std::vector<std::string> token_strs;
+                token_strs.reserve(ids.size());
+                for(int id : ids) {
+                    auto token = tokenizer_->IdToToken(id);
+                    if (token.empty()) {
+                        // Fallback for special tokens if tokenizer json is weird
+                        if (id == 101) token = "[CLS]";
+                        else if (id == 102) token = "[SEP]";
+                        else if (id == 0) token = "<s>";
+                        else if (id == 2) token = "</s>";
+                    }
+                    token_strs.push_back(std::move(token));
+                }
+                batch_input_tokens.push_back(std::move(token_strs));
+                batch_original_indices.push_back((int)i);
+            }
         }
         
-        // 5. Run Inference
-        if (batch_input_tokens.empty()) return "{\"results\": []}";
+        ctranslate2::StorageView hidden_states;
         
-        auto future = encoder_->forward_batch_async(batch_input_tokens);
-        ctranslate2::EncoderForwardOutput enc_output = future.get();
-        
-        // Move to CPU
-        ctranslate2::StorageView hidden_states = enc_output.last_hidden_state.to(ctranslate2::Device::CPU);
+        if(reranking_mode_ == RERANKING_BERT){
+            if (batch_ids.empty()) return "{\"results\": []}";
+            hidden_states = forward_bert_reranker_batch(batch_ids);
+        }else{
+            if (batch_input_tokens.empty()) return "{\"results\": []}";
+            auto future = encoder_->forward_batch_async(batch_input_tokens);
+            ctranslate2::EncoderForwardOutput enc_output = future.get();
+            hidden_states = enc_output.last_hidden_state.to(ctranslate2::Device::CPU);
+        }
         
         // Access raw pointer
         const float* raw_data = hidden_states.data<float>();
@@ -407,11 +462,16 @@ class RerankerPipeline {
             results.push_back({ batch_original_indices[b], score });
         }
         
+        
+        
+        
+        
+        
+        
         // 6. Sort and Top-N
         auto sorter = [](const RerankResult& a, const RerankResult& b) {
             return a.score > b.score; // Descending
         };
-        
         if (top_n > 0 && top_n < (int)results.size()) {
             // Partial sort is O(N * log(k)) - faster than full sort
             std::partial_sort(results.begin(), results.begin() + top_n, results.end(), sorter);
@@ -419,7 +479,6 @@ class RerankerPipeline {
         } else {
             std::sort(results.begin(), results.end(), sorter);
         }
-        
         // 7. JSON Serialization
             Json::Value rootNode(Json::objectValue);
             Json::Value listNode(Json::arrayValue);
@@ -1544,7 +1603,15 @@ int main(int argc, OPTARG_T argv[]) {
                 int top_n = -1;
                 std::vector<std::string> documents;
                 before_run_reranking(req.body, query, &top_n, documents);
-                std::string response_json = rerank_pipeline->rerank_batch(query, top_n, documents);
+                
+                std::string response_json;
+                
+                
+                
+                
+                
+                
+                response_json = rerank_pipeline->rerank_batch(query, top_n, documents);
                 res.set_content(response_json, "application/json");
                 res.status = 200;
             } catch (const std::exception& e) {
