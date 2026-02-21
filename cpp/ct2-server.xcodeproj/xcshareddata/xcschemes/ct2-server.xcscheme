@@ -70,7 +70,7 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.CTranslate2/mmarco-mMiniLMv2-L12-H384-v1"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/Downloads/embeddinggemma-300m_int8"
@@ -79,6 +79,10 @@
          <CommandLineArgument
             argument = "/Users/miyako/.CTranslate2/mxbai-rerank-base-v2"
             isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/.CTranslate2/ms-marco-MiniLM-L6-v2"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-f"

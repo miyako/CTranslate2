@@ -402,8 +402,8 @@ class RerankerPipeline {
                     token_strs.push_back(std::move(token));
                 }
                 batch_input_tokens.push_back(std::move(token_strs));
-                batch_original_indices.push_back((int)i);
             }
+            batch_original_indices.push_back((int)i);
         }
         
         ctranslate2::StorageView hidden_states;
@@ -461,13 +461,7 @@ class RerankerPipeline {
             
             results.push_back({ batch_original_indices[b], score });
         }
-        
-        
-        
-        
-        
-        
-        
+
         // 6. Sort and Top-N
         auto sorter = [](const RerankResult& a, const RerankResult& b) {
             return a.score > b.score; // Descending
