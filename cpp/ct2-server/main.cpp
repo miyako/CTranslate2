@@ -428,39 +428,70 @@ class RerankerPipeline {
         std::vector<RerankResult> results;
         results.reserve(batch_size);
         
-        for (long b = 0; b < batch_size; ++b) {
-            float* batch_ptr = const_cast<float*>(raw_data + (b * stride_batch));
-            
-            Eigen::VectorXf embedding(hidden_dim);
-            embedding = Eigen::Map<Eigen::VectorXf>(batch_ptr, hidden_dim);
-
-            float logits = 0.0f;
-            
-            if (has_dense_layer_) {
-                // Layer 1: Dense (Linear)
-                // embedding: [1, D], weights: [D, D]
-                // Result = (Embedding * Weights) + Bias
-                Eigen::VectorXf dense_out = (embedding.transpose() * dense_weights_).transpose();
-                dense_out += dense_bias_;
-                
-                // Layer 2: Activation (Tanh)
-                // Eigen's unaryExpr allows applying std::tanh per element
-                dense_out = dense_out.unaryExpr([](float x) { return std::tanh(x); });
-                
-                // Layer 3: Out Projection (Linear)
-                logits = dense_out.dot(out_weights_) + out_bias_;
+        if(reranking_mode_ == RERANKING_BERT){
+            std::vector<float> batch_logits;
+            batch_logits.reserve(batch_size);
+            for (long b = 0; b < batch_size; ++b) {
+                float* batch_ptr = const_cast<float*>(raw_data + (b * stride_batch));
+                Eigen::VectorXf embedding(hidden_dim);
+                embedding = Eigen::Map<Eigen::VectorXf>(batch_ptr, hidden_dim);
+                float logits = 0.0f;
+                if (has_dense_layer_) {
+                    Eigen::VectorXf dense_out = (embedding.transpose() * dense_weights_).transpose();
+                    dense_out += dense_bias_;
+                    dense_out = dense_out.unaryExpr([](float x) { return std::tanh(x); });
+                    logits = dense_out.dot(out_weights_) + out_bias_;
+                }
+                else {
+                    logits = embedding.dot(out_weights_) + out_bias_;
+                }
+                // STORE RAW LOGIT INSTEAD OF APPLYING SIGMOID
+                batch_logits.push_back(logits);
             }
-            else {
-                // Simple Linear Head (MiniLM style)
-                logits = embedding.dot(out_weights_) + out_bias_;
+            // 2. Apply Softmax over the batch of logits
+            // Algorithm: Softmax(x_i) = exp(x_i) / sum(exp(x_j))
+            // We subtract max_logit for numerical stability to prevent overflow
+            float max_logit = -std::numeric_limits<float>::infinity();
+            for (float val : batch_logits) {
+                if (val > max_logit) max_logit = val;
             }
-            
-            // 3. Sigmoid
-            float score = 1.0f / (1.0f + std::exp(-logits));
-            
-            results.push_back({ batch_original_indices[b], score });
+            float sum_exp = 0.0f;
+            std::vector<float> exps;
+            exps.reserve(batch_size);
+            for (float val : batch_logits) {
+                float e = std::exp(val - max_logit);
+                exps.push_back(e);
+                sum_exp += e;
+            }
+            // 3. Populate Results with Normalized Scores
+            for (long b = 0; b < batch_size; ++b) {
+                float score = exps[b] / sum_exp; // This ensures sum(scores) == 1.0
+                results.push_back({ batch_original_indices[b], score });
+            }
+        }else{
+            for (long b = 0; b < batch_size; ++b) {
+                float* batch_ptr = const_cast<float*>(raw_data + (b * stride_batch));
+                Eigen::VectorXf embedding(hidden_dim);
+                embedding = Eigen::Map<Eigen::VectorXf>(batch_ptr, hidden_dim);
+                float logits = 0.0f;
+                if (has_dense_layer_) {
+                    // Layer 1: Dense (Linear)
+                    Eigen::VectorXf dense_out = (embedding.transpose() * dense_weights_).transpose();
+                    dense_out += dense_bias_;
+                    // Layer 2: Activation (Tanh)
+                    dense_out = dense_out.unaryExpr([](float x) { return std::tanh(x); });
+                    // Layer 3: Out Projection (Linear)
+                    logits = dense_out.dot(out_weights_) + out_bias_;
+                }
+                else {
+                    // Simple Linear Head (MiniLM style)
+                    logits = embedding.dot(out_weights_) + out_bias_;
+                }
+                float score = 1.0f / (1.0f + std::exp(-logits));
+                results.push_back({ batch_original_indices[b], score });
+            }
         }
-
+        
         // 6. Sort and Top-N
         auto sorter = [](const RerankResult& a, const RerankResult& b) {
             return a.score > b.score; // Descending
