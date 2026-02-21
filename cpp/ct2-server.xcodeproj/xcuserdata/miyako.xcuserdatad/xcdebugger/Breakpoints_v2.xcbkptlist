@@ -174,10 +174,10 @@
             filePath = "ct2-server/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "688"
-            endingLineNumber = "688"
-            landmarkName = "embed_batch(texts, strategy)"
-            landmarkType = "7">
+            startingLineNumber = "721"
+            endingLineNumber = "721"
+            landmarkName = "EmbeddingPipeline"
+            landmarkType = "3">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>
