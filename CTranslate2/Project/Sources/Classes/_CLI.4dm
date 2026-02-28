@@ -13,8 +13,7 @@ Class constructor($executableName : Text; $controller : 4D:C1709.Class)
 			This:C1470._executableName:=$executableName
 			This:C1470._EOL:="\n"
 		: (Is Windows:C1573)
-			
-			If (ths._isArm())
+			If (This:C1470._isArm())
 				This:C1470._platform:="WindowsARM"
 			Else 
 				This:C1470._platform:="Windows"
