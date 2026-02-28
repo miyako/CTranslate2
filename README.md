@@ -16,6 +16,13 @@ Usage:  ct2-server -s -e embedding_model -p port
  -h host     : server host (default=127.0.0.1)    
 ```
 
+The CLI is built for `4` platforms:
+
+- macOS Apple Silicon
+- macOS Intel
+- Windows AMD
+- Windows ARM
+
 ## Dependencies
 
 - `ctranslate2-4.7.1`
