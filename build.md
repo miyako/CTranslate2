@@ -89,3 +89,15 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_M
 ```
 cmake --build build --config Release 
 ```
+
+## tokenizer-cpp
+
+```
+cmake -S . -B build `
+    -G "Visual Studio 17 2022" `
+    -A arm64 `
+    -DCMAKE_CXX_FLAGS="/bigobj /openmp /O2 /fp:fast /Ob2" `
+    -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" `
+    -DCMAKE_BUILD_TYPE=Release `
+    -DCMAKE_POLICY_VERSION_MINIMUM="3.5" 
+```
