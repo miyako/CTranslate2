@@ -33,3 +33,4 @@ cpp/ARM64/Release/ct2-server.exp
 cpp/ARM64/Release/ct2-server.lib
 cpp/ARM64/Release/ct2-server.pdb
 cpp/ct2-server/ARM64/*
+cpp/ARM64/Release/ct2-server.exe
