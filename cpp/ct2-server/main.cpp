@@ -1216,7 +1216,7 @@ static void parse_request_reranking(const std::string &json,
 }
 
 static void parse_request_embeddings(const std::string &json,
-                                     std::string &input) {
+                                     std::vector<std::string> &inputs) {
     
     Json::Value root;
     Json::CharReaderBuilder builder;
@@ -1236,7 +1236,18 @@ static void parse_request_embeddings(const std::string &json,
             Json::Value input_node = root["input"];
             if(input_node.isString())
             {
-                input = input_node.asString();
+                inputs.push_back(input_node.asString());
+            }
+            if(input_node.isArray())
+            {
+                for (Json::ValueIterator i = input_node.begin(); i != input_node.end(); ++i)
+                {
+                    Json::Value node = *i;
+                    if(node.isString())
+                    {
+                        inputs.push_back(node.asString());
+                    }
+                }
             }
         }
     }
@@ -1274,9 +1285,9 @@ static void before_run_reranking(
 
 static void before_run_embeddings(
                                   const std::string& request_body,
-                                  std::string &input
+                                  std::vector<std::string> &inputs
                                   ) {
-    parse_request_embeddings(request_body, input);
+    parse_request_embeddings(request_body, inputs);
 }
 
 #pragma mark -
@@ -1668,9 +1679,9 @@ int main(int argc, OPTARG_T argv[]) {
                 if(embedding_model_created == 0) {
                     throw std::invalid_argument("[Embedding] Model not loaded.");
                 }
-                std::string text;
-                before_run_embeddings(req.body, text);
-                std::string response_json = pipeline->embed_batch({text}, pooling_mode);
+                std::vector<std::string> texts;
+                before_run_embeddings(req.body, texts);
+                std::string response_json = pipeline->embed_batch(texts, pooling_mode);
                 res.set_content(response_json, "application/json");
                 res.status = 200;
             } catch (const std::exception& e) {
@@ -1726,11 +1737,11 @@ int main(int argc, OPTARG_T argv[]) {
         
         std::string request_str((const char *)cli_request_json.data(), cli_request_json.size());
         std::string response;
-        std::string text;
+        std::vector<std::string> texts;
         
         try {
-            before_run_embeddings(request_str, text);
-            std::string response = pipeline->embed_batch({text}, pooling_mode);
+            before_run_embeddings(request_str, texts);
+            std::string response = pipeline->embed_batch(texts, pooling_mode);
         } catch (const std::exception& e) {
             // CLI Error Format
             Json::Value rootNode(Json::objectValue);
