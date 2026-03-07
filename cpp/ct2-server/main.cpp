@@ -254,7 +254,7 @@ std::unique_ptr<tokenizers::Tokenizer> LoadTokenizer(const std::string& model_pa
         return tokenizers::Tokenizer::FromBlobSentencePiece(blob);
     }
 
-    return 0;
+    return nullptr;
 }
 
 class RerankerPipeline {
