@@ -1080,7 +1080,7 @@ static void parse_request_translate(const std::string &json,
             {
                 for (Json::ValueIterator i = input_node.begin(); i != input_node.end(); ++i)
                 {
-                    Json::Value node = *i;
+                    const auto& node = *i;
                     if(node.isString())
                     {
                         inputs.push_back(node.asString());
@@ -1200,7 +1200,7 @@ static void parse_request_embeddings(const std::string &json,
             {
                 for (Json::ValueIterator i = input_node.begin(); i != input_node.end(); ++i)
                 {
-                    Json::Value node = *i;
+                    const auto& node = *i;
                     if(node.isString())
                     {
                         inputs.push_back(node.asString());
