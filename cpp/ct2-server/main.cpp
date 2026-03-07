@@ -1734,8 +1734,10 @@ int main(int argc, OPTARG_T argv[]) {
         std::vector<std::string> texts;
         
         try {
-            before_run_embeddings(request_str, texts);
-            response = pipeline->embed_batch(texts, pooling_mode);
+            if(pipeline != nullptr) {
+                before_run_embeddings(request_str, texts);
+                response = pipeline->embed_batch(texts, pooling_mode);
+            }
         } catch (const std::exception& e) {
             // CLI Error Format
             Json::Value rootNode(Json::objectValue);
