@@ -1735,7 +1735,7 @@ int main(int argc, OPTARG_T argv[]) {
         
         try {
             before_run_embeddings(request_str, texts);
-            std::string response = pipeline->embed_batch(texts, pooling_mode);
+            response = pipeline->embed_batch(texts, pooling_mode);
         } catch (const std::exception& e) {
             // CLI Error Format
             Json::Value rootNode(Json::objectValue);
