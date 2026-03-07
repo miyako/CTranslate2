@@ -439,7 +439,8 @@ class RerankerPipeline {
                 embedding = Eigen::Map<Eigen::VectorXf>(batch_ptr, hidden_dim);
                 float logits = 0.0f;
                 if (has_dense_layer_) {
-                    Eigen::VectorXf dense_out = (embedding.transpose() * dense_weights_).transpose();
+//                    Eigen::VectorXf dense_out = (embedding.transpose() * dense_weights_).transpose();
+                    Eigen::VectorXf dense_out = dense_weights_ * embedding + dense_bias_;
                     dense_out += dense_bias_;
                     dense_out = dense_out.unaryExpr([](float x) { return std::tanh(x); });
                     logits = dense_out.dot(out_weights_) + out_bias_;
@@ -478,7 +479,8 @@ class RerankerPipeline {
                 float logits = 0.0f;
                 if (has_dense_layer_) {
                     // Layer 1: Dense (Linear)
-                    Eigen::VectorXf dense_out = (embedding.transpose() * dense_weights_).transpose();
+//                    Eigen::VectorXf dense_out = (embedding.transpose() * dense_weights_).transpose();
+                    Eigen::VectorXf dense_out = dense_weights_ * embedding + dense_bias_;
                     dense_out += dense_bias_;
                     // Layer 2: Activation (Tanh)
                     dense_out = dense_out.unaryExpr([](float x) { return std::tanh(x); });
@@ -575,7 +577,7 @@ private:
                 // To compute x * W^T, we can just do x * W.transpose()
                 // Or if we loaded W as [Out, In], x * W^T is equivalent to W * x if x is col vector.
                 // Let's stick to standard math: dense_weights_ is [Dim, Dim].
-                dense_weights_.transposeInPlace(); // Prepare for x * W multiplication style
+//                dense_weights_.transposeInPlace(); // Prepare for x * W multiplication style
                 
                 dense_bias_ = Eigen::VectorXf::Map(dense_b_buf.data(), dim);
             }
