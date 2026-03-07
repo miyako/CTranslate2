@@ -73,12 +73,16 @@ struct RerankItem {
 namespace fs = std::filesystem;
 using namespace tokenizers;
 
-static // Helper: Read entire file into a string (Blob)
-std::string LoadBytesFromFile(const std::string& path) {
+static std::string LoadBytesFromFile(const std::string& path) {
     std::ifstream fs(path, std::ios::in | std::ios::binary);
     if (!fs) throw std::runtime_error("Could not open file: " + path);
     
-    std::string data((std::istreambuf_iterator<char>(fs)), std::istreambuf_iterator<char>());
+    fs.seekg(0, std::ios::end);
+    size_t size = fs.tellg();
+    std::string data(size, '\0');
+    fs.seekg(0, std::ios::beg);
+    fs.read(&data[0], size);
+    
     return data;
 }
 
