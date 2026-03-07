@@ -725,7 +725,8 @@ public:
             
             // Add Special Tokens (Manual construction based on prompt logic)
             if(strategy == PoolingStrategy::CLS) ids_size_t.push_back(0); // [CLS] (101 for bert, 0 for some)
-            for(size_t i=0; i<input_len; ++i) ids_size_t.push_back(static_cast<size_t>(ids_int[i]));
+//            for(size_t i=0; i<input_len; ++i) ids_size_t.push_back(static_cast<size_t>(ids_int[i]));
+            ids_size_t.insert(ids_size_t.end(), ids_int.begin(), ids_int.begin() + input_len);
             if(strategy == PoolingStrategy::CLS) ids_size_t.push_back(2); // [SEP]
             
             batch_ids.push_back(std::move(ids_size_t));
