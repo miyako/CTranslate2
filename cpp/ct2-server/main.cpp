@@ -1127,7 +1127,7 @@ static void parse_request_translate(const std::string &json,
             Json::Value num_hypotheses_node = root["num_hypotheses"];
             if(num_hypotheses_node.isNumeric())
             {
-                *num_hypotheses = num_hypotheses_node.asDouble();
+                *num_hypotheses = num_hypotheses_node.asUInt64();
             }
             Json::Value sampling_topk_node = root["sampling_topk"];
             if(sampling_topk_node.isNumeric())
