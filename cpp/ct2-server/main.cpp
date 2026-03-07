@@ -100,12 +100,11 @@ int LoadMaxPositionEmbeddings(const std::string& model_path) {
         Json::CharReaderBuilder builder;
         std::string errors;
         
-        Json::CharReader *reader = builder.newCharReader();
+        std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
         bool parse = reader->parse(json.c_str(),
                                    json.c_str() + json.size(),
                                    &root,
                                    &errors);
-        delete reader;
         
         if(parse)
         {
@@ -141,12 +140,11 @@ RerankingMode LoadRerankingMode(const std::string& model_path) {
         Json::CharReaderBuilder builder;
         std::string errors;
         
-        Json::CharReader *reader = builder.newCharReader();
+        std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
         bool parse = reader->parse(json.c_str(),
                                    json.c_str() + json.size(),
                                    &root,
                                    &errors);
-        delete reader;
         
         if(parse)
         {
@@ -825,7 +823,6 @@ public:
         
         Json::StreamWriterBuilder writer;
         writer["indentation"] = "";
-        
         return Json::writeString(writer, rootNode);
     }
 
@@ -1100,12 +1097,11 @@ static void parse_request_translate(const std::string &json,
     Json::CharReaderBuilder builder;
     std::string errors;
     
-    Json::CharReader *reader = builder.newCharReader();
+    std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
     bool parse = reader->parse(json.c_str(),
                                json.c_str() + json.size(),
                                &root,
                                &errors);
-    delete reader;
     
     if(parse)
     {
@@ -1177,12 +1173,11 @@ static void parse_request_reranking(const std::string &json,
     Json::CharReaderBuilder builder;
     std::string errors;
     
-    Json::CharReader *reader = builder.newCharReader();
+    std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
     bool parse = reader->parse(json.c_str(),
                                json.c_str() + json.size(),
                                &root,
                                &errors);
-    delete reader;
     
     if(parse)
     {
@@ -1222,12 +1217,11 @@ static void parse_request_embeddings(const std::string &json,
     Json::CharReaderBuilder builder;
     std::string errors;
     
-    Json::CharReader *reader = builder.newCharReader();
+    std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
     bool parse = reader->parse(json.c_str(),
                                json.c_str() + json.size(),
                                &root,
                                &errors);
-    delete reader;
     
     if(parse)
     {
