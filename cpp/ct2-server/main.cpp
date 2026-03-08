@@ -1177,6 +1177,60 @@ static void parse_request_reranking(const std::string &json,
     }
 }
 
+static void parse_request_contextualized_embeddings(const std::string &json,
+                                     std::vector<std::string> &inputs) {
+    
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    
+    std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+    bool parse = reader->parse(json.c_str(),
+                               json.c_str() + json.size(),
+                               &root,
+                               &errors);
+    
+    if(parse && root.isObject())
+    {
+        // Voyage AI uses "inputs" (plural)
+        Json::Value inputs_node = root["inputs"];
+        
+        // fallback for 4D AI Kit which uses "inout" (singular)
+        inputs_node = inputs_node.isArray() ? inputs_node : root["input"];
+        
+        if(inputs_node.isArray())
+        {
+            // Iterate over documents (each document is an array of chunks)
+            for (Json::Value::const_iterator it_doc = inputs_node.begin(); it_doc != inputs_node.end(); ++it_doc)
+            {
+                const Json::Value& chunk_array = *it_doc;
+                if(chunk_array.isArray())
+                {
+                    // 1. Reconstruct the full document by concatenating its chunks
+                    std::string full_document;
+                    for (Json::Value::const_iterator it_chunk = chunk_array.begin(); it_chunk != chunk_array.end(); ++it_chunk)
+                    {
+                        if(it_chunk->isString()) {
+                            full_document += it_chunk->asString();
+                        }
+                    }
+                    
+                    // 2. Flatten the request: create a contextualized input for each chunk
+                    for (Json::Value::const_iterator it_chunk = chunk_array.begin(); it_chunk != chunk_array.end(); ++it_chunk)
+                    {
+                        if(it_chunk->isString()) {
+                            std::string chunk = it_chunk->asString();
+                            // Prepend the reconstructed document context to the specific chunk.
+                            // This allows standard ONNX models to approximate Voyage's context-awareness.
+                            inputs.push_back(full_document + "\n\n" + chunk);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 static void parse_request_embeddings(const std::string &json,
                                      std::vector<std::string> &inputs) {
     
@@ -1242,6 +1296,13 @@ static void before_run_reranking(
                                  std::vector<std::string> &documents
                                  ) {
     parse_request_reranking(request_body, query, top_n, documents);
+}
+
+static void before_run_contextualized_embeddings(
+                                  const std::string& request_body,
+                                  std::vector<std::string> &inputs
+                                  ) {
+    parse_request_contextualized_embeddings(request_body, inputs);
 }
 
 static void before_run_embeddings(
@@ -1665,6 +1726,52 @@ int main(int argc, OPTARG_T argv[]) {
             }
             
         });
+        
+        // Route: /v1/contextualizedembeddings
+        auto contextualized_embeddings_handler = [&](const httplib::Request& req, httplib::Response& res) {
+            
+            std::cout << "[Server] /v1/contextualizedembeddings request received." << std::endl;
+            
+            try {
+                
+                if(embedding_model_created == 0) {
+                    throw std::invalid_argument("[Embedding] Model not loaded.");
+                }
+                
+                std::vector<std::string> texts;
+                
+                // Parse and concatenate context + chunks
+                before_run_contextualized_embeddings(req.body, texts);
+                
+                // Compute embeddings
+                std::string response_json = pipeline->embed_batch(texts, pooling_mode);
+                
+                // Return response
+                res.set_content(response_json, "application/json");
+                res.status = 200;
+            } catch (const std::exception& e) {
+                // Build Error JSON
+                Json::Value rootNode(Json::objectValue);
+                Json::Value errorNode(Json::objectValue);
+                errorNode["message"] = e.what();
+                errorNode["type"] = "invalid_request_error";
+                errorNode["param"] = Json::nullValue;
+                errorNode["code"] = Json::nullValue;
+                rootNode["error"] = errorNode;
+                
+                Json::StreamWriterBuilder writer;
+                writer["indentation"] = "";
+                std::string error_str = Json::writeString(writer, rootNode);
+                
+                res.set_content(error_str, "application/json");
+                res.status = 400; // Bad Request as per requirement
+                std::cerr << "[Server] Error: " << e.what() << std::endl;
+            }
+            
+        };
+        
+        svr.Post("/v1/contextualizedembeddings", contextualized_embeddings_handler);
+        svr.Post("/v1/contextualized/embeddings", contextualized_embeddings_handler);
         
         std::cout << "[Server] Listening on " << host << ":" << port << std::endl;
         
