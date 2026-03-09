@@ -118,7 +118,8 @@ enum class PoolingStrategy {
 enum RerankingMode {
     RERANKING_BERT,       // MiniLM, TinyBERT
     RERANKING_ROBERTA,    // BGE-M3, BGE-Reranker, XLM
-    RERANKING_LLM
+    RERANKING_LLM,
+    RERANKING_MODERNBERT
 };
 
 static std::string wchar_to_utf8(const wchar_t* wstr);
