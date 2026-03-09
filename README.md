@@ -36,6 +36,11 @@ The CLI is built for `4` platforms:
 
 - `/v1/rerank`
 
+## MongoDB Compatible Endpoints
+
+- `/v1/contextualizedembeddings`
+- `/v1/contextualized/embeddings` (alias)
+
 ## Converted CT2 Models
 
 #### Quantisation
