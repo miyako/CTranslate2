@@ -761,7 +761,13 @@ public:
         tokenizer_ = LoadTokenizer(model_dir);
         if (!tokenizer_) throw std::runtime_error("No tokenizer.json found");
         
+        reranking_mode_ = LoadRerankingMode(model_dir);
         max_position_embeddings_ = LoadMaxPositionEmbeddings(model_dir);
+        
+        LoadSpecialTokenIds(model_dir,
+                            reranking_mode_,
+                            cls_id_,
+                            sep_id_);
         
         try {
             ctranslate2::Device device_type = (device == "cuda") ?
@@ -780,13 +786,14 @@ public:
     std::string embed_batch(const std::vector<std::string>& texts,
                             PoolingStrategy strategy,
                             bool l2_normalize = true) {
-        if (texts.empty()) return "{}";
+        
+        if (tokenizer_ == nullptr || texts.empty()) {
+            return "{\"object\":\"list\",\"data\":[]}";
+        }
                 
         // 1. Tokenize & Prepare Batch
         std::vector<std::vector<size_t>> batch_ids;
-        //        std::vector<size_t> lengths;
         batch_ids.reserve(texts.size());
-        //        lengths.reserve(texts.size());
         
         for (const auto& text : texts) {
             auto ids_int = tokenize_one(text);
@@ -797,13 +804,12 @@ public:
             if (input_len > max_position_embeddings_ - 2) {
                 input_len = max_position_embeddings_ - 2;
             }
+            
             ids_size_t.reserve(input_len + 2);
             
-            // Add Special Tokens (Manual construction based on prompt logic)
-            if(strategy == PoolingStrategy::CLS) ids_size_t.push_back(0); // [CLS] (101 for bert, 0 for some)
-//            for(size_t i=0; i<input_len; ++i) ids_size_t.push_back(static_cast<size_t>(ids_int[i]));
+            ids_size_t.push_back(cls_id_);
             ids_size_t.insert(ids_size_t.end(), ids_int.begin(), ids_int.begin() + input_len);
-            if(strategy == PoolingStrategy::CLS) ids_size_t.push_back(2); // [SEP]
+            ids_size_t.push_back(sep_id_);
             
             batch_ids.push_back(std::move(ids_size_t));
         }
@@ -911,7 +917,11 @@ private:
     std::unique_ptr<ctranslate2::Encoder> encoder_;
     std::unique_ptr<tokenizers::Tokenizer> tokenizer_;
 
+    RerankingMode reranking_mode_;
     int max_position_embeddings_;
+    
+    int cls_id_ = 101;
+    int sep_id_ = 102;
 };
 
 #ifdef WIN32
