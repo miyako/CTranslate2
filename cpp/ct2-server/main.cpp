@@ -1177,8 +1177,8 @@ static void usage(void)
     fprintf(stderr, " -%c path     : %s\n", 'e' , "embedding model (pooling=mean)");
     fprintf(stderr, " -%c path     : %s\n", 'r' , "reranker model");
     fprintf(stderr, " -%c path     : %s\n", 'g' , "chat completion model");
-    fprintf(stderr, " -%c          : %s\n", 'j' , "chat template from stdin");
     fprintf(stderr, " -%c path     : %s\n", 't' , "chat template");
+    fprintf(stderr, " -%c          : %s\n", 'j' , "chat template from stdin");
     fprintf(stderr, " %c           : %s\n", 'l' , "pooling=last-token (Llama)");
     fprintf(stderr, " %c           : %s\n", 'c' , "pooling=cls (Qwen)");
     fprintf(stderr, " %c           : %s\n", 's' , "server (OpenAI compatible endpoint)");
@@ -1241,11 +1241,11 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:e:r:g:t:f:i:o:sp:jt:bcld-jh"
+#define ARGS (OPTARG_T)L"m:e:r:g:f:i:o:sp:jt:bcld-jh"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:e:r:g:t:f:i:o:sp:jt:bcld-jh"
+#define ARGS "m:e:r:g:f:i:o:sp:jt:bcld-jh"
 #define _atoi atoi
 #define _atof atof
 #endif
@@ -1876,7 +1876,7 @@ int main(int argc, OPTARG_T argv[]) {
                 std::string prompt = "";
                 ctranslate2::GenerationOptions options;
                 
-                parse_request_chat_completion(req.body, chat_template, prompt, options);
+                parse_request_chat_completion(req.body, prompt, chat_template, options);
                 
                 if (prompt.empty()) {
                     throw std::invalid_argument("Request must contain a valid 'messages' array.");

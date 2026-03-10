@@ -47,7 +47,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	var $chat_template : Text
 	If (Value type:C1509($option.chat_template)=Is text:K8:3) && ($option.chat_template#"")
-		$command+=" -j "
+		$command+=" -t "
 		$chat_template:=$option.chat_template
 	End if 
 	
@@ -74,11 +74,11 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	For each ($arg; OB Entries:C1720($option))
 		Case of 
-			: (["i"; "o"; "s"; "c"; "_"; "h"; \
+			: (["i"; "o"; "s"; "j"; "c"; "l"; "_"; "h"; \
 				"e"; "embeddings_model"; \
 				"r"; "rerank_model"; \
 				"g"; "chat_model"; \
-				"j"; "chat_template"; \
+				"t"; "chat_template"; \
 				"p"; "port"; \
 				"h"; "host"; \
 				"pooling"; \
