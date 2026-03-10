@@ -362,7 +362,6 @@ static void parse_request_chat_completion(const std::string &json,
         else if (root["max_completion_tokens"].isNumeric()) options.max_length = root["max_completion_tokens"].asUInt();
         else options.max_length = 512; // default
 
-//        options.end_token = std::vector<std::string>{"<|im_end|>", "</s>", "<|endoftext|>"};
         // We only want the AI's response, not the prompt echoed back
         options.include_prompt_in_result = false;
     }
@@ -439,7 +438,7 @@ public:
                 std::vector<std::vector<int>> current_ids(n);
                 std::vector<std::string> previous_text(n, "");
                 std::vector<bool> finished(n, false);
-                std::vector<std::string> stop_words = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>"};
+                std::vector<std::string> stop_words = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>"};
                 
                 options.callback = [&](ctranslate2::GenerationStepResult step_result) {
                     size_t batch_id = step_result.batch_id; // This is our choice index
@@ -509,7 +508,7 @@ public:
         // --- EARLY STOPPING CALLBACK FOR SYNC ROUTE ---
         std::vector<std::vector<int>> current_ids(n);
         std::vector<bool> finished(n, false);
-        std::vector<std::string> stop_words = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>"};
+        std::vector<std::string> stop_words = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>"};
             
             options.callback = [&](ctranslate2::GenerationStepResult step_result) {
                 
