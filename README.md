@@ -164,6 +164,19 @@ As of February 2026, **CTranslate2** does not support several notable model arch
 - granite-embedding-small-english-r2
 - granite-embedding-english-r2
 
+#### RoPE
+
+> NotImplementedError: RoPE scaling type 'yarn' is not yet implemented. The following RoPE scaling types are currently supported: linear, su, llama3, longrope
+
+- MadeAgents/Hammer2.1-0.5b 
+- MadeAgents/Hammer2.1-1.5b 
+
+#### GraniteMoeHybridConfig
+
+- ibm-granite/granite-4.0-350m
+- ibm-granite/granite-4.0-1b
+ 
+
 #### DebertaV2ForSequenceClassification
 
 - mixedbread-ai/mxbai-rerank-base-v1
