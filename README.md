@@ -55,6 +55,13 @@ The `float16` format is also designed for GPUs that support native 16-bit maths.
 
 The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `AVX2` `AVX-512` `VNNI` instructions on Intel or AMD to **accelerate maths**. **You should always use the `int8` format on a PC or Mac with no GPU**.
 
+### Chat Completion with Tool Calling
+
+||`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
+|-|-:|-:|-:|-:|
+|[`katanemo/Arch-Agent-1.5B`](https://huggingface.co/katanemo/Arch-Agent-1.5B)|[`1550`](https://huggingface.co/keisuke-miyako/Arch-Agent-1.5B-ct2-int8)|`32768`|`1536`|`28`|
+|[`katanemo/Arch-Agent-3B`](https://huggingface.co/katanemo/Arch-Agent-3B)|[`3090`](https://huggingface.co/keisuke-miyako/Arch-Agent-3B-ct2-int8)|`32768`|`2048`|`36`|
+
 ### Chat Completion
 
 ||`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
