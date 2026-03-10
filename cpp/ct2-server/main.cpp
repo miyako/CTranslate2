@@ -300,6 +300,23 @@ RerankingMode LoadRerankingMode(const std::string& model_path) {
     return RERANKING_ROBERTA;
 }
 
+static // Helper to read the template file from the model directory
+std::string LoadChatTemplate(const std::string& model_path) {
+    fs::path path(model_path);
+    fs::path chat_template_path = path;
+
+    if (fs::is_directory(path)) {
+        chat_template_path = path / "chat_template.jinja";
+    }
+    
+    if (fs::exists(chat_template_path) && chat_template_path.extension() == ".jinja") {
+//        std::cout << "[Chat] Loading jinja from: " << chat_template_path << std::endl;
+        return LoadBytesFromFile(chat_template_path.string());
+    }
+    
+    return "";
+}
+
 static void parse_request_chat_completion(const std::string &json,
                                           std::string &prompt,
                                           std::string &chat_template,
@@ -1776,6 +1793,9 @@ int main(int argc, OPTARG_T argv[]) {
                 generator_modelName = get_model_name(fs::path(generator_model_path));
     #endif
                 generator_pipeline = std::make_unique<GenerationPipeline>(generator_model_path, intra_op_threads);
+                if(chat_template == "") {
+                    chat_template = LoadChatTemplate(generator_model_path);
+                }
                 generator_model_created = get_created_timestamp();
             } catch (const std::exception& e) {
                 std::cerr << "Failed to load generator model: " << e.what() << std::endl;
