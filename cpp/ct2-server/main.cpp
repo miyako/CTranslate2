@@ -77,6 +77,26 @@ static void LoadSpecialTokenIds(const std::string& model_path,
     std::cout << "[Tokens] CLS/BOS ID: " << cls_id << " | SEP/EOS ID: " << sep_id << std::endl;
 }
 
+static long long get_created_timestamp() {
+    // std::time(nullptr) returns the current time as a time_t (seconds since epoch)
+    return static_cast<long long>(std::time(nullptr));
+}
+
+static std::string get_openai_style_id() {
+    const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    const size_t max_index = (sizeof(charset) - 1);
+    
+    std::string id = "chatcmpl-";
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, max_index - 1);
+    
+    for (int i = 0; i < 29; ++i) {
+        id += charset[dis(gen)];
+    }
+    return id;
+}
+
 static int GetOptimalIntraOpThreads() {
     int threads = 0;
 
@@ -280,6 +300,44 @@ RerankingMode LoadRerankingMode(const std::string& model_path) {
     return RERANKING_ROBERTA;
 }
 
+static void parse_request_chat_completion(const std::string &json,
+                                          std::string &prompt,
+                                          ctranslate2::GenerationOptions &options) {
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    
+    std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+    bool parse = reader->parse(json.c_str(), json.c_str() + json.size(), &root, &errors);
+    
+    if (parse && root.isObject()) {
+        // Convert messages array into a ChatML string prompt
+        if (root["messages"].isArray()) {
+            for (const auto& msg : root["messages"]) {
+                if (msg.isObject() && msg.isMember("role") && msg.isMember("content")) {
+                    std::string role = msg["role"].asString();
+                    std::string content = msg["content"].asString();
+                    prompt += "<|im_start|>" + role + "\n" + content + "<|im_end|>\n";
+                }
+            }
+            prompt += "<|im_start|>assistant\n";
+        }
+
+        // Extract Generation Options
+        if (root["temperature"].isNumeric()) options.sampling_temperature = root["temperature"].asDouble();
+        else options.sampling_temperature = 0.7; // default
+        
+        if (root["top_p"].isNumeric()) options.sampling_topp = root["top_p"].asDouble();
+        
+        if (root["max_tokens"].isNumeric()) options.max_length = root["max_tokens"].asUInt();
+        else if (root["max_completion_tokens"].isNumeric()) options.max_length = root["max_completion_tokens"].asUInt();
+        else options.max_length = 512; // default
+
+        // We only want the AI's response, not the prompt echoed back
+        options.include_prompt_in_result = false;
+    }
+}
+
 static // Unified Loader
 std::unique_ptr<tokenizers::Tokenizer> LoadTokenizer(const std::string& model_path) {
     fs::path path(model_path);
@@ -310,6 +368,102 @@ std::unique_ptr<tokenizers::Tokenizer> LoadTokenizer(const std::string& model_pa
 
     return nullptr;
 }
+
+class GenerationPipeline {
+public:
+    GenerationPipeline(const std::string& model_dir,
+                       int num_threads = 4,
+                       const std::string& device = "cpu") {
+        
+        if (num_threads > 0) {
+            ctranslate2::set_num_threads(num_threads);
+        }
+        
+        // Load your HuggingFace Tokenizer
+        tokenizer_ = LoadTokenizer(model_dir);
+        if (!tokenizer_) throw std::runtime_error("No tokenizer found for GenerationPipeline");
+        
+        try {
+            ctranslate2::Device device_type = (device == "cuda") ?
+                ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
+            generator_ = std::make_unique<ctranslate2::Generator>(model_dir, device_type);
+        } catch (const std::exception& e) {
+            throw std::runtime_error("Failed to load CTranslate2 Generator: " + std::string(e.what()));
+        }
+    }
+
+    std::string chat_completion(const std::string& prompt,
+                                ctranslate2::GenerationOptions options,
+                                const std::string& model_name) {
+        
+        // 1. Tokenize the prompt.
+        // As seen in your header, CTranslate2 Generator REQUIRES std::vector<std::string>.
+        std::vector<int> prompt_ids = tokenizer_->Encode(prompt);
+        std::vector<std::string> prompt_tokens;
+        prompt_tokens.reserve(prompt_ids.size());
+        
+        for (int id : prompt_ids) {
+            // IMPORTANT: You need to map the ID back to a string token.
+            // If your tokenizers::Tokenizer wrapper has a method like IdToToken, use it here:
+            // prompt_tokens.push_back(tokenizer_->IdToToken(id));
+            
+            // If your wrapper does not expose IdToToken, but exposes a Decode method for a single ID:
+            std::vector<int> single_id = { id };
+            prompt_tokens.push_back(tokenizer_->Decode(single_id));
+        }
+
+        std::vector<std::vector<std::string>> batch_tokens = { prompt_tokens };
+
+        // 2. Generate using the async method from the header, and .get() to block
+        std::vector<std::future<ctranslate2::GenerationResult>> futures =
+            generator_->generate_batch_async(batch_tokens, options);
+        
+        ctranslate2::GenerationResult result = futures[0].get();
+        
+        // 3. Decode the output
+        // CTranslate2 returns the generated numeric IDs in sequences_ids.
+        const auto& output_ids_size_t = result.sequences_ids[0];
+        std::vector<int> output_ids(output_ids_size_t.begin(), output_ids_size_t.end());
+        
+        std::string response_text = tokenizer_->Decode(output_ids);
+
+        // 4. Build OpenAI-compatible JSON Response
+        Json::Value root(Json::objectValue);
+        root["id"] = get_openai_style_id();
+        root["object"] = "chat.completion";
+        root["created"] = (Json::UInt64)get_created_timestamp();
+        root["model"] = model_name;
+
+        Json::Value choices(Json::arrayValue);
+        Json::Value choice(Json::objectValue);
+        choice["index"] = 0;
+        
+        Json::Value message(Json::objectValue);
+        message["role"] = "assistant";
+        message["content"] = response_text;
+        
+        choice["message"] = message;
+        choice["finish_reason"] = "stop";
+        choices.append(choice);
+        
+        root["choices"] = choices;
+
+        // Usage statistics
+        Json::Value usage(Json::objectValue);
+        usage["prompt_tokens"] = (Json::UInt64)prompt_ids.size();
+        usage["completion_tokens"] = (Json::UInt64)output_ids.size();
+        usage["total_tokens"] = (Json::UInt64)(prompt_ids.size() + output_ids.size());
+        root["usage"] = usage;
+
+        Json::StreamWriterBuilder writer;
+        writer["indentation"] = "";
+        return Json::writeString(writer, root);
+    }
+
+private:
+    std::unique_ptr<ctranslate2::Generator> generator_;
+    std::unique_ptr<tokenizers::Tokenizer> tokenizer_;
+};
 
 class RerankerPipeline {
     public:
@@ -1009,6 +1163,7 @@ static void usage(void)
     fprintf(stderr, " -%c path     : %s\n", 'e' , "embedding model (pooling=mean)");
     fprintf(stderr, " -%c path     : %s\n", 'r' , "reranker model");
     fprintf(stderr, " -%c path     : %s\n", 'f' , "source sentencepiece model");
+    fprintf(stderr, " -%c path     : %s\n", 'g' , "chat completion model");
     fprintf(stderr, " %c           : %s\n", 'l' , "pooling=last-token (Llama)");
     fprintf(stderr, " %c           : %s\n", 'c' , "pooling=cls (Qwen)");
     fprintf(stderr, " %c           : %s\n", 's' , "server (OpenAI compatible endpoint)");
@@ -1071,21 +1226,16 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:e:r:f:i:o:sp:jt:bcld-h"
+#define ARGS (OPTARG_T)L"m:e:r:g:f:i:o:sp:jt:bcld-h"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:e:r:f:i:o:sp:jt:bcld-h"
+#define ARGS "m:e:r:g:f:i:o:sp:jt:bcld-h"
 #define _atoi atoi
 #define _atof atof
 #endif
 
 #pragma mark -
-
-static long long get_created_timestamp() {
-    // std::time(nullptr) returns the current time as a time_t (seconds since epoch)
-    return static_cast<long long>(std::time(nullptr));
-}
 
 namespace fs = std::filesystem;
 static std::string get_model_name(std::string model_path) {
@@ -1115,21 +1265,6 @@ static std::string get_system_fingerprint(const std::string& model_path, const s
     std::stringstream ss;
     ss << "fp_" << std::hex << hash;
     return ss.str();
-}
-
-static std::string get_openai_style_id() {
-    const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    const size_t max_index = (sizeof(charset) - 1);
-    
-    std::string id = "chatcmpl-";
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, max_index - 1);
-    
-    for (int i = 0; i < 29; ++i) {
-        id += charset[dis(gen)];
-    }
-    return id;
 }
 
 #pragma mark -
@@ -1405,11 +1540,13 @@ int main(int argc, OPTARG_T argv[]) {
     std::wstring embedding_model_path_u16;
     std::wstring source_sp_path_u16;
     std::wstring reranker_model_path_u16;
+    std::wstring generator_model_path_u16;
 #endif
     std::string model_path;           // -m
     std::string embedding_model_path; // -e
     std::string reranker_model_path;  // -r
     std::string chat_template;        // -j
+    std::string generator_model_path; // -g
     OPTARG_T input_path  = NULL;      // -i
     OPTARG_T output_path = NULL;      // -o
     OPTARG_T chat_template_path = NULL;
@@ -1459,6 +1596,14 @@ int main(int argc, OPTARG_T argv[]) {
 #else
                 source_sp_path = optarg;
 #endif
+                break;
+            case 'g':
+            #ifdef WIN32
+                generator_model_path_u16 = optarg;
+                generator_model_path = wchar_to_utf8(generator_model_path_u16.c_str());
+            #else
+                generator_model_path = optarg;
+            #endif
                 break;
             case 'i':
                 input_path = optarg;
@@ -1617,6 +1762,30 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
+    std::string generator_fingerprint;
+    long long generator_model_created = 0;
+    std::string generator_modelName;
+    std::unique_ptr<GenerationPipeline> generator_pipeline;
+    
+    if (generator_model_path.length() != 0) {
+        if (fs::exists(generator_model_path) && fs::is_directory(generator_model_path)) {
+            std::cerr << "[Generator] Loading from " << generator_model_path << std::endl;
+            generator_fingerprint = get_system_fingerprint(generator_model_path, "directml");
+            try {
+    #ifdef WIN32
+                generator_modelName = get_model_name(wchar_to_utf8(fs::path(generator_model_path).c_str()));
+    #else
+                generator_modelName = get_model_name(fs::path(generator_model_path));
+    #endif
+                generator_pipeline = std::make_unique<GenerationPipeline>(generator_model_path, intra_op_threads);
+                generator_model_created = get_created_timestamp();
+            } catch (const std::exception& e) {
+                std::cerr << "Failed to load generator model: " << e.what() << std::endl;
+                return 1;
+            }
+        }
+    }
+    
     // ---------------------------------------------------------
     // SERVER MODE
     // ---------------------------------------------------------
@@ -1659,6 +1828,14 @@ int main(int argc, OPTARG_T argv[]) {
                 modelCard["owned_by"] = "system";
                 root["data"].append(modelCard);
             }
+            if(generator_model_created != 0) {
+                Json::Value modelCard(Json::objectValue);
+                modelCard["id"] = generator_modelName;
+                modelCard["object"] = "model";
+                modelCard["created"] = generator_model_created;
+                modelCard["owned_by"] = "system";
+                root["data"].append(modelCard);
+            }
             // Serialize
             Json::StreamWriterBuilder writer;
             writer["indentation"] = ""; // Minified JSON
@@ -1666,6 +1843,49 @@ int main(int argc, OPTARG_T argv[]) {
             // Respond
             res.set_content(json_str, "application/json");
             res.status = 200;
+        });
+        
+        // Route: /v1/chat/completions
+        svr.Post("/v1/chat/completions", [&](const httplib::Request& req, httplib::Response& res) {
+            
+            std::cout << "[Server] /v1/chat/completions request received." << std::endl;
+            
+            try {
+                if (generator_model_created == 0) {
+                    throw std::invalid_argument("[Generator] Model not loaded. Pass model directory via -g");
+                }
+                
+                std::string prompt = "";
+                ctranslate2::GenerationOptions options;
+                
+                parse_request_chat_completion(req.body, prompt, options);
+                
+                if (prompt.empty()) {
+                    throw std::invalid_argument("Request must contain a valid 'messages' array.");
+                }
+                
+                std::string response_json = generator_pipeline->chat_completion(prompt, options, generator_modelName);
+                
+                res.set_content(response_json, "application/json");
+                res.status = 200;
+                
+            } catch (const std::exception& e) {
+                Json::Value rootNode(Json::objectValue);
+                Json::Value errorNode(Json::objectValue);
+                errorNode["message"] = e.what();
+                errorNode["type"] = "invalid_request_error";
+                errorNode["param"] = Json::nullValue;
+                errorNode["code"] = Json::nullValue;
+                rootNode["error"] = errorNode;
+                
+                Json::StreamWriterBuilder writer;
+                writer["indentation"] = "";
+                std::string error_str = Json::writeString(writer, rootNode);
+                
+                res.set_content(error_str, "application/json");
+                res.status = 400;
+                std::cerr << "[Server] Error: " << e.what() << std::endl;
+            }
         });
         
         // Route: /v1/translate

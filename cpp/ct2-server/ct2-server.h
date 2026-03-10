@@ -17,6 +17,7 @@
 #include <memory>
 #include <stdexcept>
 #include <ctranslate2/encoder.h>
+#include <ctranslate2/generator.h>
 #include <ctranslate2/types.h>
 #include <sentencepiece_processor.h>
 #include <tokenizers_cpp.h>
