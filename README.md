@@ -55,6 +55,13 @@ The `float16` format is also designed for GPUs that support native 16-bit maths.
 
 The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `AVX2` `AVX-512` `VNNI` instructions on Intel or AMD to **accelerate maths**. **You should always use the `int8` format on a PC or Mac with no GPU**.
 
+### Chat Completion
+
+||`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
+|-|-:|-:|-:|-:|
+|[`elyza/ELYZA-japanese-Llama-2-7b-fast-instruct`](https://huggingface.co/elyza/ELYZA-japanese-Llama-2-7b-fast-instruct)|[`6850`](https://huggingface.co/keisuke-miyako/Hammer2.1-0.5b-onnx-int4)|`4096`|`4096`|`32`|
+|[`Rakuten/RakutenAI-2.0-mini-instruct`](https://huggingface.co/Rakuten/RakutenAI-2.0-mini-instruct)|[`1540`](https://huggingface.co/keisuke-miyako/Hammer2.1-0.5b-onnx-int4)|`131072`|`2048`|`22`|
+
 ### Rerank
 
 ||`int8`|`int8_float16`|`float16`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
