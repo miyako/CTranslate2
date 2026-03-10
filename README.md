@@ -70,7 +70,7 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 |[`sbintuitions/sarashina2.2-3b-instruct-v0.1`](https://huggingface.co/sbintuitions/sarashina2.2-3b-instruct-v0.1)|[`3360`](https://huggingface.co/keisuke-miyako/sarashina2.2-3b-instruct-v0.1-ct2-int8)|`8192`|`2560`|`32`|
 |[`google/gemma-2-2b-jpn-it`](https://huggingface.co/google/gemma-2-2b-jpn-it)|[`2620`](https://huggingface.co/keisuke-miyako/gemma-2-2b-jpn-it-ct2-int8)|`8192`|`2304`|`26`|
 |[`tokyotech-llm/Gemma-2-Llama-Swallow-2b-it-v0.1`](https://huggingface.co/tokyotech-llm/Gemma-2-Llama-Swallow-2b-it-v0.1)|[`2620`](https://huggingface.co/keisuke-miyako/Gemma-2-Llama-Swallow-2b-it-v0.1-ct2-int8)|`8192`|`2304`|`26`|
-|[`SakanaAI/Llama-3-Karamaru-v1`](https://huggingface.co/SakanaAI/Llama-3-Karamaru-v1)|[``](https://huggingface.co/keisuke-miyako/Gemma-2-Llama-Swallow-2b-it-v0.1-ct2-int8)|`8192`|`4096`|`32`|
+|[`SakanaAI/Llama-3-Karamaru-v1`](https://huggingface.co/SakanaAI/Llama-3-Karamaru-v1)|[`8040`](https://huggingface.co/keisuke-miyako/Gemma-2-Llama-Swallow-2b-it-v0.1-ct2-int8)|`8192`|`4096`|`32`|
 
 ### Rerank
 
