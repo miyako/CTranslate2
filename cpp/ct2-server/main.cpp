@@ -320,7 +320,8 @@ std::string LoadChatTemplate(const std::string& model_path) {
 static void parse_request_chat_completion(const std::string &json,
                                           std::string &prompt,
                                           std::string &chat_template,
-                                          ctranslate2::GenerationOptions &options) {
+                                          ctranslate2::GenerationOptions &options,
+                                          bool &is_stream) {
     
     
     try {
@@ -341,6 +342,12 @@ static void parse_request_chat_completion(const std::string &json,
     
     if (parse && root.isObject()) {
 
+        if (root.isMember("stream") && root["stream"].isBool()) {
+            is_stream = root["stream"].asBool();
+        } else {
+            is_stream = false;
+        }
+        
         // Extract Generation Options
         if (root["temperature"].isNumeric()) options.sampling_temperature = root["temperature"].asDouble();
         else options.sampling_temperature = 0.7; // default
@@ -351,6 +358,7 @@ static void parse_request_chat_completion(const std::string &json,
         else if (root["max_completion_tokens"].isNumeric()) options.max_length = root["max_completion_tokens"].asUInt();
         else options.max_length = 512; // default
 
+        options.end_token = std::vector<std::string>{"<|im_end|>", "</s>", "<|endoftext|>"};
         // We only want the AI's response, not the prompt echoed back
         options.include_prompt_in_result = false;
     }
@@ -410,6 +418,64 @@ public:
         }
     }
 
+    void chat_completion_stream(const std::string& prompt,
+                                ctranslate2::GenerationOptions options,
+                                std::function<bool(const std::string&)> on_token) {
+        
+        // 1. Tokenize prompt to string tokens
+        std::vector<int> prompt_ids = tokenizer_->Encode(prompt);
+        std::vector<std::string> prompt_tokens;
+        prompt_tokens.reserve(prompt_ids.size());
+        
+        for (int id : prompt_ids) {
+            // Adapt this line based on how your tokenizer decodes a single ID.
+            std::vector<int> single_id = { id };
+            prompt_tokens.push_back(tokenizer_->Decode(single_id));
+        }
+        
+        std::vector<std::vector<std::string>> batch_tokens = { prompt_tokens };
+        
+        // 2. Prepare states for safe UTF-8 decoding during streaming
+        std::vector<int> current_ids;
+        std::string previous_text = "";
+        
+        // 3. Set up the CTranslate2 Callback
+        options.callback = [&](ctranslate2::GenerationStepResult step_result) {
+            // If it's a stop token, we don't need to decode it
+            if (step_result.is_last) return false;
+            
+            current_ids.push_back(step_result.token_id);
+            
+            // Decode the ENTIRE sequence generated so far
+            std::string current_text = tokenizer_->Decode(current_ids);
+            
+            // Find just the new text part
+            std::string new_text = "";
+            if (current_text.length() > previous_text.length()) {
+                new_text = current_text.substr(previous_text.length());
+            }
+            
+            // Wait for complete UTF-8 characters (avoids splitting multi-byte Kanji)
+            // "\xef\xbf\xbd" is the UTF-8 replacement character ''
+            if (!new_text.empty() && new_text.find("\xef\xbf\xbd") == std::string::npos) {
+                previous_text = current_text;
+                
+                // Pass the text to the HTTP chunk lambda
+                // If the lambda returns false (e.g., client disconnected), we return false to stop CT2
+                return on_token(new_text);
+            }
+            
+            return true; // Keep generating
+        };
+        
+        // 4. Generate Async, then block with .get()
+        std::vector<std::future<ctranslate2::GenerationResult>> futures =
+        generator_->generate_batch_async(batch_tokens, options);
+        
+        // .get() blocks the HTTP thread so the stream stays open until generation finishes
+        futures[0].get();
+    }
+    
     std::string chat_completion(const std::string& prompt,
                                 ctranslate2::GenerationOptions options,
                                 const std::string& model_name) {
@@ -1880,18 +1946,74 @@ int main(int argc, OPTARG_T argv[]) {
                 
                 std::string prompt = "";
                 ctranslate2::GenerationOptions options;
+                bool is_stream = false;
                 
-                parse_request_chat_completion(req.body, prompt, chat_template, options);
+                parse_request_chat_completion(req.body, prompt, chat_template, options, is_stream);
                 
                 if (prompt.empty()) {
                     throw std::invalid_argument("Request must contain a valid 'messages' array.");
                 }
-                                
-                std::string response_json = generator_pipeline->chat_completion(prompt, options, generator_modelName);
                 
-                res.set_content(response_json, "application/json");
-                res.status = 200;
-                
+                // --- STREAMING MODE ---
+                if (is_stream) {
+                    GenerationPipeline* raw_generator_pipeline = generator_pipeline.get();
+                    // httplib's way to do Server-Sent Events (SSE)
+                    res.set_chunked_content_provider("text/event-stream",
+                                                     [options,
+                                                      generator_modelName,
+                                                      raw_generator_pipeline,
+                                                      prompt](size_t offset, httplib::DataSink &sink) {
+                        
+                        std::string stream_id = get_openai_style_id();
+                        
+                        // The lambda that fires for every new piece of text
+                        auto on_token = [&](const std::string& token_text) -> bool {
+                            Json::Value root(Json::objectValue);
+                            root["id"] = stream_id;
+                            root["object"] = "chat.completion.chunk";
+                            root["created"] = (Json::UInt64)get_created_timestamp();
+                            root["model"] = generator_modelName;
+                            
+                            Json::Value choices(Json::arrayValue);
+                            Json::Value choice(Json::objectValue);
+                            choice["index"] = 0;
+                            
+                            Json::Value delta(Json::objectValue);
+                            delta["content"] = token_text;
+                            
+                            choice["delta"] = delta;
+                            choice["finish_reason"] = Json::nullValue;
+                            choices.append(choice);
+                            root["choices"] = choices;
+                            
+                            Json::StreamWriterBuilder writer;
+                            writer["indentation"] = "";
+                            std::string chunk = "data: " + Json::writeString(writer, root) + "\n\n";
+                            
+                            // Push the chunk to the HTTP socket!
+                            sink.write(chunk.c_str(), chunk.length());
+                            
+                            return true; // tell CTranslate2 to keep going
+                        };
+                        
+                        // Start generation (This blocks until the AI is done)
+                        raw_generator_pipeline->chat_completion_stream(prompt, options, on_token);
+                        
+                        // Tell the client we are finished
+                        std::string done_msg = "data: [DONE]\n\n";
+                        sink.write(done_msg.c_str(), done_msg.length());
+                        sink.done();
+                        
+                        return false; // tell httplib the stream is finished
+                    }
+                                                     );
+                }else{
+                    std::string response_json = generator_pipeline->chat_completion(prompt, options, generator_modelName);
+                    
+                    res.set_content(response_json, "application/json");
+                    res.status = 200;
+                }
+
             } catch (const std::exception& e) {
                 Json::Value rootNode(Json::objectValue);
                 Json::Value errorNode(Json::objectValue);
