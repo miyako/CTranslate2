@@ -322,13 +322,38 @@ static void parse_request_chat_completion(const std::string &json,
                                           std::string &chat_template,
                                           ctranslate2::GenerationOptions &options,
                                           bool &is_stream,
-                                          int &n) {
+                                          int &n,
+                                          bool &has_tools) {
     
     
     try {
         nlohmann::json data = nlohmann::json::parse(json);
         if (!data.contains("bos_token")) data["bos_token"] = "<s>";
         if (!data.contains("eos_token")) data["eos_token"] = "</s>";
+        
+        has_tools = false;
+        
+        // --- TOOL CALLING INJECTION ---
+        if (data.contains("tools") && data["tools"].is_array() && !data["tools"].empty()) {
+            has_tools = true;
+            std::string tool_str = "\n\n# Available Tools\nYou have access to the following functions to help answer the user's request:\n";
+            tool_str += data["tools"].dump(2); // Dump the tools schema as formatted JSON
+            tool_str += "\n\nIf you need to use a tool, you MUST output ONLY a JSON object wrapped in <tool_call> and </tool_call> tags. Example:\n";
+            tool_str += "<tool_call>{\"name\": \"get_weather\", \"arguments\": {\"location\": \"Tokyo\"}}</tool_call>";
+            
+            // Inject this into the system message
+            if (data["messages"][0]["role"] == "system") {
+                data["messages"][0]["content"] = data["messages"][0]["content"].get<std::string>() + tool_str;
+            } else {
+                // If there is no system message, create one!
+                nlohmann::json sys_msg;
+                sys_msg["role"] = "system";
+                sys_msg["content"] = "You are a helpful assistant." + tool_str;
+                data["messages"].insert(data["messages"].begin(), sys_msg);
+            }
+        }
+        // ------------------------------
+        
         prompt = inja::render(chat_template, data);
     } catch (const inja::InjaError& e) {
         std::cerr << "Template rendering failed: " << e.what() << std::endl;
@@ -424,7 +449,8 @@ public:
     void chat_completion_stream(const std::string& prompt,
                                     ctranslate2::GenerationOptions options,
                                     int n,
-                                    std::function<bool(const std::string&, int)> on_token) {
+                                    bool has_tools,
+                                    std::function<bool(const std::string&, int, bool)> on_token) {
                 
                 std::vector<int> prompt_ids = tokenizer_->Encode(prompt);
                 std::vector<std::string> prompt_tokens;
@@ -440,6 +466,10 @@ public:
                 std::vector<bool> finished(n, false);
                 std::vector<std::string> stop_words = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>", "<|end_of_text|>",
                     "<|eom_id|>"};
+        
+                // --- Smart Buffer States ---
+                std::vector<bool> tool_determined(n, !has_tools);
+                std::vector<bool> tool_mode(n, false);
                 
                 options.callback = [&](ctranslate2::GenerationStepResult step_result) {
                     size_t batch_id = step_result.batch_id; // This is our choice index
@@ -451,6 +481,43 @@ public:
                     bool hit_stop = false;
                     for (const auto& word : stop_words) {
                         if (current_text.find(word) != std::string::npos) { hit_stop = true; break; }
+                    }
+                    
+                    // 1. If tools are enabled, check if the AI is trying to use one
+                    if (!tool_determined[batch_id]) {
+                        size_t first_char = current_text.find_first_not_of(" \n\r\t");
+                        std::string trimmed = (first_char == std::string::npos) ? "" : current_text.substr(first_char);
+                        
+                        if (trimmed.empty()) return true; // Wait for characters
+                        
+                        std::string target = "<tool_call>";
+                        if (trimmed.length() < target.length()) {
+                            if (target.substr(0, trimmed.length()) == trimmed) {
+                                return true; // Looks like <tool_call> is starting. Buffer it!
+                            } else {
+                                tool_determined[batch_id] = true; // Deviated! It's normal text.
+                            }
+                        } else {
+                            tool_determined[batch_id] = true;
+                            if (trimmed.substr(0, target.length()) == target) tool_mode[batch_id] = true;
+                        }
+                    }
+                    
+                    // 2. We are inside a Tool Call! Buffer everything until </tool_call>
+                    if (tool_mode[batch_id]) {
+                        if (current_text.find("</tool_call>") != std::string::npos || hit_stop || step_result.is_last) {
+                            finished[batch_id] = true;
+                            size_t start = current_text.find("<tool_call>");
+                            size_t end = current_text.find("</tool_call>");
+                            if (start != std::string::npos && end != std::string::npos) {
+                                std::string json_str = current_text.substr(start + 11, end - (start + 11));
+                                if (!on_token(json_str, (int)batch_id, true)) return false; // Trigger Tool Callback!
+                            }
+                            bool all_done = true;
+                            for (bool f : finished) if (!f) all_done = false;
+                            if (all_done) return false;
+                        }
+                        return true;
                     }
                     
                     if (current_text.length() > previous_text[batch_id].length()) {
@@ -466,7 +533,7 @@ public:
                             }
                             
                             if (!new_text.empty()) {
-                                if (!on_token(new_text, (int)batch_id)) return false;
+                                if (!on_token(new_text, (int)batch_id, false)) return false;
                             }
                             
                             // If ALL choices are finished, return false to abort CTranslate2 completely
@@ -480,7 +547,7 @@ public:
                         // Normal token: Wait for complete UTF-8 characters
                         if (new_text.find("\xef\xbf\xbd") == std::string::npos) {
                             previous_text[batch_id] = current_text;
-                            if (!on_token(new_text, (int)batch_id)) return true;
+                            if (!on_token(new_text, (int)batch_id, false)) return true;
                         }
                     }
                     
@@ -577,10 +644,62 @@ public:
             
             Json::Value message(Json::objectValue);
             message["role"] = "assistant";
-            message["content"] = response_text;
+            
+            // --- TOOL CALL INTERCEPTION ---
+            bool is_tool_call = false;
+            std::string tool_name = "";
+            std::string tool_args = "";
+            
+            size_t start_tag = response_text.find("<tool_call>");
+            size_t end_tag = response_text.find("</tool_call>");
+            
+            if (start_tag != std::string::npos && end_tag != std::string::npos) {
+                // Extract the JSON string between the tags
+                std::string json_str = response_text.substr(start_tag + 11, end_tag - (start_tag + 11));
+                try {
+                    nlohmann::json tool_json = nlohmann::json::parse(json_str);
+                    if (tool_json.contains("name") && tool_json.contains("arguments")) {
+                        tool_name = tool_json["name"].get<std::string>();
+                        
+                        // OpenAI requires 'arguments' to be a stringified JSON object!
+                        if (tool_json["arguments"].is_object()) {
+                            tool_args = tool_json["arguments"].dump();
+                        } else {
+                            tool_args = tool_json["arguments"].get<std::string>();
+                        }
+                        is_tool_call = true;
+                    }
+                } catch (...) {
+                    // If the AI hallucinated bad JSON, we fallback to printing it as standard text.
+                    is_tool_call = false;
+                }
+            }
+            
+            // --- BUILD RESPONSE ---
+            if (is_tool_call) {
+                message["content"] = Json::nullValue; // Content must be null for tool calls
+                
+                Json::Value tool_calls(Json::arrayValue);
+                Json::Value tc(Json::objectValue);
+                tc["id"] = "call_" + get_openai_style_id();
+                tc["type"] = "function";
+                
+                Json::Value func(Json::objectValue);
+                func["name"] = tool_name;
+                func["arguments"] = tool_args;
+                
+                tc["function"] = func;
+                tool_calls.append(tc);
+                
+                message["tool_calls"] = tool_calls;
+                choice["finish_reason"] = "tool_calls"; // Tell the client we stopped to use a tool
+            } else {
+                message["content"] = response_text;
+                choice["finish_reason"] = "stop";
+            }
+            // ------------------------------
             
             choice["message"] = message;
-            choice["finish_reason"] = "stop";
             choices.append(choice);
         }
         
@@ -2000,9 +2119,10 @@ int main(int argc, OPTARG_T argv[]) {
                 std::string prompt = "";
                 ctranslate2::GenerationOptions options;
                 bool is_stream = false;
-                int n = 1; // Default to 1
+                int n = 1;
+                bool has_tools = false;
                 
-                parse_request_chat_completion(req.body, prompt, chat_template, options, is_stream, n);
+                parse_request_chat_completion(req.body, prompt, chat_template, options, is_stream, n, has_tools);
                 
                 if (prompt.empty()) {
                     throw std::invalid_argument("Request must contain a valid 'messages' array.");
@@ -2016,10 +2136,10 @@ int main(int argc, OPTARG_T argv[]) {
                     
                     // 2. Pass everything by value (copy) or safe pointer
                     res.set_chunked_content_provider("text/event-stream",
-                                                     [raw_generator_pipeline, prompt, options, generator_modelName, req_id, n](size_t offset, httplib::DataSink &sink) {
+                                                     [raw_generator_pipeline, prompt, options, generator_modelName, req_id, n, has_tools](size_t offset, httplib::DataSink &sink) {
                         
                         // 3. Callback to handle tokens as they are generated
-                        auto token_callback = [&](const std::string& token, int choice_index) {
+                        auto token_callback = [&](const std::string& token, int choice_index, bool is_tool) {
                             Json::Value root(Json::objectValue);
                             root["id"] = req_id;
                             root["object"] = "chat.completion.chunk";
@@ -2046,7 +2166,7 @@ int main(int argc, OPTARG_T argv[]) {
                         };
                         
                         // 4. Run inference synchronously. This blocks until the AI is completely done.
-                        raw_generator_pipeline->chat_completion_stream(prompt, options, n, token_callback);
+                        raw_generator_pipeline->chat_completion_stream(prompt, options, n, has_tools, token_callback);
                         
                         // 5. Send [DONE] to close the stream for the client
                         std::string done = "data: [DONE]\n\n";
