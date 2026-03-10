@@ -61,6 +61,8 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 |-|-:|-:|-:|-:|
 |[`katanemo/Arch-Agent-1.5B`](https://huggingface.co/katanemo/Arch-Agent-1.5B)|[`1550`](https://huggingface.co/keisuke-miyako/Arch-Agent-1.5B-ct2-int8)|`32768`|`1536`|`28`|
 |[`katanemo/Arch-Agent-3B`](https://huggingface.co/katanemo/Arch-Agent-3B)|[`3090`](https://huggingface.co/keisuke-miyako/Arch-Agent-3B-ct2-int8)|`32768`|`2048`|`36`|
+|[`Qwen/Qwen3-0.6B`](https://huggingface.co/Qwen/Qwen3-0.6B)|[`598`](https://huggingface.co/keisuke-miyako/Qwen3-0.6B-ct2-int8)|`40960`|`1024`|`28`|
+|[`Qwen/Qwen3-1.7B`](https://huggingface.co/Qwen/Qwen3-1.7B)|[`1720`](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-ct2-int8)|`40960`|`2048`|`28`|
 
 ### Chat Completion
 
