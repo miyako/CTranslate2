@@ -192,3 +192,8 @@ As of February 2026, **CTranslate2** does not support several notable model arch
 
 - mixedbread-ai/mxbai-rerank-base-v1
 - mixedbread-ai/mxbai-rerank-large-v1
+
+#### Qwen 3.5
+
+- Qwen/Qwen3.5-0.8B
+- Qwen/Qwen3.5-2B
