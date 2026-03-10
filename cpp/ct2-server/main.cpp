@@ -459,13 +459,11 @@ public:
                 std::vector<std::string> stop_words = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>", "<|end_of_text|>",
                     "<|eom_id|>"};
         
-                // --- Smart Buffer States ---
-                std::vector<bool> tool_determined(n, !has_tools);
                 std::vector<bool> tool_mode(n, false);
                 
                 options.callback = [&](ctranslate2::GenerationStepResult step_result) {
-                    size_t batch_id = step_result.batch_id; // This is our choice index
-                    if (finished[batch_id]) return true;    // Ignore if already stopped
+                    size_t batch_id = step_result.batch_id;
+                    if (finished[batch_id]) return true;
                     
                     current_ids[batch_id].push_back((int)step_result.token_id);
                     std::string current_text = tokenizer_->Decode(current_ids[batch_id]);
@@ -475,43 +473,55 @@ public:
                         if (current_text.find(word) != std::string::npos) { hit_stop = true; break; }
                     }
                     
-                    // 1. If tools are enabled, check if the AI is trying to use one
-                    if (!tool_determined[batch_id]) {
-                        size_t first_char = current_text.find_first_not_of(" \n\r\t");
-                        std::string trimmed = (first_char == std::string::npos) ? "" : current_text.substr(first_char);
-                        
-                        if (trimmed.empty()) return true; // Wait for characters
-                        
-                        std::string target = "<tool_call>";
-                        if (trimmed.length() < target.length()) {
-                            if (target.substr(0, trimmed.length()) == trimmed) {
-                                return true; // Looks like <tool_call> is starting. Buffer it!
-                            } else {
-                                tool_determined[batch_id] = true; // Deviated! It's normal text.
+                    // 1. DYNAMIC TOOL INTERCEPTION
+                    if (has_tools && !tool_mode[batch_id]) {
+                        size_t tag_pos = current_text.find("<tool_call>");
+                        if (tag_pos != std::string::npos) {
+                            tool_mode[batch_id] = true;
+                            std::string text_before_tag = current_text.substr(0, tag_pos);
+                            if (text_before_tag.length() > previous_text[batch_id].length()) {
+                                std::string new_text = text_before_tag.substr(previous_text[batch_id].length());
+                                if (!new_text.empty()) {
+                                    if (!on_token(new_text, (int)batch_id, false)) return true;
+                                }
                             }
-                        } else {
-                            tool_determined[batch_id] = true;
-                            if (trimmed.substr(0, target.length()) == target) tool_mode[batch_id] = true;
+                            previous_text[batch_id] = current_text;
                         }
                     }
                     
-                    // 2. We are inside a Tool Call! Buffer everything until </tool_call>
+                    // 2. TOOL MODE (Silent JSON Buffering)
                     if (tool_mode[batch_id]) {
-                        if (current_text.find("</tool_call>") != std::string::npos || hit_stop || step_result.is_last) {
+                        if (hit_stop || step_result.is_last || current_text.find("</tool_call>") != std::string::npos) {
                             finished[batch_id] = true;
+                            
                             size_t start = current_text.find("<tool_call>");
                             size_t end = current_text.find("</tool_call>");
+                            
+                            std::string json_str = "";
                             if (start != std::string::npos && end != std::string::npos) {
-                                std::string json_str = current_text.substr(start + 11, end - (start + 11));
-                                if (!on_token(json_str, (int)batch_id, true)) return true; // Trigger Tool Callback!
+                                json_str = current_text.substr(start + 11, end - (start + 11));
+                            } else if (start != std::string::npos) {
+                                // Failsafe: Model forgot the closing tag. Extract everything!
+                                json_str = current_text.substr(start + 11);
+                                for (const auto& word : stop_words) {
+                                    size_t pos = json_str.find(word);
+                                    if (pos != std::string::npos) json_str = json_str.substr(0, pos);
+                                }
                             }
+                            
+                            // Fire the tool callback!
+                            if (!json_str.empty()) {
+                                if (!on_token(json_str, (int)batch_id, true)) return true;
+                            }
+                            
                             bool all_done = true;
                             for (bool f : finished) if (!f) all_done = false;
                             if (all_done) return true;
                         }
                         return false;
                     }
-                    
+
+                    // 3. NORMAL TEXT STREAMING
                     if (current_text.length() > previous_text[batch_id].length()) {
                         std::string new_text = current_text.substr(previous_text[batch_id].length());
                         
@@ -2141,7 +2151,11 @@ int main(int argc, OPTARG_T argv[]) {
                             Json::Value delta(Json::objectValue);
                             delta["content"] = token;
                             choice["delta"] = delta;
-                            choice["finish_reason"] = Json::nullValue;
+                            if(is_tool) {
+                                choice["finish_reason"] = "tool_calls";
+                            }else{
+                                choice["finish_reason"] = Json::nullValue;
+                            }
                             choices.append(choice);
                             root["choices"] = choices;
                             
