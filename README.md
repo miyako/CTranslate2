@@ -10,7 +10,7 @@ Usage:  ct2-server -s -e embedding_model -p port
  -e path     : embedding model (pooling=mean)
  -r path     : reranker model
  -g path     : chat completion model
- -t path     : chat completion model
+ -t path     : chat template
  -j          : chat template from stdin
  -l          : pooling=last-token (Llama)
  -c          : pooling=cls (Qwen)
