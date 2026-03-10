@@ -321,8 +321,13 @@ static void parse_request_chat_completion(const std::string &json,
                                           std::string &prompt,
                                           std::string &chat_template,
                                           ctranslate2::GenerationOptions &options) {
+    
+    
     try {
-        prompt = inja::render(chat_template, json);
+        nlohmann::json data = nlohmann::json::parse(json);
+        if (!data.contains("bos_token")) data["bos_token"] = "<s>";
+        if (!data.contains("eos_token")) data["eos_token"] = "</s>";
+        prompt = inja::render(chat_template, data);
     } catch (const inja::InjaError& e) {
         std::cerr << "Template rendering failed: " << e.what() << std::endl;
     }
