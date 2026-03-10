@@ -53,12 +53,14 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 			This:C1470._models.push([$USER; $REPO].join("/"))
 			Case of 
 				: ($huggingface.domain="embedding")
-					This:C1470.options.embeggings_model:=$huggingface.folder
+					This:C1470.options.embeddings_model:=$huggingface.folder
 				: ($huggingface.domain="translate")
 					This:C1470.options.translate_model:=$huggingface.folder
 					This:C1470.options.translate_sp_model:=$huggingface.name
 				: ($huggingface.domain="rerank")
 					This:C1470.options.rerank_model:=$huggingface.folder
+				: ($huggingface.domain="chat")
+					This:C1470.options.chat_model:=$huggingface.folder
 			End case 
 			This:C1470.offline:=True:C214
 			continue

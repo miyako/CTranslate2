@@ -13,14 +13,19 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	$command+=" -s "
 	
-	If (Value type:C1509($option.embeggings_model)=Is object:K8:27) && (OB Instance of:C1731($option.embeggings_model; 4D:C1709.Folder)) && ($option.embeggings_model.exists)
+	If (Value type:C1509($option.embeddings_model)=Is object:K8:27) && (OB Instance of:C1731($option.embeddings_model; 4D:C1709.Folder)) && ($option.embeddings_model.exists)
 		$command+=" -e "
-		$command+=This:C1470.escape(This:C1470.expand($option.embeggings_model).path)
+		$command+=This:C1470.escape(This:C1470.expand($option.embeddings_model).path)
 	End if 
 	
 	If (Value type:C1509($option.rerank_model)=Is object:K8:27) && (OB Instance of:C1731($option.rerank_model; 4D:C1709.Folder)) && ($option.rerank_model.exists)
 		$command+=" -r "
 		$command+=This:C1470.escape(This:C1470.expand($option.rerank_model).path)
+	End if 
+	
+	If (Value type:C1509($option.chat_model)=Is object:K8:27) && (OB Instance of:C1731($option.chat_model; 4D:C1709.Folder)) && ($option.chat_model.exists)
+		$command+=" -g "
+		$command+=This:C1470.escape(This:C1470.expand($option.chat_model).path)
 	End if 
 	
 	If (Value type:C1509($option.translate_model)=Is object:K8:27) && (OB Instance of:C1731($option.translate_model; 4D:C1709.Folder)) && ($option.translate_model.exists)
@@ -38,6 +43,12 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	If (Value type:C1509($option.host)=Is text:K8:3) && ($option.host#"")
 		$command+=" -h "
 		$command+=$option.host
+	End if 
+	
+	var $chat_template : Text
+	If (Value type:C1509($option.chat_template)=Is text:K8:3) && ($option.chat_template#"")
+		$command+=" -j "
+		$chat_template:=$option.chat_template
 	End if 
 	
 	If (Value type:C1509($option.pooling)=Is text:K8:3) && ($option.pooling#"")
@@ -63,7 +74,16 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	For each ($arg; OB Entries:C1720($option))
 		Case of 
-			: (["server"; "model"; "device"; "help"; "rerank"; "version"; "port"; "host"; "pooling"; "translate_model"; "translate_sp_model"].includes($arg.key))
+			: (["i"; "o"; "s"; "c"; "_"; "h"; \
+				"e"; "embeddings_model"; \
+				"r"; "rerank_model"; \
+				"g"; "chat_model"; \
+				"j"; "chat_template"; \
+				"p"; "port"; \
+				"h"; "host"; \
+				"pooling"; \
+				"m"; "translate_model"; \
+				"f"; "translate_sp_model"; "HF_TOKEN"].includes($arg.key))
 				continue
 		End case 
 		$valueType:=Value type:C1509($arg.value)
@@ -83,6 +103,8 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	End for each 
 	
 	//SET TEXT TO PASTEBOARD($command)
+	
+	ALERT:C41($command)
 	
 	return This:C1470.controller.execute($command).worker
 	

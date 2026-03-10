@@ -1,7 +1,8 @@
-property embeggings_model : 4D:C1709.Folder
+property embeddings_model : 4D:C1709.Folder
 property translate_model : 4D:C1709.Folder
 property translate_sp_model : Text
 property rerank_model : 4D:C1709.Folder
+property chat_model : 4D:C1709.Folder
 
 Class extends _models
 
@@ -37,12 +38,14 @@ Function onDownload($oid : Text)
 		
 		Case of 
 			: ($downloaded.domain="embedding")
-				This:C1470.options.embeggings_model:=$model
+				This:C1470.options.embeddings_model:=$model
 			: ($downloaded.domain="translate")
 				This:C1470.options.translate_model:=$model
 				This:C1470.options.translate_sp_model:=$downloaded.name
 			: ($downloaded.domain="rerank")
 				This:C1470.options.rerank_model:=$model
+			: ($downloaded.domain="chat")
+				This:C1470.options.chat_model:=$model
 		End case 
 	End if 
 	

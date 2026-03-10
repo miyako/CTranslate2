@@ -55,6 +55,6 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$huggingfaces:=cs:C1710.event.huggingfaces.new([$embeddings; $translate; $rerank; $chat])
 	$options:={}
 	
-	//$CTranslate2:=cs:C1710.CTranslate2.new($port; $huggingfaces; $homeFolder; $options; $event)
+	$CTranslate2:=cs:C1710.CTranslate2.new($port; $huggingfaces; $homeFolder; $options; $event)
 	
 End if 
