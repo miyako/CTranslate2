@@ -1,3 +1,5 @@
+SET TEXT TO PASTEBOARD:C523("(<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful assistant.\n\n# Available Tools\nYou have access to the following functions to help answer the user's request:\n[\n  {\n    \"function\": {\n      \"description\": \"Get the current w"+"eather in a given location\",\n      \"name\": \"get_weather\",\n      \"parameters\": {\n        \"properties\": {\n          \"location\": {\n            \"description\": \"The city and state, e.g. San Francisco, CA\",\n            \"type\": \"string\"\n          }\n        }"+",\n        \"required\": [\n          \"location\"\n        ],\n        \"type\": \"object\"\n      }\n    },\n    \"type\": \"function\"\n  }\n]\n\nIf you need to use a tool, you MUST output ONLY a JSON object wrapped in <tool_call> and </tool_call> tags. Example:\n<tool_ca"+"ll>{\"name\": \"get_weather\", \"arguments\": {\"location\": \"Tokyo\"}}</tool_call><|eot_id|><|start_header_id|>user<|end_header_id|>\n\nWhat is the weather like in Tokyo right now?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n)")
+
 var $CTranslate2 : cs:C1710.CTranslate2
 
 If (False:C215)
@@ -47,9 +49,9 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$URL:="keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-ct2-int8_float16"
 	$rerank:=cs:C1710.event.huggingface.new($folder; $URL; $path; "rerank")
 	
-	$folder:=$homeFolder.folder("RakutenAI-2.0-mini-instruct")
-	$path:="RakutenAI-2.0-mini-instruct-ct2-int8"
-	$URL:="keisuke-miyako/RakutenAI-2.0-mini-instruct-ct2-int8"
+	$folder:=$homeFolder.folder("Arch-Agent-3B")
+	$path:="Arch-Agent-3B-ct2-int8"
+	$URL:="keisuke-miyako/Arch-Agent-3B-ct2-int8"
 	$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat")
 	
 	// $huggingfaces:=cs:C1710.event.huggingfaces.new([$embeddings; $translate; $rerank; $chat])

@@ -324,70 +324,62 @@ static void parse_request_chat_completion(const std::string &json,
                                           bool &is_stream,
                                           int &n,
                                           bool &has_tools) {
-    
-    
     try {
         nlohmann::json data = nlohmann::json::parse(json);
-        if (!data.contains("bos_token")) data["bos_token"] = "<s>";
-        if (!data.contains("eos_token")) data["eos_token"] = "</s>";
+        if (!data.contains("bos_token")) data["bos_token"] = "<|im_start|>";
+        if (!data.contains("eos_token")) data["eos_token"] = "<|im_end|>";
         
-        has_tools = false;
-        
-        // --- TOOL CALLING INJECTION ---
+        // --- 1. Explicity check for tools and set a boolean flag ---
         if (data.contains("tools") && data["tools"].is_array() && !data["tools"].empty()) {
             has_tools = true;
-            std::string tool_str = "\n\n# Available Tools\nYou have access to the following functions to help answer the user's request:\n";
-            tool_str += data["tools"].dump(2); // Dump the tools schema as formatted JSON
-            tool_str += "\n\nIf you need to use a tool, you MUST output ONLY a JSON object wrapped in <tool_call> and </tool_call> tags. Example:\n";
-            tool_str += "<tool_call>{\"name\": \"get_weather\", \"arguments\": {\"location\": \"Tokyo\"}}</tool_call>";
-            
-            // Inject this into the system message
-            if (data["messages"][0]["role"] == "system") {
-                data["messages"][0]["content"] = data["messages"][0]["content"].get<std::string>() + tool_str;
-            } else {
-                // If there is no system message, create one!
-                nlohmann::json sys_msg;
-                sys_msg["role"] = "system";
-                sys_msg["content"] = "You are a helpful assistant." + tool_str;
-                data["messages"].insert(data["messages"].begin(), sys_msg);
-            }
+            data["has_tools"] = true; // Inject boolean into JSON payload for Inja
+        } else {
+            has_tools = false;
+            data["has_tools"] = false;
         }
-        // ------------------------------
+
+        // --- 2. Create custom Inja environment ---
+        inja::Environment env;
         
-        prompt = inja::render(chat_template, data);
-    } catch (const inja::InjaError& e) {
+        // Add a custom 'dump' callback (equivalent to Python's | tojson)
+        // This takes the JSON object, converts it to a string, and escapes it properly
+        env.add_callback("dump", 1, [](inja::Arguments& args) {
+            if (args.at(0)->is_object() || args.at(0)->is_array()) {
+                return args.at(0)->dump(); // Dump with 2-space indentation
+            }
+            return args.at(0)->get<std::string>();
+        });
+
+        // 3. Render the template!
+        prompt = env.render(chat_template, data);
+        
+    } catch (const std::exception& e) {
         std::cerr << "Template rendering failed: " << e.what() << std::endl;
     }
     
+    // --- Parse Generation Options ---
     Json::Value root;
     Json::CharReaderBuilder builder;
     std::string errors;
-    
     std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
     bool parse = reader->parse(json.c_str(), json.c_str() + json.size(), &root, &errors);
     
     if (parse && root.isObject()) {
-
-        if (root.isMember("stream") && root["stream"].isBool()) {
-            is_stream = root["stream"].asBool();
-        } else {
-            is_stream = false;
-        }
+        if (root.isMember("stream") && root["stream"].isBool()) is_stream = root["stream"].asBool();
+        else is_stream = false;
         
         if (root.isMember("n") && root["n"].isNumeric()) n = root["n"].asInt();
         else n = 1;
         
-        // Extract Generation Options
         if (root["temperature"].isNumeric()) options.sampling_temperature = root["temperature"].asDouble();
-        else options.sampling_temperature = 0.7; // default
+        else options.sampling_temperature = 0.7;
         
         if (root["top_p"].isNumeric()) options.sampling_topp = root["top_p"].asDouble();
         
         if (root["max_tokens"].isNumeric()) options.max_length = root["max_tokens"].asUInt();
         else if (root["max_completion_tokens"].isNumeric()) options.max_length = root["max_completion_tokens"].asUInt();
-        else options.max_length = 512; // default
+        else options.max_length = 512;
 
-        // We only want the AI's response, not the prompt echoed back
         options.include_prompt_in_result = false;
     }
 }
@@ -511,13 +503,13 @@ public:
                             size_t end = current_text.find("</tool_call>");
                             if (start != std::string::npos && end != std::string::npos) {
                                 std::string json_str = current_text.substr(start + 11, end - (start + 11));
-                                if (!on_token(json_str, (int)batch_id, true)) return false; // Trigger Tool Callback!
+                                if (!on_token(json_str, (int)batch_id, true)) return true; // Trigger Tool Callback!
                             }
                             bool all_done = true;
                             for (bool f : finished) if (!f) all_done = false;
-                            if (all_done) return false;
+                            if (all_done) return true;
                         }
-                        return true;
+                        return false;
                     }
                     
                     if (current_text.length() > previous_text[batch_id].length()) {
@@ -536,7 +528,7 @@ public:
                                 if (!on_token(new_text, (int)batch_id, false)) return false;
                             }
                             
-                            // If ALL choices are finished, return false to abort CTranslate2 completely
+                            // If ALL choices are finished, return true to abort CTranslate2 completely
                             bool all_done = true;
                             for (bool f : finished) if (!f) all_done = false;
                             if (all_done) return true;
@@ -645,7 +637,7 @@ public:
             Json::Value message(Json::objectValue);
             message["role"] = "assistant";
             
-            // --- TOOL CALL INTERCEPTION ---
+            // --- QWEN TOOL CALL INTERCEPTION ---
             bool is_tool_call = false;
             std::string tool_name = "";
             std::string tool_args = "";
@@ -661,7 +653,6 @@ public:
                     if (tool_json.contains("name") && tool_json.contains("arguments")) {
                         tool_name = tool_json["name"].get<std::string>();
                         
-                        // OpenAI requires 'arguments' to be a stringified JSON object!
                         if (tool_json["arguments"].is_object()) {
                             tool_args = tool_json["arguments"].dump();
                         } else {
@@ -670,7 +661,6 @@ public:
                         is_tool_call = true;
                     }
                 } catch (...) {
-                    // If the AI hallucinated bad JSON, we fallback to printing it as standard text.
                     is_tool_call = false;
                 }
             }
@@ -692,7 +682,7 @@ public:
                 tool_calls.append(tc);
                 
                 message["tool_calls"] = tool_calls;
-                choice["finish_reason"] = "tool_calls"; // Tell the client we stopped to use a tool
+                choice["finish_reason"] = "tool_calls";
             } else {
                 message["content"] = response_text;
                 choice["finish_reason"] = "stop";
