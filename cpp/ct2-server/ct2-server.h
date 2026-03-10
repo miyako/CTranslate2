@@ -23,6 +23,8 @@
 #include <tokenizers_cpp.h>
 #include <ctranslate2/utils.h>
 #include <ctranslate2/translator.h>
+#include <nlohmann/json.hpp>
+#include <inja/inja.hpp>
 
 #include "httplib.h"
 #ifdef WIN32
