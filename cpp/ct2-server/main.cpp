@@ -438,7 +438,7 @@ public:
                 std::vector<std::vector<int>> current_ids(n);
                 std::vector<std::string> previous_text(n, "");
                 std::vector<bool> finished(n, false);
-                std::vector<std::string> stop_words = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>"};
+                std::vector<std::string> stop_words = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>"};
                 
                 options.callback = [&](ctranslate2::GenerationStepResult step_result) {
                     size_t batch_id = step_result.batch_id; // This is our choice index
@@ -508,7 +508,7 @@ public:
         // --- EARLY STOPPING CALLBACK FOR SYNC ROUTE ---
         std::vector<std::vector<int>> current_ids(n);
         std::vector<bool> finished(n, false);
-        std::vector<std::string> stop_words = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>"};
+        std::vector<std::string> stop_words = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>"};
             
             options.callback = [&](ctranslate2::GenerationStepResult step_result) {
                 
