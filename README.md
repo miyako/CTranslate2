@@ -5,10 +5,13 @@ CTranslate2 Inference Engine
 ```
 Usage:  ct2-server -s -e embedding_model -p port 
 
- -m path     : translation model 
+ -m path     : translation model
+ -f path     : source sentencepiece model
  -e path     : embedding model (pooling=mean)
  -r path     : reranker model
- -f path     : source sentencepiece model
+ -g path     : chat completion model
+ -t path     : chat completion model
+ -j          : chat template from stdin
  -l          : pooling=last-token (Llama)
  -c          : pooling=cls (Qwen)
  -s          : server (OpenAI compatible endpoint)
@@ -31,6 +34,7 @@ The CLI is built for `4` platforms:
 
 - `/v1/models`
 - `/v1/embeddings`
+- `/v1/chat/completion`
 
 ## Cohere Compatible Endpoints
 
