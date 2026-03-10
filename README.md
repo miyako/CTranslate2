@@ -61,7 +61,16 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 |-|-:|-:|-:|-:|
 |[`elyza/ELYZA-japanese-Llama-2-7b-fast-instruct`](https://huggingface.co/elyza/ELYZA-japanese-Llama-2-7b-fast-instruct)|[`6850`](https://huggingface.co/keisuke-miyako/Hammer2.1-0.5b-onnx-int4)|`4096`|`4096`|`32`|
 |[`Rakuten/RakutenAI-2.0-mini-instruct`](https://huggingface.co/Rakuten/RakutenAI-2.0-mini-instruct)|[`1540`](https://huggingface.co/keisuke-miyako/Hammer2.1-0.5b-onnx-int4)|`131072`|`2048`|`22`|
+|[`Rakuten/RakutenAI-7B-instruct`](https://huggingface.co/Rakuten/RakutenAI-7B-instruct)|[`7380`](https://huggingface.co/keisuke-miyako/TinySwallow-1.5B-Instruct-ct2-int8)|`32768`|`4096`|`32`|
 |[`llm-jp/llm-jp-3-1.8b-instruct`](https://huggingface.co/llm-jp/llm-jp-3-1.8b-instruct)|[`1870`](https://huggingface.co/keisuke-miyako/llm-jp-3-1.8b-instruct-ct2-int8)|`4096`|`2048`|`24`|
+|[`llm-jp/llm-jp-3-3.7b-instruct`](https://huggingface.co/llm-jp/llm-jp-3-3.7b-instruct)|[`3790`](https://huggingface.co/keisuke-miyako/llm-jp-3-3.7b-instruct-ct2-int8)|`4096`|`3072`|`28`|
+|[`SakanaAI/TinySwallow-1.5B-Instruct`](https://huggingface.co/SakanaAI/TinySwallow-1.5B-Instruct)|[`1550`](https://huggingface.co/keisuke-miyako/TinySwallow-1.5B-Instruct-ct2-int8)|`32768`|`1536`|`28`|
+|[`sbintuitions/sarashina2.2-0.5b-instruct-v0.1`](https://huggingface.co/sbintuitions/sarashina2.2-0.5b-instruct-v0.1)|[`795`](https://huggingface.co/keisuke-miyako/TinySwallow-1.5B-Instruct-ct2-int8)|`8192`|`1280`|`24`|
+|[`sbintuitions/sarashina2.2-1b-instruct-v0.1`](https://huggingface.co/sbintuitions/sarashina2.2-1b-instruct-v0.1)|[`1410`](https://huggingface.co/keisuke-miyako/TinySwallow-1.5B-Instruct-ct2-int8)|`8192`|`1792`|`24`|
+|[`sbintuitions/sarashina2.2-3b-instruct-v0.1`](https://huggingface.co/sbintuitions/sarashina2.2-3b-instruct-v0.1)|[`3360`](https://huggingface.co/keisuke-miyako/sarashina2.2-3b-instruct-v0.1-ct2-int8)|`8192`|`2560`|`32`|
+|[`google/gemma-2-2b-jpn-it`](https://huggingface.co/google/gemma-2-2b-jpn-it)|[`2620`](https://huggingface.co/keisuke-miyako/gemma-2-2b-jpn-it-ct2-int8)|`8192`|`2304`|`26`|
+|[`tokyotech-llm/Gemma-2-Llama-Swallow-2b-it-v0.1`](https://huggingface.co/tokyotech-llm/Gemma-2-Llama-Swallow-2b-it-v0.1)|[`2620`](https://huggingface.co/keisuke-miyako/Gemma-2-Llama-Swallow-2b-it-v0.1-ct2-int8)|`8192`|`2304`|`26`|
+|[`SakanaAI/Llama-3-Karamaru-v1`](https://huggingface.co/SakanaAI/Llama-3-Karamaru-v1)|[`8040`](https://huggingface.co/keisuke-miyako/Gemma-2-Llama-Swallow-2b-it-v0.1-ct2-int8)|`8192`|`4096`|`32`|
 
 ### Rerank
 
