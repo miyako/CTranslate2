@@ -47,7 +47,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$URL:="keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-ct2-int8_float16"
 	$rerank:=cs:C1710.event.huggingface.new($folder; $URL; $path; "rerank")
 	
-	$folder:=$homeFolder.folder("elyza/ELYZA-japanese-Llama-2-7b-fast-instruct")
+	$folder:=$homeFolder.folder("ELYZA-japanese-Llama-2-7b-fast-instruct")
 	$path:="ELYZA-japanese-Llama-2-7b-fast-instruct-ct2-int8"
 	$URL:="keisuke-miyako/ELYZA-japanese-Llama-2-7b-fast-instruct-ct2-int8"
 	$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat")
