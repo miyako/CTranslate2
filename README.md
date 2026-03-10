@@ -67,6 +67,7 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 |[`SakanaAI/TinySwallow-1.5B-Instruct`](https://huggingface.co/SakanaAI/TinySwallow-1.5B-Instruct)|[`1550`](https://huggingface.co/keisuke-miyako/TinySwallow-1.5B-Instruct-ct2-int8)|`32768`|`1536`|`28`|
 |[`sbintuitions/sarashina2.2-0.5b-instruct-v0.1`](https://huggingface.co/sbintuitions/sarashina2.2-0.5b-instruct-v0.1)|[`795`](https://huggingface.co/keisuke-miyako/TinySwallow-1.5B-Instruct-ct2-int8)|`8192`|`1280`|`24`|
 |[`sbintuitions/sarashina2.2-1b-instruct-v0.1`](https://huggingface.co/sbintuitions/sarashina2.2-1b-instruct-v0.1)|[`1410`](https://huggingface.co/keisuke-miyako/TinySwallow-1.5B-Instruct-ct2-int8)|`8192`|`1792`|`24`|
+|[`sbintuitions/sarashina2.2-3b-instruct-v0.1`](https://huggingface.co/sbintuitions/sarashina2.2-3b-instruct-v0.1)|[`3360`](https://huggingface.co/keisuke-miyako/sarashina2.2-3b-instruct-v0.1-ct2-int8)|`8192`|`2560`|`32`|
 
 ### Rerank
 
