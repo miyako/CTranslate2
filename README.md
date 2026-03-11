@@ -64,7 +64,7 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 |[`katanemo/Arch-Agent-1.5B`](https://huggingface.co/katanemo/Arch-Agent-1.5B)|[`1550`](https://huggingface.co/keisuke-miyako/Arch-Agent-1.5B-ct2-int8)|`32768`|`1536`|`28`|
 |[`katanemo/Arch-Agent-3B`](https://huggingface.co/katanemo/Arch-Agent-3B)|[`3090`](https://huggingface.co/keisuke-miyako/Arch-Agent-3B-ct2-int8)|`32768`|`2048`|`36`|
 |[`meta-llama/Llama-3.2-1B-Instruct`](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)|[`1240`](https://huggingface.co/keisuke-miyako/Llama-3.2-1B-Instruct-ct2-int8)|`131072`|`2048`|`16`|
-|[`meta-llama/Llama-3.2-3B-Instruct`](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct)|[`3090`](https://huggingface.co/keisuke-miyako/Llama-3.2-3B-Instruct-ct2-int8)|`131072`|`3072`|`28`|
+|[`meta-llama/Llama-3.2-3B-Instruct`](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct)|[`3220`](https://huggingface.co/keisuke-miyako/Llama-3.2-3B-Instruct-ct2-int8)|`131072`|`3072`|`28`|
 |[`Salesforce/xLAM-2-1b-fc-r`](https://huggingface.co/Salesforce/xLAM-2-1b-fc-r)|[`1550`](https://huggingface.co/keisuke-miyako/xLAM-2-1b-fc-r-ct2-int8)|`32768`|`1536`|`28`|
 |[`Salesforce/xLAM-2-3b-fc-r`](https://huggingface.co/Salesforce/xLAM-2-3b-fc-r)|[`3090`](https://huggingface.co/keisuke-miyako/Llama-3.2-3B-Instruct-ct2-int8)|`32768`|`2048`|`36`|
 |[`tiiuae/Falcon3-1B-Instruct`](https://huggingface.co/tiiuae/Falcon3-1B-Instruct)|[`1670`](https://huggingface.co/keisuke-miyako/Falcon3-1B-Instruct-ct2-int8)|`8192`|`2048`|`18`|
