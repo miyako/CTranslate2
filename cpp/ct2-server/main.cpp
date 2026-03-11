@@ -683,7 +683,7 @@ public:
                 Json::Value tc(Json::objectValue);
                 tc["id"] = "call_" + get_openai_style_id();
                 tc["type"] = "function";
-                
+                tc["index"] = 0;
                 Json::Value func(Json::objectValue);
                 func["name"] = tool_name;
                 func["arguments"] = tool_args;
@@ -2173,6 +2173,7 @@ int main(int argc, OPTARG_T argv[]) {
                                 Json::Value tc(Json::objectValue);
                                 tc["id"] = "call_" + get_openai_style_id();
                                 tc["type"] = "function";
+                                tc["index"] = 0;
                                 Json::Value func(Json::objectValue);
                                 func["name"] = tool_name;
                                 func["arguments"] = tool_args;
