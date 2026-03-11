@@ -2180,7 +2180,7 @@ int main(int argc, OPTARG_T argv[]) {
                                 tc["function"] = func;
                                 tool_calls.append(tc);
                                 delta["tool_calls"] = tool_calls;
-                                delta["finish_reason"] = "tool_calls";
+                                choice["finish_reason"] = "tool_calls";
                             }else{
                                 delta["content"] = token;
                                 choice["finish_reason"] = Json::nullValue;
