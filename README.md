@@ -65,6 +65,8 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 |[`Qwen/Qwen3-1.7B`](https://huggingface.co/Qwen/Qwen3-1.7B)|[`1720`](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-ct2-int8)|`40960`|`2048`|`28`|
 |[`meta-llama/Llama-3.2-1B-Instruct`](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)|[`1540`](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-ct2-int8)|`131072`|`2048`|`16`|
 |[`tiiuae/Falcon3-1B-Instruct`](https://huggingface.co/tiiuae/Falcon3-1B-Instruct)|[`1670`](https://huggingface.co/keisuke-miyako/Falcon3-1B-Instruct-ct2-int8)|`8192`|`2048`|`18`|
+|[`Salesforce/xLAM-2-1b-fc-r`](https://huggingface.co/Salesforce/xLAM-2-1b-fc-r)|[`1550`](https://huggingface.co/keisuke-miyako/xLAM-2-1b-fc-r-ct2-int8)|`32768`|`1536`|`28`|
+|[`Salesforce/xLAM-2-3b-fc-r`](https://huggingface.co/Salesforce/xLAM-2-3b-fc-r)|[`3090`](https://huggingface.co/keisuke-miyako/Llama-3.2-3B-Instruct-ct2-int8)|`32768`|`2048`|`36`|
 
 ### Chat Completion
 
