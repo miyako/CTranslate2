@@ -59,19 +59,23 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 
 ||`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
 |-|-:|-:|-:|-:|
-|[`katanemo/Arch-Agent-1.5B`](https://huggingface.co/katanemo/Arch-Agent-1.5B)|[`1550`](https://huggingface.co/keisuke-miyako/Arch-Agent-1.5B-ct2-int8)|`32768`|`1536`|`28`|
-|[`katanemo/Arch-Agent-3B`](https://huggingface.co/katanemo/Arch-Agent-3B)|[`3090`](https://huggingface.co/keisuke-miyako/Arch-Agent-3B-ct2-int8)|`32768`|`2048`|`36`|
+|[`Rakuten/RakutenAI-2.0-mini-instruct`](https://huggingface.co/Rakuten/RakutenAI-2.0-mini-instruct)|[`1540`](https://huggingface.co/keisuke-miyako/Hammer2.1-0.5b-onnx-int4)|`131072`|`2048`|`22`|
 |[`Qwen/Qwen3-0.6B`](https://huggingface.co/Qwen/Qwen3-0.6B)|[`598`](https://huggingface.co/keisuke-miyako/Qwen3-0.6B-ct2-int8)|`40960`|`1024`|`28`|
 |[`Qwen/Qwen3-1.7B`](https://huggingface.co/Qwen/Qwen3-1.7B)|[`1720`](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-ct2-int8)|`40960`|`2048`|`28`|
-|[`meta-llama/Llama-3.2-1B-Instruct`](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)|[`1540`](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-ct2-int8)|`131072`|`2048`|`16`|
+|[`katanemo/Arch-Agent-1.5B`](https://huggingface.co/katanemo/Arch-Agent-1.5B)|[`1550`](https://huggingface.co/keisuke-miyako/Arch-Agent-1.5B-ct2-int8)|`32768`|`1536`|`28`|
+|[`katanemo/Arch-Agent-3B`](https://huggingface.co/katanemo/Arch-Agent-3B)|[`3090`](https://huggingface.co/keisuke-miyako/Arch-Agent-3B-ct2-int8)|`32768`|`2048`|`36`|
+|[`meta-llama/Llama-3.2-1B-Instruct`](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)|[`1240`](https://huggingface.co/keisuke-miyako/Llama-3.2-1B-Instruct-ct2-int8)|`131072`|`2048`|`16`|
+|[`meta-llama/Llama-3.2-3B-Instruct`](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct)|[`3220`](https://huggingface.co/keisuke-miyako/Llama-3.2-3B-Instruct-ct2-int8)|`131072`|`3072`|`28`|
+|[`Salesforce/xLAM-2-1b-fc-r`](https://huggingface.co/Salesforce/xLAM-2-1b-fc-r)|[`1550`](https://huggingface.co/keisuke-miyako/xLAM-2-1b-fc-r-ct2-int8)|`32768`|`1536`|`28`|
+|[`Salesforce/xLAM-2-3b-fc-r`](https://huggingface.co/Salesforce/xLAM-2-3b-fc-r)|[`3090`](https://huggingface.co/keisuke-miyako/Llama-3.2-3B-Instruct-ct2-int8)|`32768`|`2048`|`36`|
 |[`tiiuae/Falcon3-1B-Instruct`](https://huggingface.co/tiiuae/Falcon3-1B-Instruct)|[`1670`](https://huggingface.co/keisuke-miyako/Falcon3-1B-Instruct-ct2-int8)|`8192`|`2048`|`18`|
+|[`tiiuae/Falcon3-3B-Instruct`](https://huggingface.co/tiiuae/Falcon3-3B-Instruct)|[`3230`](https://huggingface.co/keisuke-miyako/Falcon3-3B-Instruct-ct2-int8)|`32768`|`3072`|`22`|
 
 ### Chat Completion
 
 ||`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
 |-|-:|-:|-:|-:|
 |[`elyza/ELYZA-japanese-Llama-2-7b-fast-instruct`](https://huggingface.co/elyza/ELYZA-japanese-Llama-2-7b-fast-instruct)|[`6850`](https://huggingface.co/keisuke-miyako/Hammer2.1-0.5b-onnx-int4)|`4096`|`4096`|`32`|
-|[`Rakuten/RakutenAI-2.0-mini-instruct`](https://huggingface.co/Rakuten/RakutenAI-2.0-mini-instruct)|[`1540`](https://huggingface.co/keisuke-miyako/Hammer2.1-0.5b-onnx-int4)|`131072`|`2048`|`22`|
 |[`Rakuten/RakutenAI-7B-instruct`](https://huggingface.co/Rakuten/RakutenAI-7B-instruct)|[`7380`](https://huggingface.co/keisuke-miyako/TinySwallow-1.5B-Instruct-ct2-int8)|`32768`|`4096`|`32`|
 |[`llm-jp/llm-jp-3-1.8b-instruct`](https://huggingface.co/llm-jp/llm-jp-3-1.8b-instruct)|[`1870`](https://huggingface.co/keisuke-miyako/llm-jp-3-1.8b-instruct-ct2-int8)|`4096`|`2048`|`24`|
 |[`llm-jp/llm-jp-3-3.7b-instruct`](https://huggingface.co/llm-jp/llm-jp-3-3.7b-instruct)|[`3790`](https://huggingface.co/keisuke-miyako/llm-jp-3-3.7b-instruct-ct2-int8)|`4096`|`3072`|`28`|
