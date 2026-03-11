@@ -59,6 +59,7 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 
 ||`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
 |-|-:|-:|-:|-:|
+|[`Rakuten/RakutenAI-2.0-mini-instruct`](https://huggingface.co/Rakuten/RakutenAI-2.0-mini-instruct)|[`1540`](https://huggingface.co/keisuke-miyako/Hammer2.1-0.5b-onnx-int4)|`131072`|`2048`|`22`|
 |[`Qwen/Qwen3-0.6B`](https://huggingface.co/Qwen/Qwen3-0.6B)|[`598`](https://huggingface.co/keisuke-miyako/Qwen3-0.6B-ct2-int8)|`40960`|`1024`|`28`|
 |[`Qwen/Qwen3-1.7B`](https://huggingface.co/Qwen/Qwen3-1.7B)|[`1720`](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-ct2-int8)|`40960`|`2048`|`28`|
 |[`katanemo/Arch-Agent-1.5B`](https://huggingface.co/katanemo/Arch-Agent-1.5B)|[`1550`](https://huggingface.co/keisuke-miyako/Arch-Agent-1.5B-ct2-int8)|`32768`|`1536`|`28`|
@@ -75,7 +76,6 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 ||`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
 |-|-:|-:|-:|-:|
 |[`elyza/ELYZA-japanese-Llama-2-7b-fast-instruct`](https://huggingface.co/elyza/ELYZA-japanese-Llama-2-7b-fast-instruct)|[`6850`](https://huggingface.co/keisuke-miyako/Hammer2.1-0.5b-onnx-int4)|`4096`|`4096`|`32`|
-|[`Rakuten/RakutenAI-2.0-mini-instruct`](https://huggingface.co/Rakuten/RakutenAI-2.0-mini-instruct)|[`1540`](https://huggingface.co/keisuke-miyako/Hammer2.1-0.5b-onnx-int4)|`131072`|`2048`|`22`|
 |[`Rakuten/RakutenAI-7B-instruct`](https://huggingface.co/Rakuten/RakutenAI-7B-instruct)|[`7380`](https://huggingface.co/keisuke-miyako/TinySwallow-1.5B-Instruct-ct2-int8)|`32768`|`4096`|`32`|
 |[`llm-jp/llm-jp-3-1.8b-instruct`](https://huggingface.co/llm-jp/llm-jp-3-1.8b-instruct)|[`1870`](https://huggingface.co/keisuke-miyako/llm-jp-3-1.8b-instruct-ct2-int8)|`4096`|`2048`|`24`|
 |[`llm-jp/llm-jp-3-3.7b-instruct`](https://huggingface.co/llm-jp/llm-jp-3-3.7b-instruct)|[`3790`](https://huggingface.co/keisuke-miyako/llm-jp-3-3.7b-instruct-ct2-int8)|`4096`|`3072`|`28`|
