@@ -1,5 +1,3 @@
-SET TEXT TO PASTEBOARD:C523("(<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful assistant.\n\n# Available Tools\nYou have access to the following functions to help answer the user's request:\n[\n  {\n    \"function\": {\n      \"description\": \"Get the current w"+"eather in a given location\",\n      \"name\": \"get_weather\",\n      \"parameters\": {\n        \"properties\": {\n          \"location\": {\n            \"description\": \"The city and state, e.g. San Francisco, CA\",\n            \"type\": \"string\"\n          }\n        }"+",\n        \"required\": [\n          \"location\"\n        ],\n        \"type\": \"object\"\n      }\n    },\n    \"type\": \"function\"\n  }\n]\n\nIf you need to use a tool, you MUST output ONLY a JSON object wrapped in <tool_call> and </tool_call> tags. Example:\n<tool_ca"+"ll>{\"name\": \"get_weather\", \"arguments\": {\"location\": \"Tokyo\"}}</tool_call><|eot_id|><|start_header_id|>user<|end_header_id|>\n\nWhat is the weather like in Tokyo right now?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n)")
-
 var $CTranslate2 : cs:C1710.CTranslate2
 
 If (False:C215)
