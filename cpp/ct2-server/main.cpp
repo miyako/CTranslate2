@@ -2149,13 +2149,41 @@ int main(int argc, OPTARG_T argv[]) {
                             Json::Value choice(Json::objectValue);
                             choice["index"] = choice_index;
                             Json::Value delta(Json::objectValue);
-                            delta["content"] = token;
-                            choice["delta"] = delta;
+                            std::string tool_name = "";
+                            std::string tool_args = "";
                             if(is_tool) {
-                                choice["finish_reason"] = "tool_calls";
-                            }else{
-                                choice["finish_reason"] = Json::nullValue;
+                                try {
+                                    nlohmann::json tool_json = nlohmann::json::parse(token);
+                                    if (tool_json.contains("name") && tool_json.contains("arguments")) {
+                                        tool_name = tool_json["name"].get<std::string>();
+                                        
+                                        if (tool_json["arguments"].is_object()) {
+                                            tool_args = tool_json["arguments"].dump();
+                                        } else {
+                                            tool_args = tool_json["arguments"].get<std::string>();
+                                        }
+                                    }
+                                }catch (...) {
+                                    is_tool = false;
+                                }
                             }
+                            if(is_tool) {
+                                delta["content"] = Json::nullValue;
+                                Json::Value tool_calls(Json::arrayValue);
+                                Json::Value tc(Json::objectValue);
+                                tc["id"] = "call_" + get_openai_style_id();
+                                tc["type"] = "function";
+                                Json::Value func(Json::objectValue);
+                                func["name"] = tool_name;
+                                func["arguments"] = tool_args;
+                                tc["function"] = func;
+                                tool_calls.append(tc);
+                                delta["tool_calls"] = tool_calls;
+                            }else{
+                                delta["content"] = token;
+                            }
+                            choice["delta"] = delta;
+                            choice["finish_reason"] = Json::nullValue;
                             choices.append(choice);
                             root["choices"] = choices;
                             
