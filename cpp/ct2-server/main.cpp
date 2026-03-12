@@ -690,7 +690,7 @@ public:
 
 private:
     std::unique_ptr<ctranslate2::Generator> generator_;
-    std::unique_ptr<tokenizers::Tokenizer> tokenizer_;    
+    std::unique_ptr<tokenizers::Tokenizer> tokenizer_;
     inline static const std::vector<std::string> stop_words_ = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>", "<|end_of_text|>",
                         "<|eom_id|>"};
 };
@@ -736,7 +736,7 @@ class RerankerPipeline {
                                                          ) {
         
         if (batch_ids.empty()) return {};
-
+        
         size_t batch_size = batch_ids.size();
         
         // 1. Calculate Max Sequence Length
@@ -778,7 +778,7 @@ class RerankerPipeline {
         ctranslate2::EncoderForwardOutput enc_output = future.get();
         
         return enc_output.last_hidden_state.to(ctranslate2::Device::CPU);
-}
+    }
     
     std::string rerank_batch(const std::string& query, int top_n,
                              const std::vector<std::string>& documents) {
