@@ -400,10 +400,7 @@ public:
         if (num_threads > 0) {
             ctranslate2::set_num_threads(num_threads);
         }
-        
-        stop_words_ = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>", "<|end_of_text|>",
-                            "<|eom_id|>"};
-        
+
         // Load your HuggingFace Tokenizer
         tokenizer_ = LoadTokenizer(model_dir);
         if (!tokenizer_) throw std::runtime_error("No tokenizer found for GenerationPipeline");
@@ -693,8 +690,9 @@ public:
 
 private:
     std::unique_ptr<ctranslate2::Generator> generator_;
-    std::unique_ptr<tokenizers::Tokenizer> tokenizer_;
-    static const std::vector<std::string> stop_words_;
+    std::unique_ptr<tokenizers::Tokenizer> tokenizer_;    
+    inline static const std::vector<std::string> stop_words_ = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>", "<|end_of_text|>",
+                        "<|eom_id|>"};
 };
 
 class RerankerPipeline {
