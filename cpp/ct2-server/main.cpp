@@ -415,134 +415,131 @@ public:
     }
 
     void chat_completion_stream(const std::string& prompt,
-                                    ctranslate2::GenerationOptions options,
-                                    int n,
-                                    bool has_tools,
-                                    std::function<bool(const std::string&, int, bool)> on_token) {
-                
-                std::vector<int> prompt_ids = tokenizer_->Encode(prompt);
-                std::vector<std::string> prompt_tokens;
-                prompt_tokens.reserve(prompt_ids.size());
-                for (int id : prompt_ids) prompt_tokens.push_back(tokenizer_->IdToToken(id));
-                
-                // Duplicate the prompt 'n' times to process them as a batch
-                std::vector<std::vector<std::string>> batch_tokens(n, prompt_tokens);
-
-                // State arrays for 'n' parallel generations
-                std::vector<std::vector<int>> current_ids(n);
-                std::vector<std::string> previous_text(n, "");
-                std::vector<bool> finished(n, false);
-                std::vector<std::string> stop_words = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>", "<|end_of_text|>",
-                    "<|eom_id|>"};
+                                ctranslate2::GenerationOptions options,
+                                int n,
+                                bool has_tools,
+                                std::function<bool(const std::string&, int, bool)> on_token) {
         
-                std::vector<bool> tool_mode(n, false);
-                
-                options.callback = [&](ctranslate2::GenerationStepResult step_result) {
-                    size_t batch_id = step_result.batch_id;
-                    if (finished[batch_id]) return true;
-                    
-                    current_ids[batch_id].push_back((int)step_result.token_id);
-                    std::string current_text = tokenizer_->Decode(current_ids[batch_id]);
-                    
-                    bool hit_stop = false;
-                    for (const auto& word : stop_words) {
-                        if (current_text.find(word) != std::string::npos) { hit_stop = true; break; }
-                    }
-                    
-                    // 1. DYNAMIC TOOL INTERCEPTION
-                    if (has_tools && !tool_mode[batch_id]) {
-                        size_t tag_pos = current_text.find("<tool_call>");
-                        if (tag_pos != std::string::npos) {
-                            tool_mode[batch_id] = true;
-                            std::string text_before_tag = current_text.substr(0, tag_pos);
-                            if (text_before_tag.length() > previous_text[batch_id].length()) {
-                                std::string new_text = text_before_tag.substr(previous_text[batch_id].length());
-                                if (!new_text.empty()) {
-                                    if (!on_token(new_text, (int)batch_id, false)) return true;
-                                }
-                            }
-                            previous_text[batch_id] = current_text;
-                        }
-                    }
-                    
-                    // 2. TOOL MODE (Silent JSON Buffering)
-                    if (tool_mode[batch_id]) {
-                        if (hit_stop || step_result.is_last || current_text.find("</tool_call>") != std::string::npos) {
-                            finished[batch_id] = true;
-                            
-                            size_t start = current_text.find("<tool_call>");
-                            size_t end = current_text.find("</tool_call>");
-                            
-                            std::string json_str = "";
-                            if (start != std::string::npos && end != std::string::npos) {
-                                json_str = current_text.substr(start + 11, end - (start + 11));
-                            } else if (start != std::string::npos) {
-                                // Failsafe: Model forgot the closing tag. Extract everything!
-                                json_str = current_text.substr(start + 11);
-                                for (const auto& word : stop_words) {
-                                    size_t pos = json_str.find(word);
-                                    if (pos != std::string::npos) json_str = json_str.substr(0, pos);
-                                }
-                            }
-                            
-                            // Fire the tool callback!
-                            if (!json_str.empty()) {
-                                if (!on_token(json_str, (int)batch_id, true)) return true;
-                            }
-                            
-                            bool all_done = true;
-                            for (bool f : finished) if (!f) all_done = false;
-                            if (all_done) return true;
-                        }
-                        return false;
-                    }
-
-                    // 3. NORMAL TEXT STREAMING
-                    if (current_text.length() > previous_text[batch_id].length()) {
-                        std::string new_text = current_text.substr(previous_text[batch_id].length());
-                        
-                        if (hit_stop) {
-                            finished[batch_id] = true;
-                            
-                            // Strip the stop word before sending to the client
-                            for (const auto& word : stop_words) {
-                                size_t pos = new_text.find(word);
-                                if (pos != std::string::npos) new_text = new_text.substr(0, pos);
-                            }
-                            
-                            if (!new_text.empty()) {
-                                if (!on_token(new_text, (int)batch_id, false)) return false;
-                            }
-                            
-                            // If ALL choices are finished, return true to abort CTranslate2 completely
-                            bool all_done = true;
-                            for (bool f : finished) if (!f) all_done = false;
-                            if (all_done) return true;
-                            
-                            return false;
-                        }
-                        
-                        // Normal token: Wait for complete UTF-8 characters
-                        if (new_text.find("\xef\xbf\xbd") == std::string::npos) {
-                            previous_text[batch_id] = current_text;
+        std::vector<int> prompt_ids = tokenizer_->Encode(prompt);
+        std::vector<std::string> prompt_tokens;
+        prompt_tokens.reserve(prompt_ids.size());
+        for (int id : prompt_ids) prompt_tokens.push_back(tokenizer_->IdToToken(id));
+        
+        // Duplicate the prompt 'n' times to process them as a batch
+        std::vector<std::vector<std::string>> batch_tokens(n, prompt_tokens);
+        
+        // State arrays for 'n' parallel generations
+        std::vector<std::vector<int>> current_ids(n);
+        std::vector<std::string> previous_text(n, "");
+        std::vector<bool> finished(n, false);
+        std::vector<bool> tool_mode(n, false);
+        
+        options.callback = [&](ctranslate2::GenerationStepResult step_result) {
+            size_t batch_id = step_result.batch_id;
+            if (finished[batch_id]) return true;
+            
+            current_ids[batch_id].push_back((int)step_result.token_id);
+            std::string current_text = tokenizer_->Decode(current_ids[batch_id]);
+            
+            bool hit_stop = false;
+            for (const auto& word : stop_words) {
+                if (current_text.find(word) != std::string::npos) { hit_stop = true; break; }
+            }
+            
+            // 1. DYNAMIC TOOL INTERCEPTION
+            if (has_tools && !tool_mode[batch_id]) {
+                size_t tag_pos = current_text.find("<tool_call>");
+                if (tag_pos != std::string::npos) {
+                    tool_mode[batch_id] = true;
+                    std::string text_before_tag = current_text.substr(0, tag_pos);
+                    if (text_before_tag.length() > previous_text[batch_id].length()) {
+                        std::string new_text = text_before_tag.substr(previous_text[batch_id].length());
+                        if (!new_text.empty()) {
                             if (!on_token(new_text, (int)batch_id, false)) return true;
                         }
                     }
-                    
-                    if (step_result.is_last) finished[batch_id] = true;
-                    return false;
-                };
-                
-                // Block the HTTP thread while CTranslate2 generates
-                std::vector<std::future<ctranslate2::GenerationResult>> futures = generator_->generate_batch_async(batch_tokens, options, 0, ctranslate2::BatchType::Examples);
-                for (auto& f : futures) f.get();
+                    previous_text[batch_id] = current_text;
+                }
             }
+            
+            // 2. TOOL MODE (Silent JSON Buffering)
+            if (tool_mode[batch_id]) {
+                if (hit_stop || step_result.is_last || current_text.find("</tool_call>") != std::string::npos) {
+                    finished[batch_id] = true;
+                    
+                    size_t start = current_text.find("<tool_call>");
+                    size_t end = current_text.find("</tool_call>");
+                    
+                    std::string json_str = "";
+                    if (start != std::string::npos && end != std::string::npos) {
+                        json_str = current_text.substr(start + 11, end - (start + 11));
+                    } else if (start != std::string::npos) {
+                        // Failsafe: Model forgot the closing tag. Extract everything!
+                        json_str = current_text.substr(start + 11);
+                        for (const auto& word : stop_words) {
+                            size_t pos = json_str.find(word);
+                            if (pos != std::string::npos) json_str = json_str.substr(0, pos);
+                        }
+                    }
+                    
+                    // Fire the tool callback!
+                    if (!json_str.empty()) {
+                        if (!on_token(json_str, (int)batch_id, true)) return true;
+                    }
+                    
+                    bool all_done = true;
+                    for (bool f : finished) if (!f) all_done = false;
+                    if (all_done) return true;
+                }
+                return false;
+            }
+            
+            // 3. NORMAL TEXT STREAMING
+            if (current_text.length() > previous_text[batch_id].length()) {
+                std::string new_text = current_text.substr(previous_text[batch_id].length());
+                
+                if (hit_stop) {
+                    finished[batch_id] = true;
+                    
+                    // Strip the stop word before sending to the client
+                    for (const auto& word : stop_words) {
+                        size_t pos = new_text.find(word);
+                        if (pos != std::string::npos) new_text = new_text.substr(0, pos);
+                    }
+                    
+                    if (!new_text.empty()) {
+                        if (!on_token(new_text, (int)batch_id, false)) return false;
+                    }
+                    
+                    // If ALL choices are finished, return true to abort CTranslate2 completely
+                    bool all_done = true;
+                    for (bool f : finished) if (!f) all_done = false;
+                    if (all_done) return true;
+                    
+                    return false;
+                }
+                
+                // Normal token: Wait for complete UTF-8 characters
+                if (new_text.find("\xef\xbf\xbd") == std::string::npos) {
+                    previous_text[batch_id] = current_text;
+                    if (!on_token(new_text, (int)batch_id, false)) return true;
+                }
+            }
+            
+            if (step_result.is_last) finished[batch_id] = true;
+            return false;
+        };
+        
+        // Block the HTTP thread while CTranslate2 generates
+        std::vector<std::future<ctranslate2::GenerationResult>> futures = generator_->generate_batch_async(batch_tokens, options, 0, ctranslate2::BatchType::Examples);
+        for (auto& f : futures) f.get();
+    }
     
     std::string chat_completion(const std::string& prompt,
-                                    ctranslate2::GenerationOptions options,
-                                    int n,
-                                    const std::string& model_name) {
-                
+                                ctranslate2::GenerationOptions options,
+                                int n,
+                                const std::string& model_name) {
+        
         std::vector<int> prompt_ids = tokenizer_->Encode(prompt);
         std::vector<std::string> prompt_tokens;
         prompt_tokens.reserve(prompt_ids.size());
@@ -554,42 +551,40 @@ public:
         // --- EARLY STOPPING CALLBACK FOR SYNC ROUTE ---
         std::vector<std::vector<int>> current_ids(n);
         std::vector<bool> finished(n, false);
-        std::vector<std::string> stop_words = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>", "<|end_of_text|>",
-            "<|eom_id|>"};
+        
+        options.callback = [&](ctranslate2::GenerationStepResult step_result) {
             
-            options.callback = [&](ctranslate2::GenerationStepResult step_result) {
-                
-                size_t batch_id = step_result.batch_id;
-                if (finished[batch_id]) return true;
-
-                current_ids[batch_id].push_back((int)step_result.token_id);
-                std::string current_text = tokenizer_->Decode(current_ids[batch_id]);
-                
-                // Check for stop words
-                bool hit_stop = false;
-                for (const auto& word : stop_words) {
-                    if (current_text.find(word) != std::string::npos) {
-                        hit_stop = true;
-                        break;
-                    }
-                }
-                
-                if (hit_stop || step_result.is_last) {
-                    finished[batch_id] = true;
-                }
-                
-                // If ALL choices have hit a stop word, return false to ABORT compute!
-                bool all_done = true;
-                for (bool f : finished) {
-                    if (!f) all_done = false;
-                }
-                if (all_done) return true;
-                
-                return false; // Keep generating for remaining choices
-            };
+            size_t batch_id = step_result.batch_id;
+            if (finished[batch_id]) return true;
             
-            // ----------------------------------------------
-
+            current_ids[batch_id].push_back((int)step_result.token_id);
+            std::string current_text = tokenizer_->Decode(current_ids[batch_id]);
+            
+            // Check for stop words
+            bool hit_stop = false;
+            for (const auto& word : stop_words) {
+                if (current_text.find(word) != std::string::npos) {
+                    hit_stop = true;
+                    break;
+                }
+            }
+            
+            if (hit_stop || step_result.is_last) {
+                finished[batch_id] = true;
+            }
+            
+            // If ALL choices have hit a stop word, return false to ABORT compute!
+            bool all_done = true;
+            for (bool f : finished) {
+                if (!f) all_done = false;
+            }
+            if (all_done) return true;
+            
+            return false; // Keep generating for remaining choices
+        };
+        
+        // ----------------------------------------------
+        
         std::vector<std::future<ctranslate2::GenerationResult>> futures = generator_->generate_batch_async(batch_tokens, options);
         
         Json::Value root(Json::objectValue);
@@ -599,7 +594,7 @@ public:
         root["model"] = model_name;
         
         Json::Value choices(Json::arrayValue);
-            
+        
         Json::UInt64 completion_tokens = 0;
         // Loop through all 'n' choices returned by the future
         for (int i = 0; i < n; i++) {
@@ -696,6 +691,8 @@ public:
 private:
     std::unique_ptr<ctranslate2::Generator> generator_;
     std::unique_ptr<tokenizers::Tokenizer> tokenizer_;
+    static const std::vector<std::string> stop_words = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>", "<|end_of_text|>",
+                        "<|eom_id|>"};
 };
 
 class RerankerPipeline {
