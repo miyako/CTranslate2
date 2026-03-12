@@ -401,6 +401,9 @@ public:
             ctranslate2::set_num_threads(num_threads);
         }
         
+        stop_words_ = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>", "<|end_of_text|>",
+                            "<|eom_id|>"};
+        
         // Load your HuggingFace Tokenizer
         tokenizer_ = LoadTokenizer(model_dir);
         if (!tokenizer_) throw std::runtime_error("No tokenizer found for GenerationPipeline");
@@ -442,7 +445,7 @@ public:
             std::string current_text = tokenizer_->Decode(current_ids[batch_id]);
             
             bool hit_stop = false;
-            for (const auto& word : stop_words) {
+            for (const auto& word : stop_words_) {
                 if (current_text.find(word) != std::string::npos) { hit_stop = true; break; }
             }
             
@@ -476,7 +479,7 @@ public:
                     } else if (start != std::string::npos) {
                         // Failsafe: Model forgot the closing tag. Extract everything!
                         json_str = current_text.substr(start + 11);
-                        for (const auto& word : stop_words) {
+                        for (const auto& word : stop_words_) {
                             size_t pos = json_str.find(word);
                             if (pos != std::string::npos) json_str = json_str.substr(0, pos);
                         }
@@ -502,7 +505,7 @@ public:
                     finished[batch_id] = true;
                     
                     // Strip the stop word before sending to the client
-                    for (const auto& word : stop_words) {
+                    for (const auto& word : stop_words_) {
                         size_t pos = new_text.find(word);
                         if (pos != std::string::npos) new_text = new_text.substr(0, pos);
                     }
@@ -562,7 +565,7 @@ public:
             
             // Check for stop words
             bool hit_stop = false;
-            for (const auto& word : stop_words) {
+            for (const auto& word : stop_words_) {
                 if (current_text.find(word) != std::string::npos) {
                     hit_stop = true;
                     break;
@@ -607,7 +610,7 @@ public:
             std::string response_text = tokenizer_->Decode(output_ids);
             
             // Strip the stop word from the final response
-            for (const auto& word : stop_words) {
+            for (const auto& word : stop_words_) {
                 size_t pos = response_text.find(word);
                 if (pos != std::string::npos) response_text = response_text.substr(0, pos);
             }
@@ -691,8 +694,7 @@ public:
 private:
     std::unique_ptr<ctranslate2::Generator> generator_;
     std::unique_ptr<tokenizers::Tokenizer> tokenizer_;
-    static const std::vector<std::string> stop_words = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>", "<|end_of_text|>",
-                        "<|eom_id|>"};
+    static const std::vector<std::string> stop_words_;
 };
 
 class RerankerPipeline {
