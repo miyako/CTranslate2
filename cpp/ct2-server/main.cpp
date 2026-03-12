@@ -1765,6 +1765,20 @@ static void before_run_embeddings(
 
 #pragma mark -
 
+static void send_error(httplib::Response& res, const std::string& message, int status = 400) {
+    Json::Value root(Json::objectValue), err(Json::objectValue);
+    err["message"] = message;
+    err["type"] = "invalid_request_error";
+    err["param"] = Json::nullValue;
+    err["code"] = Json::nullValue;
+    root["error"] = err;
+    Json::StreamWriterBuilder w;
+    w["indentation"] = "";
+    res.set_content(Json::writeString(w, root), "application/json");
+    res.status = status;
+    std::cerr << "[Server] Error: " << message << std::endl;
+}
+
 int main(int argc, OPTARG_T argv[]) {
     
 #ifdef WIN32
@@ -2193,21 +2207,7 @@ int main(int argc, OPTARG_T argv[]) {
                 }
 
             } catch (const std::exception& e) {
-                Json::Value rootNode(Json::objectValue);
-                Json::Value errorNode(Json::objectValue);
-                errorNode["message"] = e.what();
-                errorNode["type"] = "invalid_request_error";
-                errorNode["param"] = Json::nullValue;
-                errorNode["code"] = Json::nullValue;
-                rootNode["error"] = errorNode;
-                
-                Json::StreamWriterBuilder writer;
-                writer["indentation"] = "";
-                std::string error_str = Json::writeString(writer, rootNode);
-                
-                res.set_content(error_str, "application/json");
-                res.status = 400;
-                std::cerr << "[Server] Error: " << e.what() << std::endl;
+                send_error(res, e.what(), 400);
             }
         });
         
@@ -2252,24 +2252,8 @@ int main(int argc, OPTARG_T argv[]) {
                 res.status = 200;
                 
             } catch (const std::exception& e) {
-                // Build Error JSON
-                Json::Value rootNode(Json::objectValue);
-                Json::Value errorNode(Json::objectValue);
-                errorNode["message"] = e.what();
-                errorNode["type"] = "invalid_request_error";
-                errorNode["param"] = Json::nullValue;
-                errorNode["code"] = Json::nullValue;
-                rootNode["error"] = errorNode;
-                
-                Json::StreamWriterBuilder writer;
-                writer["indentation"] = "";
-                std::string error_str = Json::writeString(writer, rootNode);
-                
-                res.set_content(error_str, "application/json");
-                res.status = 400; // Bad Request as per requirement
-                std::cerr << "[Server] Error: " << e.what() << std::endl;
+                send_error(res, e.what(), 400);
             }
-            
         });
                  
         // Route: /v1/rerank
@@ -2290,32 +2274,11 @@ int main(int argc, OPTARG_T argv[]) {
                 
                 std::string response_json;
                 
-                
-                
-                
-                
-                
                 response_json = rerank_pipeline->rerank_batch(query, top_n, documents);
                 res.set_content(response_json, "application/json");
                 res.status = 200;
             } catch (const std::exception& e) {
-         
-                // Build Error JSON
-                Json::Value rootNode(Json::objectValue);
-                Json::Value errorNode(Json::objectValue);
-                errorNode["message"] = e.what();
-                errorNode["type"] = "invalid_request_error";
-                errorNode["param"] = Json::nullValue;
-                errorNode["code"] = Json::nullValue;
-                rootNode["error"] = errorNode;
-                
-                Json::StreamWriterBuilder writer;
-                writer["indentation"] = "";
-                std::string error_str = Json::writeString(writer, rootNode);
-                
-                res.set_content(error_str, "application/json");
-                res.status = 400; // Bad Request as per requirement
-                std::cerr << "[Server] Error: " << e.what() << std::endl;
+                send_error(res, e.what(), 400);
             }
         });
         
@@ -2334,24 +2297,8 @@ int main(int argc, OPTARG_T argv[]) {
                 res.set_content(response_json, "application/json");
                 res.status = 200;
             } catch (const std::exception& e) {
-                // Build Error JSON
-                Json::Value rootNode(Json::objectValue);
-                Json::Value errorNode(Json::objectValue);
-                errorNode["message"] = e.what();
-                errorNode["type"] = "invalid_request_error";
-                errorNode["param"] = Json::nullValue;
-                errorNode["code"] = Json::nullValue;
-                rootNode["error"] = errorNode;
-                
-                Json::StreamWriterBuilder writer;
-                writer["indentation"] = "";
-                std::string error_str = Json::writeString(writer, rootNode);
-                
-                res.set_content(error_str, "application/json");
-                res.status = 400; // Bad Request as per requirement
-                std::cerr << "[Server] Error: " << e.what() << std::endl;
+                send_error(res, e.what(), 400);
             }
-            
         });
         
         // Route: /v1/contextualizedembeddings
@@ -2377,24 +2324,8 @@ int main(int argc, OPTARG_T argv[]) {
                 res.set_content(response_json, "application/json");
                 res.status = 200;
             } catch (const std::exception& e) {
-                // Build Error JSON
-                Json::Value rootNode(Json::objectValue);
-                Json::Value errorNode(Json::objectValue);
-                errorNode["message"] = e.what();
-                errorNode["type"] = "invalid_request_error";
-                errorNode["param"] = Json::nullValue;
-                errorNode["code"] = Json::nullValue;
-                rootNode["error"] = errorNode;
-                
-                Json::StreamWriterBuilder writer;
-                writer["indentation"] = "";
-                std::string error_str = Json::writeString(writer, rootNode);
-                
-                res.set_content(error_str, "application/json");
-                res.status = 400; // Bad Request as per requirement
-                std::cerr << "[Server] Error: " << e.what() << std::endl;
+                send_error(res, e.what(), 400);
             }
-            
         };
         
         svr.Post("/v1/contextualizedembeddings", contextualized_embeddings_handler);
