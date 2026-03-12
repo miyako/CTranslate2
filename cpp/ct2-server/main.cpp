@@ -176,17 +176,23 @@ int LoadMaxPositionEmbeddings(const std::string& model_path) {
     return 512;
 }
 
+static const std::unordered_map<std::string, RerankingMode> kModelTypeMap = {
+    {"xlm-roberta", RERANKING_ROBERTA}, {"roberta", RERANKING_ROBERTA}, {"camembert", RERANKING_ROBERTA},
+    {"bert", RERANKING_BERT}, {"mpnet", RERANKING_BERT}, {"deberta-v2", RERANKING_BERT}, {"modernbert", RERANKING_BERT},
+    {"qwen3", RERANKING_LLM}, {"qwen2", RERANKING_LLM}, {"mistral", RERANKING_LLM},
+    {"llama", RERANKING_LLM}, {"gemma", RERANKING_LLM}, {"gemma2", RERANKING_LLM}, {"phi3", RERANKING_LLM},
+};
+
 static // Helper to read the template file from the model directory
 RerankingMode LoadRerankingMode(const std::string& model_path) {
     fs::path path(model_path);
     fs::path config_path = path;
-
+    
     if (fs::is_directory(path)) {
         config_path = path / "config.json";
     }
     
     if (fs::exists(config_path) && config_path.extension() == ".json") {
-//        std::cout << "Loading model_type from: " << config_path << std::endl;
         
         std::string json = LoadBytesFromFile(config_path.string());
         
@@ -208,71 +214,14 @@ RerankingMode LoadRerankingMode(const std::string& model_path) {
                 if(model_type_node.isString())
                 {
                     std::string model_type = model_type_node.asString();
-                    // RERANKING_ROBERTA
-                    if(model_type == "xlm-roberta") {
-                        std::cout << "[Rerank] model_type: " << model_type << " (roberta)" << std::endl;
-                        return RERANKING_ROBERTA;
-                    }
-                    if(model_type == "roberta") {
-                        std::cout << "[Rerank] model_type: " << model_type << std::endl;
-                        return RERANKING_ROBERTA;
-                    }
-                    if(model_type == "camembert") {
-                        std::cout << "[Rerank] model_type: " << model_type << " (roberta)" << std::endl;
-                        return RERANKING_ROBERTA;
-                    }
-                    // RERANKING_BERT
-                    if(model_type == "bert") {
-                        std::cout << "[Rerank] model_type: " << model_type << " (bert)" << std::endl;
-                        return RERANKING_BERT;
-                    }
-                    if(model_type == "mpnet") {
-                        std::cout << "[Rerank] model_type: " << model_type << " (bert)" << std::endl;
-                        return RERANKING_BERT;
-                    }
-                    if(model_type == "deberta-v2") {
-                        std::cout << "[Rerank] model_type: " << model_type << " (bert)" << std::endl;
-                        return RERANKING_BERT;
-                    }
-                    if(model_type == "modernbert") {
-                        std::cout << "[Rerank] model_type: " << model_type << " (bert)" << std::endl;
-                        return RERANKING_BERT;
-                    }
-                    if(model_type == "qwen3") {
-                        std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
-                        return RERANKING_LLM;
-                    }
-                    if(model_type == "qwen2") {
-                        std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
-                        return RERANKING_LLM;
-                    }
-                    if(model_type == "mistral") {
-                        std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
-                        return RERANKING_LLM;
-                    }
-                    if(model_type == "llama") {
-                        std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
-                        return RERANKING_LLM;
-                    }
-                    if(model_type == "gemma") {
-                        std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
-                        return RERANKING_LLM;
-                    }
-                    if(model_type == "gemma2") {
-                        std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
-                        return RERANKING_LLM;
-                    }
-                    if(model_type == "phi3") {
-                        std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
-                        return RERANKING_LLM;
-                    }
-                    //
+                    
+                    auto it = kModelTypeMap.find(model_type);
+                    if (it != kModelTypeMap.end()) return it->second;
                 }
             }
         }
     }
     
-    std::cout << "[Rerank] model_type: default (roberta)" << std::endl;
     return RERANKING_ROBERTA;
 }
 
@@ -812,7 +761,7 @@ class RerankerPipeline {
             switch (reranking_mode_) {
                 case RERANKING_MODERNBERT:
                     ids.reserve(q_ids.size() + doc_ids.size() + 3);
-                    ids.reserve(q_ids.size() + doc_ids.size() + 3);
+                    type_ids.reserve(ids.capacity());
                     ids.push_back(cls_id_); // <cls>
                     for(int x : q_ids) { ids.push_back(x); }
                     ids.push_back(sep_id_); // <sep>
