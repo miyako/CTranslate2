@@ -920,9 +920,7 @@ class RerankerPipeline {
                 embedding = Eigen::Map<Eigen::VectorXf>(batch_ptr, hidden_dim);
                 float logits = 0.0f;
                 if (has_dense_layer_) {
-//                    Eigen::VectorXf dense_out = (embedding.transpose() * dense_weights_).transpose();
                     Eigen::VectorXf dense_out = dense_weights_ * embedding + dense_bias_;
-                    dense_out += dense_bias_;
                     dense_out = dense_out.unaryExpr([](float x) { return std::tanh(x); });
                     logits = dense_out.dot(out_weights_) + out_bias_;
                 }
