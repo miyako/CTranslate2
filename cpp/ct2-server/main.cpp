@@ -88,7 +88,9 @@ static std::string get_openai_style_id() {
     
     std::string id = "chatcmpl-";
     std::random_device rd;
-    std::mt19937 gen(rd());
+
+    static thread_local std::mt19937 gen(std::random_device{}());
+
     std::uniform_int_distribution<> dis(0, max_index - 1);
     
     for (int i = 0; i < 29; ++i) {
