@@ -997,55 +997,45 @@ private:
     float out_bias_ = 0.0f;
 
     void LoadRerankHead(const std::string& model_dir) {
-            fs::path bin_path = fs::path(model_dir) / "rerank_head.bin";
-            std::ifstream file(bin_path.string(), std::ios::binary);
-            if (!file.is_open()) throw std::runtime_error("rerank_head.bin not found");
-
-            // 1. Read Version
-            int32_t version = 0;
-            file.read(reinterpret_cast<char*>(&version), sizeof(int32_t));
+        fs::path bin_path = fs::path(model_dir) / "rerank_head.bin";
+        std::ifstream file(bin_path.string(), std::ios::binary);
+        if (!file.is_open()) throw std::runtime_error("rerank_head.bin not found");
+        
+        // 1. Read Version
+        int32_t version = 0;
+        file.read(reinterpret_cast<char*>(&version), sizeof(int32_t));
+        if (!file) throw std::runtime_error(" file is truncated or malformed");
+        
+        // 2. Read Hidden Dimension
+        int32_t dim = 0;
+        file.read(reinterpret_cast<char*>(&dim), sizeof(int32_t));
+        if (!file) throw std::runtime_error(" file is truncated or malformed");
+        
+        if (version == 2) {
+            has_dense_layer_ = true;
             
-            // 2. Read Hidden Dimension
-            int32_t dim = 0;
-            file.read(reinterpret_cast<char*>(&dim), sizeof(int32_t));
-
-            if (version == 2) {
-                has_dense_layer_ = true;
-                
-                // Allocate and Read Dense Weights (Matrix [Dim x Dim])
-                // PyTorch stores weights as [OutFeatures, InFeatures].
-                // We want to perform: Vec(1xD) * Mat(DxD).
-                // So we need to be careful with Transpose.
-                // PyTorch Linear(x) = x * W^T + b.
-                // So the file contains W (Out x In). Since Out=Dim and In=Dim.
-                // We read it into a flat buffer.
-                std::vector<float> dense_w_buf(dim * dim);
-                file.read(reinterpret_cast<char*>(dense_w_buf.data()), dense_w_buf.size() * sizeof(float));
-                
-                std::vector<float> dense_b_buf(dim);
-                file.read(reinterpret_cast<char*>(dense_b_buf.data()), dim * sizeof(float));
-                
-                // Map to Eigen
-                // RowMajor is important here because PyTorch exports row-by-row.
-                // MatrixXf is ColMajor by default.
-                // We load it as RowMajor, then let Eigen handle it.
-                dense_weights_ = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>::Map(dense_w_buf.data(), dim, dim);
-                
-                // To compute x * W^T, we can just do x * W.transpose()
-                // Or if we loaded W as [Out, In], x * W^T is equivalent to W * x if x is col vector.
-                // Let's stick to standard math: dense_weights_ is [Dim, Dim].
-//                dense_weights_.transposeInPlace(); // Prepare for x * W multiplication style
-                
-                dense_bias_ = Eigen::VectorXf::Map(dense_b_buf.data(), dim);
-            }
-
-            // 3. Read Out Layer
-            file.read(reinterpret_cast<char*>(&out_bias_), sizeof(float));
+            std::vector<float> dense_w_buf(dim * dim);
+            file.read(reinterpret_cast<char*>(dense_w_buf.data()), dense_w_buf.size() * sizeof(float));
+            if (!file) throw std::runtime_error(" file is truncated or malformed");
             
-            std::vector<float> out_w_buf(dim);
-            file.read(reinterpret_cast<char*>(out_w_buf.data()), dim * sizeof(float));
-            out_weights_ = Eigen::VectorXf::Map(out_w_buf.data(), dim);
+            std::vector<float> dense_b_buf(dim);
+            file.read(reinterpret_cast<char*>(dense_b_buf.data()), dim * sizeof(float));
+            if (!file) throw std::runtime_error(" file is truncated or malformed");
+            
+            dense_weights_ = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>::Map(dense_w_buf.data(), dim, dim);
+            
+            dense_bias_ = Eigen::VectorXf::Map(dense_b_buf.data(), dim);
         }
+        
+        // 3. Read Out Layer
+        file.read(reinterpret_cast<char*>(&out_bias_), sizeof(float));
+        if (!file) throw std::runtime_error(" file is truncated or malformed");
+        
+        std::vector<float> out_w_buf(dim);
+        file.read(reinterpret_cast<char*>(out_w_buf.data()), dim * sizeof(float));
+        if (!file) throw std::runtime_error(" file is truncated or malformed");
+        out_weights_ = Eigen::VectorXf::Map(out_w_buf.data(), dim);
+    }
 };
 
 class TranslationPipeline {
