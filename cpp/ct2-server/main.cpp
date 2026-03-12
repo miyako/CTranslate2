@@ -250,7 +250,11 @@ RerankingMode LoadRerankingMode(const std::string& model_path) {
                     std::string model_type = model_type_node.asString();
                     
                     auto it = kModelTypeMap.find(model_type);
-                    if (it != kModelTypeMap.end()) return it->second;
+                    if (it != kModelTypeMap.end()) {
+                        std::cout << "[Rerank] model_type: " << model_type << std::endl;
+                        return it->second;
+                    }
+                    std::cout << "[Rerank] model_type: '" << model_type << "' unrecognized, defaulting to roberta" << std::endl;
                 }
             }
         }
