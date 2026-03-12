@@ -118,34 +118,10 @@ static int GetOptimalIntraOpThreads() {
             // Absolute fallback
             threads = std::thread::hardware_concurrency();
         }
-
-    // --- Windows Implementation ---
-    #elif defined(_WIN32)
-        // Getting strictly physical cores on Windows is complex (requires iterating SYSTEM_LOGICAL_PROCESSOR_INFORMATION).
-        // For a simple implementation, hardware_concurrency (Logical Cores) is often acceptable,
-        // but dividing by 2 is a common heuristic for Hyper-threaded Intel/AMD CPUs to estimate physical cores.
-        
-        unsigned int logical_cores = std::thread::hardware_concurrency();
-        // Heuristic: If we have many cores, assume Hyper-threading and divide by 2.
-        // Otherwise, use all.
-        if (logical_cores > 4) {
-            threads = logical_cores / 2;
-        } else {
-            threads = logical_cores;
-        }
-
-    // --- Linux / Generic Implementation ---
-    #else
-        // Similar heuristic for Linux
-        unsigned int logical_cores = std::thread::hardware_concurrency();
-        if (logical_cores > 4) {
-             threads = logical_cores / 2;
-        } else {
-             threads = logical_cores;
-        }
-    #endif
-
-    // Safety clamp: Ensure we have at least 1 thread and not an insane amount (cap at 16 for client devices)
+#else  // Windows and Linux
+    unsigned int logical_cores = std::thread::hardware_concurrency();
+    threads = (logical_cores > 4) ? (int)(logical_cores / 2) : (int)logical_cores;
+#endif
     return std::max(1, std::min(threads, 16));
 }
 
