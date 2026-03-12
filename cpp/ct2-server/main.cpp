@@ -138,6 +138,38 @@ struct RerankItem {
     std::vector<int> type_ids;
 };
 
+struct ParsedToolCall {
+    std::string name;
+    std::string arguments;
+};
+
+// Parses the JSON content extracted from between <tool_call>…</tool_call>.
+// The model may emit a single object {"name":…,"arguments":…}
+// or an array  [{"name":…,"arguments":…}, …].
+// Always returns a (possibly empty) list.
+static std::vector<ParsedToolCall> parse_tool_call_json(const std::string& json_str) {
+    std::vector<ParsedToolCall> results;
+    try {
+        nlohmann::json parsed = nlohmann::json::parse(json_str);
+
+        // Normalise to an array so downstream code is uniform
+        nlohmann::json calls = parsed.is_array() ? parsed : nlohmann::json::array({parsed});
+
+        for (const auto& call : calls) {
+            if (!call.contains("name") || !call.contains("arguments")) continue;
+            ParsedToolCall tc;
+            tc.name = call["name"].get<std::string>();
+            tc.arguments = call["arguments"].is_object()
+                               ? call["arguments"].dump()
+                               : call["arguments"].get<std::string>();
+            results.push_back(std::move(tc));
+        }
+    } catch (...) {
+        // Malformed JSON — return empty, callers treat this as not-a-tool-call
+    }
+    return results;
+}
+
 static // Helper to read the template file from the model directory
 int LoadMaxPositionEmbeddings(const std::string& model_path) {
     fs::path path(model_path);
@@ -251,64 +283,50 @@ static void parse_request_chat_completion(const std::string &json,
                                           bool &is_stream,
                                           int &n,
                                           bool &has_tools) {
+    nlohmann::json data;
     try {
-        nlohmann::json data = nlohmann::json::parse(json);
+        data = nlohmann::json::parse(json);
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to parse request JSON: " << e.what() << std::endl;
+        return;
+    }
+
+    // --- 1. Template rendering ---
+    try {
         if (!data.contains("bos_token")) data["bos_token"] = "<|im_start|>";
         if (!data.contains("eos_token")) data["eos_token"] = "<|im_end|>";
-        
-        // --- 1. Explicity check for tools and set a boolean flag ---
-        if (data.contains("tools") && data["tools"].is_array() && !data["tools"].empty()) {
-            has_tools = true;
-            data["has_tools"] = true; // Inject boolean into JSON payload for Inja
-        } else {
-            has_tools = false;
-            data["has_tools"] = false;
-        }
 
-        // --- 2. Create custom Inja environment ---
+        has_tools = data.contains("tools") && data["tools"].is_array() && !data["tools"].empty();
+        data["has_tools"] = has_tools;
+
         inja::Environment env;
-        
-        // Add a custom 'dump' callback (equivalent to Python's | tojson)
-        // This takes the JSON object, converts it to a string, and escapes it properly
         env.add_callback("dump", 1, [](inja::Arguments& args) {
             if (args.at(0)->is_object() || args.at(0)->is_array()) {
-                return args.at(0)->dump(); // Dump with 2-space indentation
+                return args.at(0)->dump();
             }
             return args.at(0)->get<std::string>();
         });
 
-        // 3. Render the template!
         prompt = env.render(chat_template, data);
-        
+
     } catch (const std::exception& e) {
         std::cerr << "Template rendering failed: " << e.what() << std::endl;
     }
-    
-    // --- Parse Generation Options ---
-    Json::Value root;
-    Json::CharReaderBuilder builder;
-    std::string errors;
-    std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-    bool parse = reader->parse(json.c_str(), json.c_str() + json.size(), &root, &errors);
-    
-    if (parse && root.isObject()) {
-        if (root.isMember("stream") && root["stream"].isBool()) is_stream = root["stream"].asBool();
-        else is_stream = false;
-        
-        if (root.isMember("n") && root["n"].isNumeric()) n = root["n"].asInt();
-        else n = 1;
-        
-        if (root["temperature"].isNumeric()) options.sampling_temperature = root["temperature"].asDouble();
-        else options.sampling_temperature = 0.7;
-        
-        if (root["top_p"].isNumeric()) options.sampling_topp = root["top_p"].asDouble();
-        
-        if (root["max_tokens"].isNumeric()) options.max_length = root["max_tokens"].asUInt();
-        else if (root["max_completion_tokens"].isNumeric()) options.max_length = root["max_completion_tokens"].asUInt();
-        else options.max_length = 512;
 
-        options.include_prompt_in_result = false;
-    }
+    // --- 2. Parse generation options ---
+    is_stream = data.value("stream", false);
+    n         = data.value("n", 1);
+
+    options.sampling_temperature  = data.value("temperature", 0.7);
+    options.sampling_topp         = data.value("top_p", options.sampling_topp);
+    options.include_prompt_in_result = false;
+
+    if (data.contains("max_tokens") && data["max_tokens"].is_number())
+        options.max_length = data["max_tokens"].get<unsigned int>();
+    else if (data.contains("max_completion_tokens") && data["max_completion_tokens"].is_number())
+        options.max_length = data["max_completion_tokens"].get<unsigned int>();
+    else
+        options.max_length = 512;
 }
 
 static // Unified Loader
@@ -570,56 +588,40 @@ public:
             message["role"] = "assistant";
             
             // --- QWEN TOOL CALL INTERCEPTION ---
-            bool is_tool_call = false;
-            std::string tool_name = "";
-            std::string tool_args = "";
+            std::vector<ParsedToolCall> tool_calls_parsed;
             
             size_t start_tag = response_text.find("<tool_call>");
-            size_t end_tag = response_text.find("</tool_call>");
+            size_t end_tag   = response_text.find("</tool_call>");
             
             if (start_tag != std::string::npos && end_tag != std::string::npos) {
-                // Extract the JSON string between the tags
-                std::string json_str = response_text.substr(start_tag + 11, end_tag - (start_tag + 11));
-                try {
-                    nlohmann::json tool_json = nlohmann::json::parse(json_str);
-                    if (tool_json.contains("name") && tool_json.contains("arguments")) {
-                        tool_name = tool_json["name"].get<std::string>();
-                        
-                        if (tool_json["arguments"].is_object()) {
-                            tool_args = tool_json["arguments"].dump();
-                        } else {
-                            tool_args = tool_json["arguments"].get<std::string>();
-                        }
-                        is_tool_call = true;
-                    }
-                } catch (...) {
-                    is_tool_call = false;
-                }
+                std::string json_str = response_text.substr(start_tag + 11,
+                                                            end_tag - (start_tag + 11));
+                tool_calls_parsed = parse_tool_call_json(json_str);
             }
             
             // --- BUILD RESPONSE ---
-            if (is_tool_call) {
-                message["content"] = Json::nullValue; // Content must be null for tool calls
-                
-                Json::Value tool_calls(Json::arrayValue);
-                Json::Value tc(Json::objectValue);
-                tc["id"] = "call_" + get_openai_style_id();
-                tc["type"] = "function";
-                tc["index"] = 0;
-                Json::Value func(Json::objectValue);
-                func["name"] = tool_name;
-                func["arguments"] = tool_args;
-                
-                tc["function"] = func;
-                tool_calls.append(tc);
-                
-                message["tool_calls"] = tool_calls;
-                choice["finish_reason"] = "tool_calls";
+            if (!tool_calls_parsed.empty()) {
+                message["content"] = Json::nullValue;
+
+                Json::Value tool_calls_node(Json::arrayValue);
+                for (int tc_idx = 0; tc_idx < (int)tool_calls_parsed.size(); ++tc_idx) {
+                    Json::Value tc(Json::objectValue);
+                    tc["id"]    = "call_" + get_openai_style_id();
+                    tc["type"]  = "function";
+                    tc["index"] = tc_idx;
+                    Json::Value func(Json::objectValue);
+                    func["name"]      = tool_calls_parsed[tc_idx].name;
+                    func["arguments"] = tool_calls_parsed[tc_idx].arguments;
+                    tc["function"] = func;
+                    tool_calls_node.append(tc);
+                }
+
+                message["tool_calls"]    = tool_calls_node;
+                choice["finish_reason"]  = "tool_calls";
             } else {
-                message["content"] = response_text;
-                choice["finish_reason"] = "stop";
+                message["content"]       = response_text;
+                choice["finish_reason"]  = "stop";
             }
-            // ------------------------------
             
             choice["message"] = message;
             choices.append(choice);
@@ -2093,24 +2095,36 @@ int main(int argc, OPTARG_T argv[]) {
                                     is_tool = false;
                                 }
                             }
-                            if(is_tool) {
-                                delta["content"] = Json::nullValue;
-                                Json::Value tool_calls(Json::arrayValue);
-                                Json::Value tc(Json::objectValue);
-                                tc["id"] = "call_" + get_openai_style_id();
-                                tc["type"] = "function";
-                                tc["index"] = 0;
-                                Json::Value func(Json::objectValue);
-                                func["name"] = tool_name;
-                                func["arguments"] = tool_args;
-                                tc["function"] = func;
-                                tool_calls.append(tc);
-                                delta["tool_calls"] = tool_calls;
-                                choice["finish_reason"] = "tool_calls";
-                            }else{
-                                delta["content"] = token;
+                            if (is_tool) {
+                                std::vector<ParsedToolCall> tool_calls_parsed = parse_tool_call_json(token);
+                                if (tool_calls_parsed.empty()) {
+                                    is_tool = false;
+                                } else {
+                                    delta["content"] = Json::nullValue;
+
+                                    Json::Value tool_calls_node(Json::arrayValue);
+                                    for (int tc_idx = 0; tc_idx < (int)tool_calls_parsed.size(); ++tc_idx) {
+                                        Json::Value tc(Json::objectValue);
+                                        tc["id"]    = "call_" + get_openai_style_id();
+                                        tc["type"]  = "function";
+                                        tc["index"] = tc_idx;
+                                        Json::Value func(Json::objectValue);
+                                        func["name"]      = tool_calls_parsed[tc_idx].name;
+                                        func["arguments"] = tool_calls_parsed[tc_idx].arguments;
+                                        tc["function"] = func;
+                                        tool_calls_node.append(tc);
+                                    }
+
+                                    delta["tool_calls"]     = tool_calls_node;
+                                    choice["finish_reason"] = "tool_calls";
+                                }
+                            }
+                            
+                            if (!is_tool) {
+                                delta["content"]        = token;
                                 choice["finish_reason"] = Json::nullValue;
                             }
+                            
                             choice["delta"] = delta;
                             
                             choices.append(choice);
