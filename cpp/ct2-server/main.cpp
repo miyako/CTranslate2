@@ -1068,6 +1068,71 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
 
         return Json::writeString(writer, rootNode);;
     }
+
+    // Streaming variant: calls on_token for each decoded token increment.
+    // on_token(text, sentence_index) → return false to abort early.
+    void translate_batch_stream(const std::vector<std::string>& texts,
+                                ctranslate2::TranslationOptions options,
+                                std::function<bool(const std::string&, int)> on_token) {
+
+        // Tokenise all source sentences
+        std::vector<std::vector<std::string>> batch_tokens;
+        batch_tokens.reserve(texts.size());
+        for (const auto& text : texts) {
+            std::vector<std::string> tokens;
+            tokenizer_->Encode(text, &tokens);
+            batch_tokens.push_back(std::move(tokens));
+        }
+
+        size_t n = texts.size();
+
+        // Per-sentence state
+        std::vector<std::vector<size_t>> current_ids(n);
+        std::vector<std::string>         previous_text(n, "");
+        std::vector<bool>                finished(n, false);
+
+        options.callback = [&](ctranslate2::GenerationStepResult step) -> bool {
+            size_t sid = step.batch_id;
+            if (sid >= n || finished[sid]) return true;
+
+            current_ids[sid].push_back(step.token_id);
+
+            // Decode accumulated ids into text
+            std::string current_text;
+            tokenizer_->Decode(
+                std::vector<std::string>(current_ids[sid].size()),  // placeholder
+                &current_text
+            );
+            // SentencePiece Decode overload that works with id vectors:
+            {
+                std::vector<int> id_ints(current_ids[sid].begin(), current_ids[sid].end());
+                tokenizer_->Decode(id_ints, &current_text);
+            }
+
+            // Emit only the new suffix (avoids re-sending already-sent characters)
+            if (current_text.length() > previous_text[sid].length()) {
+                // Guard against incomplete UTF-8 sequences (replacement char U+FFFD)
+                if (current_text.find("\xef\xbf\xbd") == std::string::npos) {
+                    std::string new_text = current_text.substr(previous_text[sid].length());
+                    previous_text[sid] = current_text;
+                    if (!new_text.empty()) {
+                        if (!on_token(new_text, (int)sid)) return true; // abort
+                    }
+                }
+            }
+
+            if (step.is_last) finished[sid] = true;
+
+            bool all_done = true;
+            for (bool f : finished) if (!f) { all_done = false; break; }
+            return all_done;
+        };
+
+        // Run inference — this blocks until all sentences are done
+        auto futures = translator_->translate_batch_async(batch_tokens, options);
+        for (auto& f : futures) f.get();
+    }
+
 private:
     std::unique_ptr<ctranslate2::Translator> translator_;
     std::unique_ptr<sentencepiece::SentencePieceProcessor> tokenizer_;
@@ -1453,7 +1518,8 @@ static void parse_request_translate(const std::string &json,
                                     size_t *max_decoding_length,
                                     size_t *min_decoding_length,
                                     double *sampling_topp,
-                                    double *repetition_penalty) {
+                                    double *repetition_penalty,
+                                    bool *is_stream = nullptr) {
     
     Json::Value root;
     Json::CharReaderBuilder builder;
@@ -1520,6 +1586,12 @@ static void parse_request_translate(const std::string &json,
             if(repetition_penalty_node.isNumeric())
             {
                 *repetition_penalty = repetition_penalty_node.asDouble();
+            }
+            if (is_stream != nullptr) {
+                Json::Value stream_node = root["stream"];
+                if (stream_node.isBool()) {
+                    *is_stream = stream_node.asBool();
+                }
             }
         }
     }
@@ -1672,7 +1744,8 @@ static void before_run_translate(
                                  size_t *max_decoding_length,
                                  size_t *min_decoding_length,
                                  double *sampling_topp,
-                                 double *repetition_penalty
+                                 double *repetition_penalty,
+                                 bool *is_stream = nullptr
                                   ) {
     parse_request_translate(request_body, inputs,
                             num_hypotheses,
@@ -1681,7 +1754,8 @@ static void before_run_translate(
                             max_decoding_length,
                             min_decoding_length,
                             sampling_topp,
-                            repetition_penalty);
+                            repetition_penalty,
+                            is_stream);
 }
 
 static void before_run_reranking(
@@ -2181,6 +2255,7 @@ int main(int argc, OPTARG_T argv[]) {
                 size_t min_decoding_length = 1;
                 double sampling_topp = 1;
                 double repetition_penalty = 1.0;
+                bool is_stream = false;
 
                 std::vector<std::string> texts;
                 before_run_translate(req.body, texts,
@@ -2190,7 +2265,8 @@ int main(int argc, OPTARG_T argv[]) {
                                      &max_decoding_length,
                                      &min_decoding_length,
                                      &sampling_topp,
-                                     &repetition_penalty);
+                                     &repetition_penalty,
+                                     &is_stream);
                 
                 // --- Extract Translation Parameters ---
                 ctranslate2::TranslationOptions options;
@@ -2201,11 +2277,56 @@ int main(int argc, OPTARG_T argv[]) {
                 options.max_decoding_length = max_decoding_length;
                 options.sampling_topp = sampling_topp;
                 options.repetition_penalty = repetition_penalty;
- 
-                std::string response_json = translation_pipeline->translate_batch(texts, options);
-                
-                res.set_content(response_json, "application/json");
-                res.status = 200;
+
+                if (is_stream) {
+                    // --- STREAMING MODE ---
+                    TranslationPipeline* raw_pipeline = translation_pipeline.get();
+                    size_t num_texts = texts.size();
+
+                    res.set_chunked_content_provider("text/event-stream",
+                        [raw_pipeline, texts, options, num_texts](size_t /*offset*/, httplib::DataSink& sink) {
+
+                        // Accumulate per-sentence buffers so we can send a final
+                        // complete JSON object once all text has been streamed.
+                        std::vector<std::string> full_texts(num_texts, "");
+
+                        auto token_callback = [&](const std::string& token, int sentence_idx) -> bool {
+                            if (sentence_idx < 0 || (size_t)sentence_idx >= num_texts) return true;
+                            full_texts[sentence_idx] += token;
+
+                            // Build an SSE chunk: one translation entry per sentence
+                            Json::Value root(Json::objectValue);
+                            root["object"] = "translation.chunk";
+                            Json::Value translationsNode(Json::arrayValue);
+                            Json::Value translationNode(Json::objectValue);
+                            translationNode["index"] = sentence_idx;
+                            translationNode["delta"] = token;
+                            translationsNode.append(translationNode);
+                            root["translations"] = translationsNode;
+
+                            Json::StreamWriterBuilder writer;
+                            writer["indentation"] = "";
+                            std::string chunk = "data: " + Json::writeString(writer, root) + "\n\n";
+                            sink.write(chunk.data(), chunk.size());
+
+                            return true; // keep streaming
+                        };
+
+                        raw_pipeline->translate_batch_stream(texts, options, token_callback);
+
+                        // Send [DONE] sentinel to signal end of stream
+                        std::string done = "data: [DONE]\n\n";
+                        sink.write(done.data(), done.size());
+                        sink.done();
+                        return false;
+                    });
+                } else {
+                    // --- NON-STREAMING MODE (original behaviour) ---
+                    std::string response_json = translation_pipeline->translate_batch(texts, options);
+                    
+                    res.set_content(response_json, "application/json");
+                    res.status = 200;
+                }
                 
             } catch (const std::exception& e) {
                 send_error(res, e.what(), 400);
