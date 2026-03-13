@@ -217,7 +217,7 @@ static const std::unordered_map<std::string, RerankingMode> kModelTypeMap = {
     {"llama", RERANKING_LLM}, {"gemma", RERANKING_LLM}, {"gemma2", RERANKING_LLM}, {"phi3", RERANKING_LLM},
 };
 
-static // Helper to read the template file from the model directory
+static
 RerankingMode LoadRerankingMode(const std::string& model_path) {
     fs::path path(model_path);
     fs::path config_path = path;
@@ -263,7 +263,7 @@ RerankingMode LoadRerankingMode(const std::string& model_path) {
     return RERANKING_ROBERTA;
 }
 
-static // Helper to read the template file from the model directory
+static
 std::string LoadChatTemplate(const std::string& model_path) {
     fs::path path(model_path);
     fs::path chat_template_path = path;
@@ -363,6 +363,144 @@ std::unique_ptr<tokenizers::Tokenizer> LoadTokenizer(const std::string& model_pa
 
     return nullptr;
 }
+
+class GeneratePipeline {
+public:
+    GeneratePipeline(const std::string& model_dir,
+                     int num_threads = 4,
+                     const std::string& device = "cpu") {
+        
+        if (num_threads > 0) {
+            ctranslate2::set_num_threads(num_threads);
+        }
+
+        // Load SentencePiece tokenizer (tokenizer.model preferred, else tokenizer.json path)
+        fs::path sp_path = fs::path(model_dir) / "tokenizer.model";
+        tokenizer_ = std::make_unique<sentencepiece::SentencePieceProcessor>();
+        auto status = tokenizer_->Load(sp_path.string());
+        if (!status.ok()) {
+            throw std::runtime_error("GeneratePipeline: failed to load tokenizer: " + status.ToString());
+        }
+
+        ctranslate2::Device device_type = (device == "cuda") ?
+            ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
+        translator_ = std::make_unique<ctranslate2::Translator>(model_dir, device_type);
+    }
+
+    // Non-streaming: returns full JSON response with usage counts.
+    std::string generate_batch(const std::vector<std::string>& prompts,
+                               const ctranslate2::TranslationOptions& options,
+                               const std::string& model_name) {
+        std::vector<std::vector<std::string>> batch_tokens;
+        batch_tokens.reserve(prompts.size());
+        for (const auto& p : prompts) {
+            std::vector<std::string> toks;
+            tokenizer_->Encode(p, &toks);
+            batch_tokens.push_back(std::move(toks));
+        }
+
+        // Prompt token count
+        size_t prompt_tokens = 0;
+        for (const auto& t : batch_tokens) prompt_tokens += t.size();
+
+        auto results = translator_->translate_batch(batch_tokens, options);
+
+        Json::Value root(Json::objectValue);
+        root["model"] = model_name;
+        root["object"] = "generate.completion";
+
+        Json::Value resultsNode(Json::arrayValue);
+        size_t completion_tokens = 0;
+        for (size_t i = 0; i < results.size(); ++i) {
+            const auto& result = results[i];
+            Json::Value entry(Json::objectValue);
+            entry["index"] = (int)i;
+            if (!result.hypotheses.empty()) {
+                completion_tokens += result.hypotheses[0].size();
+                std::string text;
+                tokenizer_->Decode(result.hypotheses[0], &text);
+                entry["text"] = text;
+            } else {
+                entry["text"] = "";
+            }
+            resultsNode.append(entry);
+        }
+        root["results"] = resultsNode;
+
+        Json::Value usage(Json::objectValue);
+        usage["prompt_tokens"]     = (Json::UInt64)prompt_tokens;
+        usage["completion_tokens"] = (Json::UInt64)completion_tokens;
+        usage["total_tokens"]      = (Json::UInt64)(prompt_tokens + completion_tokens);
+        root["usage"] = usage;
+
+        Json::StreamWriterBuilder writer;
+        writer["indentation"] = "";
+        return Json::writeString(writer, root);
+    }
+
+    // Streaming variant: fires on_token(delta, prompt_idx) for each new piece of text.
+    // Returns total usage counts via out-params after inference completes.
+    void generate_batch_stream(const std::vector<std::string>& prompts,
+                               ctranslate2::TranslationOptions options,
+                               std::function<bool(const std::string&, int)> on_token,
+                               size_t& out_prompt_tokens,
+                               size_t& out_completion_tokens) {
+        std::vector<std::vector<std::string>> batch_tokens;
+        batch_tokens.reserve(prompts.size());
+        for (const auto& p : prompts) {
+            std::vector<std::string> toks;
+            tokenizer_->Encode(p, &toks);
+            batch_tokens.push_back(std::move(toks));
+        }
+
+        out_prompt_tokens = 0;
+        for (const auto& t : batch_tokens) out_prompt_tokens += t.size();
+        out_completion_tokens = 0;
+
+        size_t n = prompts.size();
+        std::vector<std::vector<size_t>> current_ids(n);
+        std::vector<std::string>         previous_text(n, "");
+        std::vector<bool>                finished(n, false);
+
+        options.callback = [&](ctranslate2::GenerationStepResult step) -> bool {
+            size_t sid = step.batch_id;
+            if (sid >= n || finished[sid]) return true;
+
+            current_ids[sid].push_back(step.token_id);
+
+            std::string current_text;
+            {
+                std::vector<int> id_ints(current_ids[sid].begin(), current_ids[sid].end());
+                tokenizer_->Decode(id_ints, &current_text);
+            }
+
+            if (current_text.length() > previous_text[sid].length()) {
+                // Guard incomplete UTF-8
+                if (current_text.find("\xef\xbf\xbd") == std::string::npos) {
+                    std::string delta = current_text.substr(previous_text[sid].length());
+                    previous_text[sid] = current_text;
+                    if (!delta.empty()) {
+                        ++out_completion_tokens;
+                        if (!on_token(delta, (int)sid)) return true;
+                    }
+                }
+            }
+
+            if (step.is_last) finished[sid] = true;
+
+            bool all_done = true;
+            for (bool f : finished) if (!f) { all_done = false; break; }
+            return all_done;
+        };
+
+        auto futures = translator_->translate_batch_async(batch_tokens, options);
+        for (auto& f : futures) f.get();
+    }
+
+private:
+    std::unique_ptr<ctranslate2::Translator> translator_;
+    std::unique_ptr<sentencepiece::SentencePieceProcessor> tokenizer_;
+};
 
 class GenerationPipeline {
 public:
@@ -1039,11 +1177,16 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
             batch_tokens.push_back(tokens);
         }
 
+        // Count prompt tokens before inference
+        size_t prompt_tokens = 0;
+        for (const auto& toks : batch_tokens) prompt_tokens += toks.size();
+
         auto results = translator_->translate_batch(batch_tokens, options);
         
         Json::Value rootNode(Json::objectValue);
         Json::Value translationsNode(Json::arrayValue);
         
+        size_t completion_tokens = 0;
         for (size_t i = 0; i < results.size(); ++i) {
             const ctranslate2::TranslationResult result = results.at(i);
             Json::Value translationNode(Json::objectValue);
@@ -1054,6 +1197,7 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
             }
             Json::Value hypothesesNode(Json::arrayValue);
             for (const auto& hyp : result.hypotheses) {
+                completion_tokens += hyp.size(); // each hypothesis token vector
                 std::string detokenized;
                 tokenizer_->Decode(hyp, &detokenized);
                 hypothesesNode.append(detokenized);
@@ -1063,10 +1207,16 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
         }
 
         rootNode["translations"] = translationsNode;
+
+        Json::Value usage(Json::objectValue);
+        usage["prompt_tokens"]     = (Json::UInt64)prompt_tokens;
+        usage["completion_tokens"] = (Json::UInt64)completion_tokens;
+        usage["total_tokens"]      = (Json::UInt64)(prompt_tokens + completion_tokens);
+        rootNode["usage"] = usage;
+
         Json::StreamWriterBuilder writer;
         writer["indentation"] = "";
-
-        return Json::writeString(writer, rootNode);;
+        return Json::writeString(writer, rootNode);
     }
 
     // Streaming variant: calls on_token for each decoded token increment.
@@ -1509,6 +1659,51 @@ static std::string get_system_fingerprint(const std::string& model_path, const s
 }
 
 #pragma mark -
+
+static void parse_request_generate(const std::string& json_str,
+                                   std::vector<std::string>& prompts,
+                                   ctranslate2::TranslationOptions& options,
+                                   bool* is_stream = nullptr) {
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+    bool ok = reader->parse(json_str.c_str(), json_str.c_str() + json_str.size(), &root, &errors);
+    if (!ok || !root.isObject()) return;
+
+    // "prompt": string or array of strings
+    Json::Value prompt_node = root["prompt"];
+    if (prompt_node.isString()) {
+        prompts.push_back(prompt_node.asString());
+    } else if (prompt_node.isArray()) {
+        for (auto& v : prompt_node) {
+            if (v.isString()) prompts.push_back(v.asString());
+        }
+    }
+
+    // Generation options
+    if (root["max_length"].isNumeric())
+        options.max_decoding_length = root["max_length"].asUInt();
+    if (root["min_length"].isNumeric())
+        options.min_decoding_length = root["min_length"].asUInt();
+    if (root["beam_size"].isNumeric())
+        options.beam_size = root["beam_size"].asUInt();
+    if (root["num_hypotheses"].isNumeric())
+        options.num_hypotheses = root["num_hypotheses"].asUInt();
+    if (root["sampling_topk"].isNumeric())
+        options.sampling_topk = root["sampling_topk"].asUInt();
+    if (root["sampling_topp"].isNumeric())
+        options.sampling_topp = root["sampling_topp"].asDouble();
+    if (root["temperature"].isNumeric())
+        options.sampling_temperature = root["temperature"].asDouble();
+    if (root["repetition_penalty"].isNumeric())
+        options.repetition_penalty = root["repetition_penalty"].asFloat();
+
+    if (is_stream != nullptr) {
+        Json::Value stream_node = root["stream"];
+        if (stream_node.isBool()) *is_stream = stream_node.asBool();
+    }
+}
 
 static void parse_request_translate(const std::string &json,
                                     std::vector<std::string> &inputs,
@@ -2053,6 +2248,30 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
+    std::unique_ptr<GeneratePipeline> generate_pipeline;
+    std::string generate_modelName;
+    long long generate_model_created = 0;
+    
+    if (model_path.length() != 0 && fs::exists(model_path) && fs::is_directory(model_path)) {
+        // Only initialise if it looks like an encoder-decoder (tokenizer.model present)
+        fs::path sp_check = fs::path(model_path) / "tokenizer.model";
+        if (fs::exists(sp_check)) {
+            try {
+                generate_pipeline = std::make_unique<GeneratePipeline>(model_path, intra_op_threads);
+#ifdef WIN32
+                generate_modelName = get_model_name(wchar_to_utf8(fs::path(model_path).c_str()));
+#else
+                generate_modelName = get_model_name(fs::path(model_path));
+#endif
+                generate_model_created = get_created_timestamp();
+                std::cerr << "[Generate] T5 pipeline ready for " << generate_modelName << std::endl;
+            } catch (const std::exception& e) {
+                // Non-fatal: model may not support encoder-decoder generation
+                std::cerr << "[Generate] Skipping T5 pipeline: " << e.what() << std::endl;
+            }
+        }
+    }
+    
     // ---------------------------------------------------------
     // SERVER MODE
     // ---------------------------------------------------------
@@ -2232,6 +2451,91 @@ int main(int argc, OPTARG_T argv[]) {
                 }else{
                     std::string response_json = generator_pipeline->chat_completion(prompt, options, n, generator_modelName);
                     
+                    res.set_content(response_json, "application/json");
+                    res.status = 200;
+                }
+
+            } catch (const std::exception& e) {
+                send_error(res, e.what(), 400);
+            }
+        });
+        
+        // Route: /v1/generate  (T5 / encoder-decoder conditional generation)
+        svr.Post("/v1/generate", [&](const httplib::Request& req, httplib::Response& res) {
+
+            std::cout << "[Server] /v1/generate request received." << std::endl;
+
+            try {
+                if (!generate_pipeline) {
+                    throw std::invalid_argument("[Generate] T5 pipeline not loaded. Pass a model with tokenizer.model via -m");
+                }
+
+                std::vector<std::string> prompts;
+                ctranslate2::TranslationOptions options;
+                // Reasonable T5 defaults
+                options.max_decoding_length = 128;
+                options.beam_size = 4;
+                bool is_stream = false;
+
+                parse_request_generate(req.body, prompts, options, &is_stream);
+
+                if (prompts.empty()) {
+                    throw std::invalid_argument("'prompt' field must be a non-empty string or array of strings.");
+                }
+
+                if (is_stream) {
+                    // --- STREAMING MODE ---
+                    GeneratePipeline* raw = generate_pipeline.get();
+                    std::string mdl = generate_modelName;
+                    size_t num_prompts = prompts.size();
+
+                    res.set_chunked_content_provider("text/event-stream",
+                        [raw, prompts, options, mdl, num_prompts](size_t, httplib::DataSink& sink) {
+
+                        size_t prompt_toks = 0, completion_toks = 0;
+
+                        auto token_callback = [&](const std::string& delta, int idx) -> bool {
+                            Json::Value root(Json::objectValue);
+                            root["object"] = "generate.chunk";
+                            root["model"]  = mdl;
+                            Json::Value arr(Json::arrayValue);
+                            Json::Value node(Json::objectValue);
+                            node["index"] = idx;
+                            node["delta"] = delta;
+                            arr.append(node);
+                            root["results"] = arr;
+
+                            Json::StreamWriterBuilder w;
+                            w["indentation"] = "";
+                            std::string chunk = "data: " + Json::writeString(w, root) + "\n\n";
+                            sink.write(chunk.data(), chunk.size());
+                            return true;
+                        };
+
+                        raw->generate_batch_stream(prompts, options, token_callback, prompt_toks, completion_toks);
+
+                        // Send final usage chunk before [DONE]
+                        Json::Value usage_root(Json::objectValue);
+                        usage_root["object"] = "generate.chunk";
+                        usage_root["model"]  = mdl;
+                        Json::Value usage(Json::objectValue);
+                        usage["prompt_tokens"]     = (Json::UInt64)prompt_toks;
+                        usage["completion_tokens"] = (Json::UInt64)completion_toks;
+                        usage["total_tokens"]      = (Json::UInt64)(prompt_toks + completion_toks);
+                        usage_root["usage"] = usage;
+                        Json::StreamWriterBuilder w;
+                        w["indentation"] = "";
+                        std::string uchunk = "data: " + Json::writeString(w, usage_root) + "\n\n";
+                        sink.write(uchunk.data(), uchunk.size());
+
+                        std::string done = "data: [DONE]\n\n";
+                        sink.write(done.data(), done.size());
+                        sink.done();
+                        return false;
+                    });
+                } else {
+                    // --- NON-STREAMING MODE ---
+                    std::string response_json = generate_pipeline->generate_batch(prompts, options, generate_modelName);
                     res.set_content(response_json, "application/json");
                     res.status = 200;
                 }
