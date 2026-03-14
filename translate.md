@@ -1,3 +1,17 @@
+# Translate
+
+||`max_position_embeddings`|`max_length`
+|-|-:|-:|
+|opus-mt-en-fr|`512`|`512`
+|opus-mt-fr-en|`512`|`512`
+|opus-mt-tc-big-en-fr|`1024`|`512`
+|opus-mt-tc-big-fr-en|`1024`|`512`
+|nllb-200-distilled-600M|`1024`|`200`|
+|nllb-200-distilled-1.3B|`1024`|`200`|
+|mbart-large-50-many-to-many-mmt|`1024`|`200`
+|mbart-large-50-many-to-one-mmt|`1024`|`200`
+|mbart-large-50-one-to-many-mmt|`1024`|`200`
+
 # NLLB
 
 ```
