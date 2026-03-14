@@ -1181,7 +1181,7 @@ public:
             }
         }
         
-        if (translate_model_ != TRANSLATE_UNKNOWN)
+        if (translate_model_ == TRANSLATE_UNKNOWN)
             throw std::runtime_error("TranslationPipeline: failed to load tokenizer.");
         
         eos_token_ = "</s>";

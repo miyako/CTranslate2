@@ -70,6 +70,18 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.CTranslate2/opus-mt-tc-big-en-fr"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/.CTranslate2/opus-mt-en-fr"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/.CTranslate2/opus-mt-tc-big-fr-en"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/.CTranslate2/opus-mt-fr-en"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
