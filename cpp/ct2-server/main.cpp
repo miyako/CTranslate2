@@ -1156,6 +1156,8 @@ class TranslationPipeline {
         if (!status.ok()) {
             throw std::runtime_error("TranslationPipeline: failed to load tokenizer: " + status.ToString());
         }
+        
+        eos_token_ = "</s>";
                 
         try {
             ctranslate2::Device device_type = (device == "cuda") ?
@@ -1178,7 +1180,7 @@ class TranslationPipeline {
         
         batch_tokens.reserve(texts.size());
         batch_prefixes.reserve(texts.size());
-        
+                
         for (const auto& text : texts) {
             std::vector<std::string> tokens;
             tokenizer_->Encode(text, &tokens);
@@ -1186,6 +1188,12 @@ class TranslationPipeline {
             if(!src_lang.empty()) {
                 tokens.insert(tokens.begin(), src_lang);
                 has_prefix = true;
+            }else if(!tgt_lang.empty()) {
+                has_prefix = true;
+            }
+
+            if (tokens.empty() || tokens.back() != eos_token_) {
+                tokens.push_back(eos_token_);
             }
             
             batch_tokens.push_back(std::move(tokens));
@@ -1261,6 +1269,12 @@ class TranslationPipeline {
             if(!src_lang.empty()) {
                 tokens.insert(tokens.begin(), src_lang);
                 has_prefix = true;
+            }else if(!tgt_lang.empty()) {
+                has_prefix = true;
+            }
+            
+            if (tokens.empty() || tokens.back() != eos_token_) {
+                tokens.push_back(eos_token_);
             }
             
             batch_tokens.push_back(std::move(tokens));
@@ -1315,6 +1329,7 @@ class TranslationPipeline {
 private:
     std::unique_ptr<ctranslate2::Translator> translator_;
     std::unique_ptr<sentencepiece::SentencePieceProcessor> tokenizer_;
+    std::string eos_token_;
 };
 
 class EmbeddingPipeline {

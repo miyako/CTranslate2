@@ -62,6 +62,10 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.CTranslate2/mbart-large-50-many-to-many-mmt"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/.CTranslate2/mbart-large-50-one-to-many-mmt"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
