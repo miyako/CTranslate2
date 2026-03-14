@@ -47,10 +47,10 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$URL:="keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-ct2-int8_float16"
 	$rerank:=cs:C1710.event.huggingface.new($folder; $URL; $path; "rerank")
 	
-	$folder:=$homeFolder.folder("Arch-Agent-3B")
-	$path:="Arch-Agent-3B-ct2-int8"
-	$URL:="keisuke-miyako/Arch-Agent-3B-ct2-int8"
-	$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat")
+	$folder:=$homeFolder.folder("mbart-large-50-many-to-many-mmt")
+	$path:="mbart-large-50-many-to-many-mmt-ct2-int8"
+	$URL:="keisuke-miyako/mbart-large-50-many-to-many-mmt-ct2-int8"
+	$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "translate")
 	
 	// $huggingfaces:=cs:C1710.event.huggingfaces.new([$embeddings; $translate; $rerank; $chat])
 	$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
