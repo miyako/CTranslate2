@@ -143,6 +143,11 @@ struct ParsedToolCall {
     std::string arguments;
 };
 
+struct TranslateInput {
+    std::string text;
+    std::string lang;
+};
+
 // Parses the JSON content extracted from between <tool_call>…</tool_call>.
 // The model may emit a single object {"name":…,"arguments":…}
 // or an array  [{"name":…,"arguments":…}, …].
@@ -464,7 +469,7 @@ public:
 
         options.callback = [&](ctranslate2::GenerationStepResult step) -> bool {
             size_t sid = step.batch_id;
-            if (sid >= n || finished[sid]) return true;
+            if (sid >= n || finished[sid]) return false;
 
             current_ids[sid].push_back(step.token_id);
 
@@ -494,7 +499,12 @@ public:
         };
 
         auto futures = translator_->translate_batch_async(batch_tokens, options);
-        for (auto& f : futures) f.get();
+        
+        try {
+            for (auto& f : futures) f.get();
+        } catch (std::exception& e) {
+            std::cerr << e.what() << std::endl;
+        }
     }
 
 private:
@@ -546,6 +556,7 @@ public:
         std::vector<bool> tool_mode(n, false);
         
         options.callback = [&](ctranslate2::GenerationStepResult step_result) {
+            
             size_t batch_id = step_result.batch_id;
             if (finished[batch_id]) return true;
             
@@ -1168,20 +1179,36 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
     }
 
     std::string translate_batch(const std::vector<std::string>& texts,
+                                const std::string& src_lang,
+                                const std::string& tgt_lang,
                                 const ctranslate2::TranslationOptions& options) {
         
         std::vector<std::vector<std::string>> batch_tokens;
+        std::vector<std::vector<std::string>> batch_prefixes;
+        
+        bool has_prefix = false;
+        
+        batch_tokens.reserve(texts.size());
+        batch_prefixes.reserve(texts.size());
+        
         for (const auto& text : texts) {
             std::vector<std::string> tokens;
             tokenizer_->Encode(text, &tokens);
-            batch_tokens.push_back(tokens);
+                        
+            if(!src_lang.empty()) {
+                tokens.insert(tokens.begin(), src_lang);
+                has_prefix = true;
+            }
+            
+            batch_tokens.push_back(std::move(tokens));
+            batch_prefixes.push_back({tgt_lang});  // force first decoded token
         }
 
         // Count prompt tokens before inference
         size_t prompt_tokens = 0;
         for (const auto& toks : batch_tokens) prompt_tokens += toks.size();
 
-        auto results = translator_->translate_batch(batch_tokens, options);
+        auto results = translator_->translate_batch(batch_tokens, batch_prefixes, options);
         
         Json::Value rootNode(Json::objectValue);
         Json::Value translationsNode(Json::arrayValue);
@@ -1197,9 +1224,13 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
             }
             Json::Value hypothesesNode(Json::arrayValue);
             for (const auto& hyp : result.hypotheses) {
-                completion_tokens += hyp.size(); // each hypothesis token vector
+                auto tokens = hyp;
+                if((has_prefix) && (!tokens.empty())) {
+                    tokens.erase(tokens.begin());
+                }
+                completion_tokens += tokens.size(); // each hypothesis token vector
                 std::string detokenized;
-                tokenizer_->Decode(hyp, &detokenized);
+                tokenizer_->Decode(tokens, &detokenized);
                 hypothesesNode.append(detokenized);
             }
             translationNode["text"] = hypothesesNode;
@@ -1222,16 +1253,34 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
     // Streaming variant: calls on_token for each decoded token increment.
     // on_token(text, sentence_index) → return false to abort early.
     void translate_batch_stream(const std::vector<std::string>& texts,
+                                const std::string& src_lang,
+                                const std::string& tgt_lang,
                                 ctranslate2::TranslationOptions options,
                                 std::function<bool(const std::string&, int)> on_token) {
 
+        // Streaming requires greedy decoding — beam search is incompatible with callbacks
+        options.beam_size = 1;
+        
         // Tokenise all source sentences
         std::vector<std::vector<std::string>> batch_tokens;
+        std::vector<std::vector<std::string>> batch_prefixes;
+        
+        bool has_prefix = false;
+        
         batch_tokens.reserve(texts.size());
+        batch_prefixes.reserve(texts.size());
+        
         for (const auto& text : texts) {
             std::vector<std::string> tokens;
             tokenizer_->Encode(text, &tokens);
+            
+            if(!src_lang.empty()) {
+                tokens.insert(tokens.begin(), src_lang);
+                has_prefix = true;
+            }
+            
             batch_tokens.push_back(std::move(tokens));
+            batch_prefixes.push_back({tgt_lang});  // force first decoded token
         }
 
         size_t n = texts.size();
@@ -1239,48 +1288,57 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
         // Per-sentence state
         std::vector<std::vector<size_t>> current_ids(n);
         std::vector<std::string>         previous_text(n, "");
+        std::vector<bool>                is_first(n, has_prefix);
         std::vector<bool>                finished(n, false);
-
+        
         options.callback = [&](ctranslate2::GenerationStepResult step) -> bool {
+            
+            std::cout << "[CB] sid=" << step.batch_id
+                          << " token_id=" << step.token_id
+                          << " is_last=" << step.is_last << std::endl;
+            
             size_t sid = step.batch_id;
-            if (sid >= n || finished[sid]) return true;
+            if (sid >= n || finished[sid]) return false;
 
+            if (is_first[sid]) {
+                is_first[sid] = false;
+                if (step.is_last) finished[sid] = true;
+                return false;
+            }
+            
+            std::string current_text;
+                std::vector<int> id_ints(current_ids[sid].begin(), current_ids[sid].end());
             current_ids[sid].push_back(step.token_id);
 
-            // Decode accumulated ids into text
-            std::string current_text;
-            tokenizer_->Decode(
-                std::vector<std::string>(current_ids[sid].size()),  // placeholder
-                &current_text
-            );
-            // SentencePiece Decode overload that works with id vectors:
-            {
-                std::vector<int> id_ints(current_ids[sid].begin(), current_ids[sid].end());
-                tokenizer_->Decode(id_ints, &current_text);
-            }
-
-            // Emit only the new suffix (avoids re-sending already-sent characters)
+            tokenizer_->Decode(id_ints, &current_text);
+ 
+            std::cout << "[CB] decoded='" << current_text
+                          << "' prev='" << previous_text[sid] << "'" << std::endl;
+            
             if (current_text.length() > previous_text[sid].length()) {
-                // Guard against incomplete UTF-8 sequences (replacement char U+FFFD)
                 if (current_text.find("\xef\xbf\xbd") == std::string::npos) {
-                    std::string new_text = current_text.substr(previous_text[sid].length());
+                    std::string delta = current_text.substr(previous_text[sid].length());
                     previous_text[sid] = current_text;
-                    if (!new_text.empty()) {
-                        if (!on_token(new_text, (int)sid)) return true; // abort
+                    if (!delta.empty()) {
+                        on_token(delta, (int)sid);
                     }
                 }
             }
 
             if (step.is_last) finished[sid] = true;
-
+            
             bool all_done = true;
             for (bool f : finished) if (!f) { all_done = false; break; }
             return all_done;
         };
 
-        // Run inference — this blocks until all sentences are done
-        auto futures = translator_->translate_batch_async(batch_tokens, options);
-        for (auto& f : futures) f.get();
+        auto futures = translator_->translate_batch_async(batch_tokens, batch_prefixes, options);
+        
+        try {
+            for (auto& f : futures) f.get();
+        } catch (std::exception& e) {
+            std::cerr << e.what() << std::endl;
+        }
     }
 
 private:
@@ -1660,9 +1718,12 @@ static std::string get_system_fingerprint(const std::string& model_path, const s
 
 #pragma mark -
 
-static void parse_request_generate(const std::string& json_str,
+static void parse_request_generate(const std::string& property_name,
+                                   const std::string& json_str,
                                    std::vector<std::string>& prompts,
                                    ctranslate2::TranslationOptions& options,
+                                   std::string& src_lang,
+                                   std::string& tgt_lang,
                                    bool* is_stream = nullptr) {
     Json::Value root;
     Json::CharReaderBuilder builder;
@@ -1672,13 +1733,23 @@ static void parse_request_generate(const std::string& json_str,
     if (!ok || !root.isObject()) return;
 
     // "prompt": string or array of strings
-    Json::Value prompt_node = root["prompt"];
+    Json::Value prompt_node = root[property_name];
     if (prompt_node.isString()) {
         prompts.push_back(prompt_node.asString());
     } else if (prompt_node.isArray()) {
         for (auto& v : prompt_node) {
             if (v.isString()) prompts.push_back(v.asString());
         }
+    }
+    
+    Json::Value from_lang_node = root["from"];
+    if (from_lang_node.isString()) {
+        src_lang = from_lang_node.asString();
+    }
+    
+    Json::Value to_lang_node = root["to"];
+    if (to_lang_node.isString()) {
+        tgt_lang = to_lang_node.asString();
     }
 
     // Generation options
@@ -1702,93 +1773,6 @@ static void parse_request_generate(const std::string& json_str,
     if (is_stream != nullptr) {
         Json::Value stream_node = root["stream"];
         if (stream_node.isBool()) *is_stream = stream_node.asBool();
-    }
-}
-
-static void parse_request_translate(const std::string &json,
-                                    std::vector<std::string> &inputs,
-                                    size_t *num_hypotheses,
-                                    size_t *sampling_topk,
-                                    size_t *beam_size,
-                                    size_t *max_decoding_length,
-                                    size_t *min_decoding_length,
-                                    double *sampling_topp,
-                                    double *repetition_penalty,
-                                    bool *is_stream = nullptr) {
-    
-    Json::Value root;
-    Json::CharReaderBuilder builder;
-    std::string errors;
-    
-    std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-    bool parse = reader->parse(json.c_str(),
-                               json.c_str() + json.size(),
-                               &root,
-                               &errors);
-    
-    if(parse)
-    {
-        if(root.isObject())
-        {
-            Json::Value input_node = root["text"];
-            if(input_node.isString())
-            {
-                inputs.push_back(input_node.asString());
-            }
-            if(input_node.isArray())
-            {
-                for (Json::ValueIterator i = input_node.begin(); i != input_node.end(); ++i)
-                {
-                    const auto& node = *i;
-                    if(node.isString())
-                    {
-                        inputs.push_back(node.asString());
-                    }
-                    
-                }
-            }
-            Json::Value num_hypotheses_node = root["num_hypotheses"];
-            if(num_hypotheses_node.isNumeric())
-            {
-                *num_hypotheses = num_hypotheses_node.asUInt64();
-            }
-            Json::Value sampling_topk_node = root["sampling_topk"];
-            if(sampling_topk_node.isNumeric())
-            {
-                *sampling_topk = sampling_topk_node.asDouble();
-            }
-            Json::Value beam_size_node = root["beam_size"];
-            if(beam_size_node.isNumeric())
-            {
-                *beam_size = beam_size_node.asDouble();
-            }
-            Json::Value max_decoding_length_node = root["max_decoding_length"];
-            if(max_decoding_length_node.isNumeric())
-            {
-                *max_decoding_length = max_decoding_length_node.asDouble();
-            }
-            Json::Value min_decoding_length_node = root["min_decoding_length"];
-            if(min_decoding_length_node.isNumeric())
-            {
-                *min_decoding_length = min_decoding_length_node.asDouble();
-            }
-            Json::Value sampling_topp_node = root["sampling_topp"];
-            if(sampling_topp_node.isNumeric())
-            {
-                *sampling_topp = sampling_topp_node.asDouble();
-            }
-            Json::Value repetition_penalty_node = root["repetition_penalty"];
-            if(repetition_penalty_node.isNumeric())
-            {
-                *repetition_penalty = repetition_penalty_node.asDouble();
-            }
-            if (is_stream != nullptr) {
-                Json::Value stream_node = root["stream"];
-                if (stream_node.isBool()) {
-                    *is_stream = stream_node.asBool();
-                }
-            }
-        }
     }
 }
 
@@ -1928,29 +1912,6 @@ static void parse_request_embeddings(const std::string &json,
             }
         }
     }
-}
-
-static void before_run_translate(
-                                  const std::string& request_body,
-                                 std::vector<std::string> &inputs,
-                                 size_t *num_hypotheses,
-                                 size_t *sampling_topk,
-                                 size_t *beam_size,
-                                 size_t *max_decoding_length,
-                                 size_t *min_decoding_length,
-                                 double *sampling_topp,
-                                 double *repetition_penalty,
-                                 bool *is_stream = nullptr
-                                  ) {
-    parse_request_translate(request_body, inputs,
-                            num_hypotheses,
-                            sampling_topk,
-                            beam_size,
-                            max_decoding_length,
-                            min_decoding_length,
-                            sampling_topp,
-                            repetition_penalty,
-                            is_stream);
 }
 
 static void before_run_reranking(
@@ -2471,13 +2432,15 @@ int main(int argc, OPTARG_T argv[]) {
                 }
 
                 std::vector<std::string> prompts;
+                std::string src_lang;
+                std::string tgt_lang;
                 ctranslate2::TranslationOptions options;
                 // Reasonable T5 defaults
                 options.max_decoding_length = 128;
                 options.beam_size = 4;
                 bool is_stream = false;
 
-                parse_request_generate(req.body, prompts, options, &is_stream);
+                parse_request_generate("prompt", req.body, prompts, options, src_lang, tgt_lang, &is_stream);
 
                 if (prompts.empty()) {
                     throw std::invalid_argument("'prompt' field must be a non-empty string or array of strings.");
@@ -2551,36 +2514,24 @@ int main(int argc, OPTARG_T argv[]) {
             std::cout << "[Server] /v1/translate request received." << std::endl;
             
             try {
-                
-                size_t num_hypotheses = 1;
-                size_t sampling_topk = 40;
-                size_t beam_size = 50;
-                size_t max_decoding_length = 512;
-                size_t min_decoding_length = 1;
-                double sampling_topp = 1;
-                double repetition_penalty = 1.0;
-                bool is_stream = false;
+                if (!translation_pipeline) {
+                    throw std::invalid_argument("[Translate] T5 pipeline not loaded. Pass a model with tokenizer.model via -m");
+                }
 
                 std::vector<std::string> texts;
-                before_run_translate(req.body, texts,
-                                     &num_hypotheses,
-                                     &sampling_topk,
-                                     &beam_size,
-                                     &max_decoding_length,
-                                     &min_decoding_length,
-                                     &sampling_topp,
-                                     &repetition_penalty,
-                                     &is_stream);
-                
-                // --- Extract Translation Parameters ---
+                std::string src_lang;
+                std::string tgt_lang;
                 ctranslate2::TranslationOptions options;
-                // Map common JSON parameters to CTranslate2 options
-                options.num_hypotheses = num_hypotheses;
-                options.sampling_topk = sampling_topk;
-                options.beam_size = beam_size;
-                options.max_decoding_length = max_decoding_length;
-                options.sampling_topp = sampling_topp;
-                options.repetition_penalty = repetition_penalty;
+                // Reasonable T5 defaults
+                options.max_decoding_length = 128;
+                options.beam_size = 4;
+                bool is_stream = false;
+
+                parse_request_generate("input", req.body, texts, options, src_lang, tgt_lang, &is_stream);
+                
+                if (texts.empty()) {
+                    throw std::invalid_argument("'input' field must be a non-empty string or array of strings.");
+                }
 
                 if (is_stream) {
                     // --- STREAMING MODE ---
@@ -2588,7 +2539,7 @@ int main(int argc, OPTARG_T argv[]) {
                     size_t num_texts = texts.size();
 
                     res.set_chunked_content_provider("text/event-stream",
-                        [raw_pipeline, texts, options, num_texts](size_t /*offset*/, httplib::DataSink& sink) {
+                        [raw_pipeline, texts, src_lang, tgt_lang, options, num_texts](size_t /*offset*/, httplib::DataSink& sink) {
 
                         // Accumulate per-sentence buffers so we can send a final
                         // complete JSON object once all text has been streamed.
@@ -2616,7 +2567,7 @@ int main(int argc, OPTARG_T argv[]) {
                             return true; // keep streaming
                         };
 
-                        raw_pipeline->translate_batch_stream(texts, options, token_callback);
+                        raw_pipeline->translate_batch_stream(texts, src_lang, tgt_lang, options, token_callback);
 
                         // Send [DONE] sentinel to signal end of stream
                         std::string done = "data: [DONE]\n\n";
@@ -2626,7 +2577,7 @@ int main(int argc, OPTARG_T argv[]) {
                     });
                 } else {
                     // --- NON-STREAMING MODE (original behaviour) ---
-                    std::string response_json = translation_pipeline->translate_batch(texts, options);
+                    std::string response_json = translation_pipeline->translate_batch(texts, src_lang, tgt_lang, options);
                     
                     res.set_content(response_json, "application/json");
                     res.status = 200;

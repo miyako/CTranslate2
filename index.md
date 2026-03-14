@@ -137,7 +137,7 @@ $CTranslate2.terminate()
 
 CTranslate2 relies on mapping standard model architectures like **BERT**, **RoBERTa**, or **DistilBERT** to its C++ inference engine. Some LLMs have moved on from the standard BERT architecture to a custom architecture. 
 
-If a model is not avaiable in `ct2` format, you can use a `python` utility to convert it. See [miyako/ct2-embedding-cli](https://github.com/miyako/ct2-embedding-cli) for details.
+If a model is not avaiable in `ct2` format, you can use a `python` utility to convert it. 
 
 #### Discussion
 
