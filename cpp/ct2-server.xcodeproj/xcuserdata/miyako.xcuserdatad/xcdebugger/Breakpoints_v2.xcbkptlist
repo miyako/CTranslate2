@@ -174,8 +174,8 @@
             filePath = "ct2-server/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "2201"
-            endingLineNumber = "2201"
+            startingLineNumber = "2205"
+            endingLineNumber = "2205"
             landmarkName = "main(argc, argv)"
             landmarkType = "9">
          </BreakpointContent>
@@ -206,10 +206,40 @@
             filePath = "ct2-server/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "2587"
-            endingLineNumber = "2587"
+            startingLineNumber = "2591"
+            endingLineNumber = "2591"
             landmarkName = "main(argc, argv)"
             landmarkType = "9">
+            <Locations>
+               <Location
+                  uuid = "962D515A-BB3E-40BA-AA9F-9CFD8BAC091B - c2e31769c61ed5d"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "main"
+                  moduleName = "ct2-server"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/miyako/Documents/GitHub/CTranslate2/cpp/ct2-server/main.cpp"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "2592"
+                  endingLineNumber = "2592">
+               </Location>
+               <Location
+                  uuid = "962D515A-BB3E-40BA-AA9F-9CFD8BAC091B - 93b81d53fb57caec"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "main::$_4::operator()(httplib::Request const&amp;, httplib::Response&amp;) const"
+                  moduleName = "ct2-server"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/miyako/Documents/GitHub/CTranslate2/cpp/ct2-server/main.cpp"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "2594"
+                  endingLineNumber = "2594">
+               </Location>
+            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -222,8 +252,8 @@
             filePath = "ct2-server/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "2443"
-            endingLineNumber = "2443"
+            startingLineNumber = "2447"
+            endingLineNumber = "2447"
             landmarkName = "main(argc, argv)"
             landmarkType = "9">
          </BreakpointContent>

@@ -655,7 +655,11 @@ public:
         
         // Block the HTTP thread while CTranslate2 generates
         std::vector<std::future<ctranslate2::GenerationResult>> futures = generator_->generate_batch_async(batch_tokens, options, 0, ctranslate2::BatchType::Examples);
-        for (auto& f : futures) f.get();
+        try {
+            for (auto& f : futures) f.get();
+        } catch (std::exception& e) {
+            std::cerr << e.what() << std::endl;
+        }
     }
     
     std::string chat_completion(const std::string& prompt,
@@ -1309,7 +1313,7 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
                 return false;
             }
             
-            current_ids[sid].push_back(step.token_id);
+            current_tokens[sid].push_back(step.token_id);
             
             std::string current_text;
             std::vector<int> id_ints(current_ids[sid].begin(), current_ids[sid].end());
