@@ -1141,24 +1141,51 @@ private:
 };
 
 class TranslationPipeline {
-    public:
+public:
     TranslationPipeline(const std::string& model_dir,
-                       int num_threads = 4,
-                       const std::string& device = "cpu") {
+                        int num_threads = 4,
+                        const std::string& device = "cpu") {
         
         if (num_threads > 0) {
             ctranslate2::set_num_threads(num_threads);
         }
         
+        translate_model_ = TranslateModel::TRANSLATE_UNKNOWN;
+        
         fs::path sp_path = fs::path(model_dir) / "tokenizer.model";
-        tokenizer_ = std::make_unique<sentencepiece::SentencePieceProcessor>();
-        auto status = tokenizer_->Load(sp_path.string());
-        if (!status.ok()) {
-            throw std::runtime_error("TranslationPipeline: failed to load tokenizer: " + status.ToString());
+        if(fs::exists(sp_path)) {
+            tokenizer_ = std::make_unique<sentencepiece::SentencePieceProcessor>();
+            auto status = tokenizer_->Load(sp_path.string());
+            if (!status.ok()) {
+                throw std::runtime_error("TranslationPipeline: failed to load tokenizer: " + status.ToString());
+            }
+            translate_model_ = TranslateModel::TRANSLATE_BART;
+        }
+
+        fs::path sp_src_path = fs::path(model_dir) / "source.tokenizer.model";
+        if(fs::exists(sp_src_path)) {
+            tokenizer_src_ = std::make_unique<sentencepiece::SentencePieceProcessor>();
+            auto status = tokenizer_src_->Load(sp_src_path.string());
+            if (!status.ok()) {
+                throw std::runtime_error("TranslationPipeline: failed to load tokenizer: " + status.ToString());
+            }
+            translate_model_ = TranslateModel::TRANSLATE_MARIAN;
         }
         
+        fs::path sp_tgt_path = fs::path(model_dir) / "target.tokenizer.model";
+        if(fs::exists(sp_tgt_path)) {
+            tokenizer_tgt_ = std::make_unique<sentencepiece::SentencePieceProcessor>();
+            auto status = tokenizer_tgt_->Load(sp_tgt_path.string());
+            if (!status.ok()) {
+                throw std::runtime_error("TranslationPipeline: failed to load tokenizer: " + status.ToString());
+            }
+        }
+        
+        if (translate_model_ != TRANSLATE_UNKNOWN)
+            throw std::runtime_error("TranslationPipeline: failed to load tokenizer.");
+        
         eos_token_ = "</s>";
-                
+        
         try {
             ctranslate2::Device device_type = (device == "cuda") ?
             ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
@@ -1167,7 +1194,7 @@ class TranslationPipeline {
             throw std::runtime_error("Failed to load CTranslate2 Translator: " + std::string(e.what()));
         }
     }
-
+    
     std::string translate_batch(const std::vector<std::string>& texts,
                                 const std::string& src_lang,
                                 const std::string& tgt_lang,
@@ -1183,15 +1210,19 @@ class TranslationPipeline {
                 
         for (const auto& text : texts) {
             std::vector<std::string> tokens;
-            tokenizer_->Encode(text, &tokens);
-                        
+            if (translate_model_ == TranslateModel::TRANSLATE_BART) {
+                tokenizer_->Encode(text, &tokens);
+            }else{
+                tokenizer_src_->Encode(text, &tokens);
+            }
+            
             if(!src_lang.empty()) {
                 tokens.insert(tokens.begin(), src_lang);
                 has_prefix = true;
             }else if(!tgt_lang.empty()) {
                 has_prefix = true;
             }
-
+            
             if (tokens.empty() || tokens.back() != eos_token_) {
                 tokens.push_back(eos_token_);
             }
@@ -1199,11 +1230,11 @@ class TranslationPipeline {
             batch_tokens.push_back(std::move(tokens));
             batch_prefixes.push_back({tgt_lang});  // force first decoded token
         }
-
+        
         // Count prompt tokens before inference
         size_t prompt_tokens = 0;
         for (const auto& toks : batch_tokens) prompt_tokens += toks.size();
-
+        
         auto results = translator_->translate_batch(batch_tokens, batch_prefixes, options);
         
         Json::Value rootNode(Json::objectValue);
@@ -1226,26 +1257,30 @@ class TranslationPipeline {
                 }
                 completion_tokens += tokens.size(); // each hypothesis token vector
                 std::string detokenized;
-                tokenizer_->Decode(tokens, &detokenized);
+                if (translate_model_ == TranslateModel::TRANSLATE_BART) {
+                    tokenizer_->Decode(tokens, &detokenized);
+                } else {
+                    tokenizer_tgt_->Decode(tokens, &detokenized);
+                }
                 hypothesesNode.append(detokenized);
             }
             translationNode["text"] = hypothesesNode;
             translationsNode.append(translationNode);
         }
-
+        
         rootNode["translations"] = translationsNode;
-
+        
         Json::Value usage(Json::objectValue);
         usage["prompt_tokens"]     = (Json::UInt64)prompt_tokens;
         usage["completion_tokens"] = (Json::UInt64)completion_tokens;
         usage["total_tokens"]      = (Json::UInt64)(prompt_tokens + completion_tokens);
         rootNode["usage"] = usage;
-
+        
         Json::StreamWriterBuilder writer;
         writer["indentation"] = "";
         return Json::writeString(writer, rootNode);
     }
-
+    
     // Streaming variant: calls on_token for each decoded token increment.
     // on_token(text, sentence_index) → return false to abort early.
     void translate_batch_stream(const std::vector<std::string>& texts,
@@ -1253,7 +1288,7 @@ class TranslationPipeline {
                                 const std::string& tgt_lang,
                                 ctranslate2::TranslationOptions options,
                                 std::function<bool(const std::string&, int)> on_token) {
-
+        
         std::vector<std::vector<std::string>> batch_tokens;
         std::vector<std::vector<std::string>> batch_prefixes;
         
@@ -1264,8 +1299,12 @@ class TranslationPipeline {
         
         for (const auto& text : texts) {
             std::vector<std::string> tokens;
-            tokenizer_->Encode(text, &tokens);
-                        
+            if (translate_model_ == TranslateModel::TRANSLATE_BART) {
+                tokenizer_->Encode(text, &tokens);
+            }else{
+                tokenizer_src_->Encode(text, &tokens);
+            }
+            
             if(!src_lang.empty()) {
                 tokens.insert(tokens.begin(), src_lang);
                 has_prefix = true;
@@ -1280,7 +1319,7 @@ class TranslationPipeline {
             batch_tokens.push_back(std::move(tokens));
             batch_prefixes.push_back({tgt_lang});  // force first decoded token
         }
-
+        
         // Count prompt tokens before inference
         size_t prompt_tokens = 0;
         for (const auto& toks : batch_tokens) prompt_tokens += toks.size();
@@ -1302,14 +1341,17 @@ class TranslationPipeline {
             
             std::string accumulated;
             
-            
             // Decode and stream token by token
             for (size_t t = 0; t < tokens.size(); ++t) {
                 // Decode tokens seen so far to get cumulative text
                 std::vector<std::string> partial(tokens.begin(), tokens.begin() + t + 1);
                 std::string current_text;
-                tokenizer_->Decode(partial, &current_text);
-                
+                if (translate_model_ == TranslateModel::TRANSLATE_BART) {
+                    tokenizer_->Decode(partial, &current_text);
+                }else{
+                    tokenizer_tgt_->Decode(partial, &current_text);
+                }
+
                 // Emit only the new suffix since last emission
                 if (current_text.length() > accumulated.length()) {
                     if (current_text.find("\xef\xbf\xbd") == std::string::npos) {
@@ -1325,11 +1367,17 @@ class TranslationPipeline {
         }
         
     }
-
+    
 private:
     std::unique_ptr<ctranslate2::Translator> translator_;
     std::unique_ptr<sentencepiece::SentencePieceProcessor> tokenizer_;
     std::string eos_token_;
+
+    std::unique_ptr<sentencepiece::SentencePieceProcessor> tokenizer_src_;
+    std::unique_ptr<sentencepiece::SentencePieceProcessor> tokenizer_tgt_;
+    
+    TranslateModel translate_model_;
+    
 };
 
 class EmbeddingPipeline {

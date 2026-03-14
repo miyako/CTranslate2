@@ -125,6 +125,12 @@ enum RerankingMode {
     RERANKING_MODERNBERT
 };
 
+enum TranslateModel {
+    TRANSLATE_BART,
+    TRANSLATE_MARIAN,
+    TRANSLATE_UNKNOWN
+};
+
 static std::string wchar_to_utf8(const wchar_t* wstr);
 
 #endif  /* __ONNX_GENAI_H__ */
