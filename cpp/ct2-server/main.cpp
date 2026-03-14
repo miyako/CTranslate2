@@ -513,9 +513,9 @@ private:
     std::unique_ptr<sentencepiece::SentencePieceProcessor> tokenizer_;
 };
 
-class GenerationPipeline {
+class ChatPipeline {
 public:
-    GenerationPipeline(const std::string& model_dir,
+    ChatPipeline(const std::string& model_dir,
                        int num_threads = 4,
                        const std::string& device = "cpu") {
         
@@ -523,9 +523,8 @@ public:
             ctranslate2::set_num_threads(num_threads);
         }
 
-        // Load your HuggingFace Tokenizer
         tokenizer_ = LoadTokenizer(model_dir);
-        if (!tokenizer_) throw std::runtime_error("No tokenizer found for GenerationPipeline");
+        if (!tokenizer_) throw std::runtime_error("No tokenizer found for ChatPipeline");
         
         try {
             ctranslate2::Device device_type = (device == "cuda") ?
@@ -634,12 +633,9 @@ public:
                         if (!on_token(new_text, (int)batch_id, false)) return false;
                     }
                     
-                    // If ALL choices are finished, return true to abort CTranslate2 completely
                     bool all_done = true;
-                    for (bool f : finished) if (!f) all_done = false;
-                    if (all_done) return true;
-                    
-                    return false;
+                    for (bool f : finished) if (!f) { all_done = false; break; }
+                    return all_done;
                 }
                 
                 // Normal token: Wait for complete UTF-8 characters
@@ -653,7 +649,6 @@ public:
             return false;
         };
         
-        // Block the HTTP thread while CTranslate2 generates
         std::vector<std::future<ctranslate2::GenerationResult>> futures = generator_->generate_batch_async(batch_tokens, options, 0, ctranslate2::BatchType::Examples);
         try {
             for (auto& f : futures) f.get();
@@ -812,15 +807,12 @@ class RerankerPipeline {
                        int num_threads = 4,
                    const std::string& device = "cpu") {
         
-        // --- 1. Optimize Threading ---
-        // This sets the number of threads used for matrix multiplication (intra-op).
-        // If you set this to 4, it uses 4 cores for the math.
         if (num_threads > 0) {
             ctranslate2::set_num_threads(num_threads);
         }
-        // --- 2. Load Tokenizer ---
+        
         tokenizer_ = LoadTokenizer(model_dir);
-        if (!tokenizer_) throw std::runtime_error("No tokenizer.json found");
+        if (!tokenizer_) throw std::runtime_error("No tokenizer found for RerankerPipeline");
         
         reranking_mode_ = LoadRerankingMode(model_dir);
         max_position_embeddings_ = LoadMaxPositionEmbeddings(model_dir);
@@ -830,15 +822,16 @@ class RerankerPipeline {
                             cls_id_,
                             sep_id_);
         
+        LoadRerankHead(model_dir);
+        
         try {
             ctranslate2::Device device_type = (device == "cuda") ?
-            ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
+                ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
             encoder_ = std::make_unique<ctranslate2::Encoder>(model_dir, device_type);
+            
         } catch (const std::exception& e) {
-            throw std::runtime_error("Failed to load CTranslate2 model: " + std::string(e.what()));
+            throw std::runtime_error("Failed to load CTranslate2 Generator: " + std::string(e.what()));
         }
-        
-        LoadRerankHead(model_dir);
     }
     ctranslate2::StorageView forward_bert_reranker_batch(
                                                          const std::vector<std::vector<int64_t>>& batch_ids,
@@ -1150,37 +1143,27 @@ private:
 class TranslationPipeline {
     public:
     TranslationPipeline(const std::string& model_dir,
-                       const std::string& source_sp_path,
                        int num_threads = 4,
                        const std::string& device = "cpu") {
         
-        // --- 1. Optimize Threading ---
-        // This sets the number of threads used for matrix multiplication (intra-op).
-        // If you set this to 4, it uses 4 cores for the math.
         if (num_threads > 0) {
             ctranslate2::set_num_threads(num_threads);
         }
-        // --- 2. Load Tokenizer ---
-        fs::path sp_model_path = source_sp_path.length() == 0 ? fs::path(model_dir) / "tokenizer.model" : fs::path(source_sp_path);
         
+        fs::path sp_path = fs::path(model_dir) / "tokenizer.model";
         tokenizer_ = std::make_unique<sentencepiece::SentencePieceProcessor>();
-#ifdef WIN32
-        std::string s = wchar_to_utf8(sp_model_path.c_str());
-const auto status = tokenizer_->Load(s.c_str());
-#else
-const auto status = tokenizer_->Load(sp_model_path.c_str());
-#endif
-
+        auto status = tokenizer_->Load(sp_path.string());
         if (!status.ok()) {
-            throw std::runtime_error("Failed to load SentencePiece model: " + status.ToString());
+            throw std::runtime_error("TranslationPipeline: failed to load tokenizer: " + status.ToString());
         }
-        
-        ctranslate2::Device device_type = (device == "cuda") ?
-        ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
-        translator_ = std::make_unique<ctranslate2::Translator>(
-                                                                model_dir,
-                                                                device_type
-        );
+                
+        try {
+            ctranslate2::Device device_type = (device == "cuda") ?
+            ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
+            translator_ = std::make_unique<ctranslate2::Translator>(model_dir, device_type);
+        } catch (const std::exception& e) {
+            throw std::runtime_error("Failed to load CTranslate2 Translator: " + std::string(e.what()));
+        }
     }
 
     std::string translate_batch(const std::vector<std::string>& texts,
@@ -1263,10 +1246,6 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
                                 ctranslate2::TranslationOptions options,
                                 std::function<bool(const std::string&, int)> on_token) {
 
-        // Streaming requires greedy decoding — beam search is incompatible with callbacks
-        options.beam_size = 1;
-        
-        // Tokenise all source sentences
         std::vector<std::vector<std::string>> batch_tokens;
         std::vector<std::vector<std::string>> batch_prefixes;
         
@@ -1278,7 +1257,7 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
         for (const auto& text : texts) {
             std::vector<std::string> tokens;
             tokenizer_->Encode(text, &tokens);
-            
+                        
             if(!src_lang.empty()) {
                 tokens.insert(tokens.begin(), src_lang);
                 has_prefix = true;
@@ -1288,61 +1267,49 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
             batch_prefixes.push_back({tgt_lang});  // force first decoded token
         }
 
-        size_t n = texts.size();
-
-        // Per-sentence state
-        std::vector<std::vector<size_t>> current_ids(n);
-        std::vector<std::string>         previous_text(n, "");
-        std::vector<bool>                is_first(n, has_prefix);
-        std::vector<bool>                finished(n, false);
+        // Count prompt tokens before inference
+        size_t prompt_tokens = 0;
+        for (const auto& toks : batch_tokens) prompt_tokens += toks.size();
         
-        options.callback = [&](ctranslate2::GenerationStepResult step) -> bool {
+        auto results = translator_->translate_batch(batch_tokens, batch_prefixes, options);
+        
+        // Now fake-stream each result word by word
+        
+        for (size_t i = 0; i < results.size(); ++i) {
+            if (results[i].hypotheses.empty()) continue;
             
-            std::cout << "[CB] sid=" << step.batch_id
-            << " token_id=" << step.token_id
-            << " is_last=" << step.is_last << std::endl;
+            // Strip leading tgt lang token
+            auto hyp = results[i].hypotheses[0];
             
-            size_t sid = step.batch_id;
-            
-            // ✅ Skip finished sentences but DON'T stop the batch
-            if (sid >= n || finished[sid]) return false;
-
-            if (is_first[sid]) {
-                is_first[sid] = false;
-                if (step.is_last) finished[sid] = true;
-                return false;
+            auto tokens = hyp;
+            if((has_prefix) && (!tokens.empty())) {
+                tokens.erase(tokens.begin());
             }
             
-            current_tokens[sid].push_back(step.token_id);
+            std::string accumulated;
             
-            std::string current_text;
-            std::vector<int> id_ints(current_ids[sid].begin(), current_ids[sid].end());
-            tokenizer_->Decode(id_ints, &current_text);
-
-            if (current_text.length() > previous_text[sid].length()) {
-                if (current_text.find("\xef\xbf\xbd") == std::string::npos) {
-                    std::string delta = current_text.substr(previous_text[sid].length());
-                    previous_text[sid] = current_text;
-                    if (!delta.empty()) {
-                        on_token(delta, (int)sid);
+            
+            // Decode and stream token by token
+            for (size_t t = 0; t < tokens.size(); ++t) {
+                // Decode tokens seen so far to get cumulative text
+                std::vector<std::string> partial(tokens.begin(), tokens.begin() + t + 1);
+                std::string current_text;
+                tokenizer_->Decode(partial, &current_text);
+                
+                // Emit only the new suffix since last emission
+                if (current_text.length() > accumulated.length()) {
+                    if (current_text.find("\xef\xbf\xbd") == std::string::npos) {
+                        std::string delta = current_text.substr(accumulated.length());
+                        accumulated = current_text;
+                        if (!delta.empty()) {
+                            if (!on_token(delta, (int)i)) goto next_sentence;
+                        }
                     }
                 }
             }
-
-            if (step.is_last) finished[sid] = true;
-            
-            bool all_done = true;
-            for (bool f : finished) if (!f) { all_done = false; break; }
-            return all_done;
-        };
-
-        auto futures = translator_->translate_batch_async(batch_tokens, batch_prefixes, options);
-        
-        try {
-            for (auto& f : futures) f.get();
-        } catch (std::exception& e) {
-            std::cerr << e.what() << std::endl;
+            next_sentence:;
         }
+        
     }
 
 private:
@@ -1611,9 +1578,9 @@ static void usage(void)
 {
     fprintf(stderr, "Usage:  ct2-server -s -e embedding_model -p port\n\n");
     fprintf(stderr, " -%c path     : %s\n", 'm' , "translation model");
-    fprintf(stderr, " -%c path     : %s\n", 'f' , "source sentencepiece model");
     fprintf(stderr, " -%c path     : %s\n", 'e' , "embedding model (pooling=mean)");
     fprintf(stderr, " -%c path     : %s\n", 'r' , "reranker model");
+    fprintf(stderr, " -%c path     : %s\n", 'a' , "generate model");
     fprintf(stderr, " -%c path     : %s\n", 'g' , "chat completion model");
     fprintf(stderr, " -%c path     : %s\n", 't' , "chat template");
     fprintf(stderr, " -%c          : %s\n", 'j' , "chat template from stdin");
@@ -1679,11 +1646,11 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:e:r:g:f:i:o:sp:jt:bcld-jh"
+#define ARGS (OPTARG_T)L"m:e:r:g:a:i:o:sp:jt:bcld-jh"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:e:r:g:f:i:o:sp:jt:bcld-jh"
+#define ARGS "m:e:r:g:a:i:o:sp:jt:bcld-jh"
 #define _atoi atoi
 #define _atof atof
 #endif
@@ -1964,13 +1931,17 @@ int main(int argc, OPTARG_T argv[]) {
     std::wstring embedding_model_path_u16;
     std::wstring source_sp_path_u16;
     std::wstring reranker_model_path_u16;
-    std::wstring generator_model_path_u16;
+    std::wstring chat_model_path_u16;
+    std::wstring generate_model_path_u16;
 #endif
     std::string model_path;           // -m
     std::string embedding_model_path; // -e
     std::string reranker_model_path;  // -r
     std::string chat_template;        // -j
-    std::string generator_model_path; // -g
+    std::string chat_model_path;      // -g
+    std::string generate_model_path;  // -a
+    
+    std::string generate_chat_template;
     OPTARG_T input_path  = NULL;      // -i
     OPTARG_T output_path = NULL;      // -o
     OPTARG_T chat_template_path = NULL;
@@ -2013,20 +1984,20 @@ int main(int argc, OPTARG_T argv[]) {
                 reranker_model_path = optarg;
 #endif
                 break;
-            case 'f':
+            case 'a':
 #ifdef WIN32
-                source_sp_path_u16 = optarg;
-                source_sp_path = wchar_to_utf8(source_sp_path_u16.c_str());
+                generate_model_path_u16 = optarg;
+                generate_model_path = wchar_to_utf8(source_sp_path_u16.c_str());
 #else
-                source_sp_path = optarg;
+                generate_model_path = optarg;
 #endif
                 break;
             case 'g':
             #ifdef WIN32
-                generator_model_path_u16 = optarg;
-                generator_model_path = wchar_to_utf8(generator_model_path_u16.c_str());
+                chat_model_path_u16 = optarg;
+                chat_model_path = wchar_to_utf8(chat_model_path_u16.c_str());
             #else
-                generator_model_path = optarg;
+                chat_model_path = optarg;
             #endif
                 break;
             case 'i':
@@ -2107,6 +2078,7 @@ int main(int argc, OPTARG_T argv[]) {
     
     std::unique_ptr<TranslationPipeline> translation_pipeline;
     
+    //-m:translation
     if (model_path.length() != 0) {
         if (fs::exists(model_path)) {
             if (fs::is_directory(model_path)) {
@@ -2120,7 +2092,7 @@ int main(int argc, OPTARG_T argv[]) {
 #else
                     modelName = get_model_name(fs::path(model_path));
 #endif
-                    translation_pipeline = std::make_unique<TranslationPipeline>(model_path, source_sp_path, intra_op_threads);
+                    translation_pipeline = std::make_unique<TranslationPipeline>(model_path, intra_op_threads);
                     model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to load model: " << e.what() << std::endl;
@@ -2136,6 +2108,7 @@ int main(int argc, OPTARG_T argv[]) {
 
     std::unique_ptr<EmbeddingPipeline> pipeline;
     
+    //-e:embeddings
     if (embedding_model_path.length() != 0) {
         if (fs::exists(embedding_model_path)) {
             if (fs::is_directory(embedding_model_path)) {
@@ -2164,6 +2137,7 @@ int main(int argc, OPTARG_T argv[]) {
 
     std::unique_ptr<RerankerPipeline> rerank_pipeline;
     
+    //-r:rerank
     if (reranker_model_path.length() != 0) {
         if (fs::exists(reranker_model_path)) {
             if (fs::is_directory(reranker_model_path)) {
@@ -2186,53 +2160,58 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
-    std::string generator_fingerprint;
-    long long generator_model_created = 0;
-    std::string generator_modelName;
-    std::unique_ptr<GenerationPipeline> generator_pipeline;
+    std::string generate_fingerprint;
+    long long generate_model_created = 0;
+    std::string generate_modelName;
     
-    if (generator_model_path.length() != 0) {
-        if (fs::exists(generator_model_path) && fs::is_directory(generator_model_path)) {
-            std::cerr << "[Generator] Loading from " << generator_model_path << std::endl;
-            generator_fingerprint = get_system_fingerprint(generator_model_path, "directml");
+    std::unique_ptr<GeneratePipeline> generate_pipeline;
+    
+    //-a:generate
+    if (generate_model_path.length() != 0) {
+        if (fs::exists(generate_model_path) && fs::is_directory(generate_model_path)) {
+            std::cerr << "[Generator] Loading from " << generate_model_path << std::endl;
+            generate_fingerprint = get_system_fingerprint(generate_model_path, "directml");
             try {
     #ifdef WIN32
-                generator_modelName = get_model_name(wchar_to_utf8(fs::path(generator_model_path).c_str()));
+                generate_modelName = get_model_name(wchar_to_utf8(fs::path(generate_model_path).c_str()));
     #else
-                generator_modelName = get_model_name(fs::path(generator_model_path));
+                generate_modelName = get_model_name(fs::path(generate_model_path));
     #endif
-                generator_pipeline = std::make_unique<GenerationPipeline>(generator_model_path, intra_op_threads);
-                if(chat_template == "") {
-                    chat_template = LoadChatTemplate(generator_model_path);
-                }
-                generator_model_created = get_created_timestamp();
+                generate_pipeline = std::make_unique<GeneratePipeline>(generate_model_path, intra_op_threads);
+                generate_chat_template = LoadChatTemplate(generate_model_path);
+                generate_model_created = get_created_timestamp();
             } catch (const std::exception& e) {
-                std::cerr << "Failed to load generator model: " << e.what() << std::endl;
+                std::cerr << "Failed to load generate model: " << e.what() << std::endl;
                 return 1;
             }
         }
     }
     
-    std::unique_ptr<GeneratePipeline> generate_pipeline;
-    std::string generate_modelName;
-    long long generate_model_created = 0;
+    std::string chat_fingerprint;
+    long long chat_model_created = 0;
+    std::string chat_modelName;
     
-    if (model_path.length() != 0 && fs::exists(model_path) && fs::is_directory(model_path)) {
-        // Only initialise if it looks like an encoder-decoder (tokenizer.model present)
-        fs::path sp_check = fs::path(model_path) / "tokenizer.model";
-        if (fs::exists(sp_check)) {
+    std::unique_ptr<ChatPipeline> chat_pipeline;
+    
+    //-g:chat
+    if (chat_model_path.length() != 0) {
+        if (fs::exists(chat_model_path) && fs::is_directory(chat_model_path)) {
+            std::cerr << "[Generator] Loading from " << chat_model_path << std::endl;
+            chat_fingerprint = get_system_fingerprint(chat_model_path, "directml");
             try {
-                generate_pipeline = std::make_unique<GeneratePipeline>(model_path, intra_op_threads);
-#ifdef WIN32
-                generate_modelName = get_model_name(wchar_to_utf8(fs::path(model_path).c_str()));
-#else
-                generate_modelName = get_model_name(fs::path(model_path));
-#endif
-                generate_model_created = get_created_timestamp();
-                std::cerr << "[Generate] T5 pipeline ready for " << generate_modelName << std::endl;
+    #ifdef WIN32
+                chat_modelName = get_model_name(wchar_to_utf8(fs::path(chat_model_path).c_str()));
+    #else
+                chat_modelName = get_model_name(fs::path(chat_model_path));
+    #endif
+                chat_pipeline = std::make_unique<ChatPipeline>(chat_model_path, intra_op_threads);
+                if(chat_template == "") {
+                    chat_template = LoadChatTemplate(chat_model_path);
+                }
+                chat_model_created = get_created_timestamp();
             } catch (const std::exception& e) {
-                // Non-fatal: model may not support encoder-decoder generation
-                std::cerr << "[Generate] Skipping T5 pipeline: " << e.what() << std::endl;
+                std::cerr << "Failed to load chat model: " << e.what() << std::endl;
+                return 1;
             }
         }
     }
@@ -2279,11 +2258,11 @@ int main(int argc, OPTARG_T argv[]) {
                 modelCard["owned_by"] = "system";
                 root["data"].append(modelCard);
             }
-            if(generator_model_created != 0) {
+            if(generate_model_created != 0) {
                 Json::Value modelCard(Json::objectValue);
-                modelCard["id"] = generator_modelName;
+                modelCard["id"] = generate_modelName;
                 modelCard["object"] = "model";
-                modelCard["created"] = generator_model_created;
+                modelCard["created"] = generate_model_created;
                 modelCard["owned_by"] = "system";
                 root["data"].append(modelCard);
             }
@@ -2296,13 +2275,13 @@ int main(int argc, OPTARG_T argv[]) {
             res.status = 200;
         });
         
-        // Route: /v1/chat/completions
-        svr.Post("/v1/chat/completions", [&](const httplib::Request& req, httplib::Response& res) {
+        auto chat_completions_handler = [&](const httplib::Request& req, httplib::Response& res) {
             
             std::cout << "[Server] /v1/chat/completions request received." << std::endl;
             
             try {
-                if (generator_model_created == 0) {
+                
+                if (generate_model_created == 0) {
                     throw std::invalid_argument("[Generator] Model not loaded. Pass model directory via -g");
                 }
                 
@@ -2321,12 +2300,12 @@ int main(int argc, OPTARG_T argv[]) {
                 // --- STREAMING MODE ---
                 if (is_stream) {
                     // 1. Extract raw pointers safely
-                    GenerationPipeline* raw_generator_pipeline = generator_pipeline.get();
+                    ChatPipeline* raw_chat_pipeline = chat_pipeline.get();
                     std::string req_id = get_openai_style_id();
                     
                     // 2. Pass everything by value (copy) or safe pointer
                     res.set_chunked_content_provider("text/event-stream",
-                                                     [raw_generator_pipeline, prompt, options, generator_modelName, req_id, n, has_tools](size_t offset, httplib::DataSink &sink) {
+                                                     [raw_chat_pipeline, prompt, options, generate_modelName, req_id, n, has_tools](size_t offset, httplib::DataSink &sink) {
                         
                         // 3. Callback to handle tokens as they are generated
                         auto token_callback = [&](const std::string& token, int choice_index, bool is_tool) {
@@ -2334,7 +2313,7 @@ int main(int argc, OPTARG_T argv[]) {
                             root["id"] = req_id;
                             root["object"] = "chat.completion.chunk";
                             root["created"] = (Json::UInt64)get_created_timestamp();
-                            root["model"] = generator_modelName;
+                            root["model"] = generate_modelName;
                             Json::Value choices(Json::arrayValue);
                             Json::Value choice(Json::objectValue);
                             choice["index"] = choice_index;
@@ -2403,7 +2382,7 @@ int main(int argc, OPTARG_T argv[]) {
                         };
                         
                         // 4. Run inference synchronously. This blocks until the AI is completely done.
-                        raw_generator_pipeline->chat_completion_stream(prompt, options, n, has_tools, token_callback);
+                        raw_chat_pipeline->chat_completion_stream(prompt, options, n, has_tools, token_callback);
                         
                         // 5. Send [DONE] to close the stream for the client
                         std::string done = "data: [DONE]\n\n";
@@ -2414,7 +2393,7 @@ int main(int argc, OPTARG_T argv[]) {
                     }
                                                      );
                 }else{
-                    std::string response_json = generator_pipeline->chat_completion(prompt, options, n, generator_modelName);
+                    std::string response_json = chat_pipeline->chat_completion(prompt, options, n, generate_modelName);
                     
                     res.set_content(response_json, "application/json");
                     res.status = 200;
@@ -2423,16 +2402,14 @@ int main(int argc, OPTARG_T argv[]) {
             } catch (const std::exception& e) {
                 send_error(res, e.what(), 400);
             }
-        });
-        
-        // Route: /v1/generate  (T5 / encoder-decoder conditional generation)
-        svr.Post("/v1/generate", [&](const httplib::Request& req, httplib::Response& res) {
-
+        };
+        auto generate_handler = [&](const httplib::Request& req, httplib::Response& res) {
+            
             std::cout << "[Server] /v1/generate request received." << std::endl;
 
             try {
                 if (!generate_pipeline) {
-                    throw std::invalid_argument("[Generate] T5 pipeline not loaded. Pass a model with tokenizer.model via -m");
+                    throw std::invalid_argument("[Generate] T5 pipeline not loaded. Pass a model with tokenizer.model via -g");
                 }
 
                 std::vector<std::string> prompts;
@@ -2510,10 +2487,9 @@ int main(int argc, OPTARG_T argv[]) {
             } catch (const std::exception& e) {
                 send_error(res, e.what(), 400);
             }
-        });
+        };
         
-        // Route: /v1/translate
-        svr.Post("/v1/translate", [&](const httplib::Request& req, httplib::Response& res) {
+        auto translate_handler = [&](const httplib::Request& req, httplib::Response& res) {
             
             std::cout << "[Server] /v1/translate request received." << std::endl;
             
@@ -2590,7 +2566,47 @@ int main(int argc, OPTARG_T argv[]) {
             } catch (const std::exception& e) {
                 send_error(res, e.what(), 400);
             }
+        };
+        
+        // Route: /v1/chat/completions  (smart dispatch based on request keys)
+        // • "messages" → chat completion (LLM)
+        // • "prompt"   → /v1/generate   (T5 encoder-decoder)
+        // • "input"     → /v1/translate  (NMT seq2seq)
+        svr.Post("/v1/chat/completions", [&](const httplib::Request& req, httplib::Response& res) {
+            
+            std::cout << "[Server] /v1/chat/completions request received." << std::endl;
+            
+            try {
+                
+                // --- Detect request type by key presence ---
+                nlohmann::json peek;
+                try { peek = nlohmann::json::parse(req.body); }
+                catch (...) { throw std::invalid_argument("Malformed JSON body."); }
+
+                const bool has_messages = peek.contains("messages") && peek["messages"].is_array();
+                const bool has_prompt   = peek.contains("prompt");
+                const bool has_text     = peek.contains("input");
+                
+                if (!has_messages && !has_prompt && has_text) {
+                    translate_handler(req, res);
+                }
+                else if (!has_messages && has_prompt) {
+                    generate_handler(req, res);
+                }
+                else {
+                    chat_completions_handler(req, res);
+                }
+                
+            } catch (const std::exception& e) {
+                send_error(res, e.what(), 400);
+            }
         });
+        
+        // Route: /v1/generate
+        svr.Post("/v1/generate", generate_handler);
+        
+        // Route: /v1/translate
+        svr.Post("/v1/translate", translate_handler);
                  
         // Route: /v1/rerank
         svr.Post("/v1/rerank", [&](const httplib::Request& req, httplib::Response& res) {
