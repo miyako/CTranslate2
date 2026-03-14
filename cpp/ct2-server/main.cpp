@@ -469,15 +469,15 @@ public:
 
         options.callback = [&](ctranslate2::GenerationStepResult step) -> bool {
             size_t sid = step.batch_id;
+            
+            // ✅ Skip finished sentences but DON'T stop the batch
             if (sid >= n || finished[sid]) return false;
 
             current_ids[sid].push_back(step.token_id);
 
             std::string current_text;
-            {
-                std::vector<int> id_ints(current_ids[sid].begin(), current_ids[sid].end());
-                tokenizer_->Decode(id_ints, &current_text);
-            }
+            std::vector<int> id_ints(current_ids[sid].begin(), current_ids[sid].end());
+            tokenizer_->Decode(id_ints, &current_text);
 
             if (current_text.length() > previous_text[sid].length()) {
                 // Guard incomplete UTF-8
@@ -493,6 +493,7 @@ public:
 
             if (step.is_last) finished[sid] = true;
 
+            // ✅ Only stop when ALL sentences are done
             bool all_done = true;
             for (bool f : finished) if (!f) { all_done = false; break; }
             return all_done;
@@ -1294,10 +1295,12 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
         options.callback = [&](ctranslate2::GenerationStepResult step) -> bool {
             
             std::cout << "[CB] sid=" << step.batch_id
-                          << " token_id=" << step.token_id
-                          << " is_last=" << step.is_last << std::endl;
+            << " token_id=" << step.token_id
+            << " is_last=" << step.is_last << std::endl;
             
             size_t sid = step.batch_id;
+            
+            // ✅ Skip finished sentences but DON'T stop the batch
             if (sid >= n || finished[sid]) return false;
 
             if (is_first[sid]) {
@@ -1306,15 +1309,12 @@ const auto status = tokenizer_->Load(sp_model_path.c_str());
                 return false;
             }
             
-            std::string current_text;
-                std::vector<int> id_ints(current_ids[sid].begin(), current_ids[sid].end());
             current_ids[sid].push_back(step.token_id);
-
-            tokenizer_->Decode(id_ints, &current_text);
- 
-            std::cout << "[CB] decoded='" << current_text
-                          << "' prev='" << previous_text[sid] << "'" << std::endl;
             
+            std::string current_text;
+            std::vector<int> id_ints(current_ids[sid].begin(), current_ids[sid].end());
+            tokenizer_->Decode(id_ints, &current_text);
+
             if (current_text.length() > previous_text[sid].length()) {
                 if (current_text.find("\xef\xbf\xbd") == std::string::npos) {
                     std::string delta = current_text.substr(previous_text[sid].length());
@@ -1771,8 +1771,8 @@ static void parse_request_generate(const std::string& property_name,
         options.repetition_penalty = root["repetition_penalty"].asFloat();
 
     if (is_stream != nullptr) {
-        Json::Value stream_node = root["stream"];
-        if (stream_node.isBool()) *is_stream = stream_node.asBool();
+        if (root["stream"].isBool())
+            *is_stream = root["stream"].asBool();
     }
 }
 
