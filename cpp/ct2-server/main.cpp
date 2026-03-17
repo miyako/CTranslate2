@@ -1037,7 +1037,6 @@ class RerankerPipeline {
                     // Layer 1: Dense (Linear)
 //                    Eigen::VectorXf dense_out = (embedding.transpose() * dense_weights_).transpose();
                     Eigen::VectorXf dense_out = dense_weights_ * embedding + dense_bias_;
-                    dense_out += dense_bias_;
                     // Layer 2: Activation (Tanh)
                     dense_out = dense_out.unaryExpr([](float x) { return std::tanh(x); });
                     // Layer 3: Out Projection (Linear)
