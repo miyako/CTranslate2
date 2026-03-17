@@ -36,3 +36,4 @@ cpp/ct2-server/ARM64/*
 cpp/ARM64/Release/ct2-server.exe
 cpp/x64/Release/ct2-server.exe
 cpp/ct2-server.xcodeproj/project.xcworkspace/*
+cpp/ct2-server.xcodeproj/xcshareddata/xcschemes/ct2-server.xcscheme
