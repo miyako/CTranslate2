@@ -1442,27 +1442,21 @@ public:
         if (tokenizer_ == nullptr || texts.empty()) {
             return "{\"object\":\"list\",\"data\":[]}";
         }
-                
+        
         // 1. Tokenize & Prepare Batch
         std::vector<std::vector<size_t>> batch_ids;
         batch_ids.reserve(texts.size());
         
         for (const auto& text : texts) {
             auto ids_int = tokenize_one(text);
-            
             std::vector<size_t> ids_size_t;
             size_t input_len = ids_int.size();
-            // Truncate if necessary to fit [CLS] ... [SEP]
-            if (input_len > max_position_embeddings_ - 2) {
+            if (input_len > max_position_embeddings_ - 2)
                 input_len = max_position_embeddings_ - 2;
-            }
-            
             ids_size_t.reserve(input_len + 2);
-            
             ids_size_t.push_back(cls_id_);
             ids_size_t.insert(ids_size_t.end(), ids_int.begin(), ids_int.begin() + input_len);
             ids_size_t.push_back(sep_id_);
-            
             batch_ids.push_back(std::move(ids_size_t));
         }
         
@@ -1474,95 +1468,65 @@ public:
         // 3. Zero-Copy Setup
         float* raw_data = hidden_states_cpu.data<float>();
         const auto& shape = hidden_states_cpu.shape();
-        
         long batch_size = shape[0];
-        long max_seq_len = shape[1]; // Padded length of this batch
-        long hidden_dim = shape[2];
+        long max_seq_len = shape[1];
+        long hidden_dim  = shape[2];
         long stride_batch = max_seq_len * hidden_dim;
         
-        // MATH OPTIMIZATION 1: Single Flat Allocation
-        // Allocating N vectors is slow. Allocate one big block for the results.
         std::vector<float> all_embeddings(batch_size * hidden_dim);
         
-        // 4. Compute Pooling
+        // 4. Compute Pooling (unchanged)
         for (long b = 0; b < batch_size; ++b) {
-            // Get valid length for this specific sentence (excluding padding, created in step 1)
             long valid_len = batch_ids[b].size();
-            if (valid_len == 0) valid_len = 1; // Safety
-            
-            // Map the destination memory for this batch item
-            // Using Map allows Eigen to write directly into our pre-allocated 'all_embeddings'
+            if (valid_len == 0) valid_len = 1;
             Eigen::Map<Eigen::VectorXf> target_vec(all_embeddings.data() + (b * hidden_dim), hidden_dim);
-            
-            // Pointer to start of this sentence in CT2 output
             float* sentence_ptr = raw_data + (b * stride_batch);
             
             if (strategy == PoolingStrategy::MEAN) {
-                // MATH OPTIMIZATION 2: Cache-Friendly Accumulation
-                // CT2 output is RowMajor [Seq, Dim].
-                // Previous code used colwise().sum().
-                // On RowMajor data, accessing columns is strided (slow cache access).
-                // Faster approach: Read row by row (sequential) and add to accumulator.
-                
-                // 1. Map the valid matrix portion [valid_len, hidden_dim]
                 Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-                mat(sentence_ptr, valid_len, hidden_dim);
-                
-                // 2. Initialize target with zeros
+                    mat(sentence_ptr, valid_len, hidden_dim);
                 target_vec.setZero();
-                
-                // 3. Accumulate Rows (Sequential Memory Access)
-                // target_vec += row makes Eigen iterate contiguous memory for the row
-                for (long i = 0; i < valid_len; ++i) {
-                    target_vec += mat.row(i);
-                }
-                
-                // 4. Divide
+                for (long i = 0; i < valid_len; ++i) target_vec += mat.row(i);
                 target_vec /= static_cast<float>(valid_len);
-            }
-            else if (strategy == PoolingStrategy::CLS) {
-                // First token vector
+            } else if (strategy == PoolingStrategy::CLS) {
                 target_vec = Eigen::Map<Eigen::VectorXf>(sentence_ptr, hidden_dim);
-            }
-            else if (strategy == PoolingStrategy::LAST_TOKEN) {
-                // Last token vector
+            } else if (strategy == PoolingStrategy::LAST_TOKEN) {
                 float* last_ptr = sentence_ptr + ((valid_len - 1) * hidden_dim);
                 target_vec = Eigen::Map<Eigen::VectorXf>(last_ptr, hidden_dim);
             }
-            // 5. L2 Normalization
-            if (l2_normalize) {
-                // Eigen uses SIMD instructions here if -march=native is enabled
-                target_vec.normalize();
-            }
+            if (l2_normalize) target_vec.normalize();
         }
         
-        // 5. Build JSON Response
-        Json::Value rootNode(Json::objectValue);
-        Json::Value listNode(Json::arrayValue);
+        // 5. Direct string serialization — avoids JsonCpp tree overhead
+        //    Pre-allocate: each float is at most 14 chars (e.g. "-1.23456789e-10,")
+        //    Total budget: batch_size * hidden_dim * 14 + structural overhead
+        std::string out;
+        out.reserve(batch_size * hidden_dim * 12 + batch_size * 32 + 32);
         
+        out += "{\"object\":\"list\",\"data\":[";
+        
+        char buf[32];
         for (long b = 0; b < batch_size; ++b) {
-            Json::Value dataNode(Json::objectValue);
-            Json::Value embeddingsNode(Json::arrayValue);
+            if (b > 0) out += ',';
+            out += "{\"index\":";
+            snprintf(buf, sizeof(buf), "%ld", b);
+            out += buf;
+            out += ",\"embedding\":[";
             
-            // Pointer arithmetic to get start of this embedding in flat vector
-            size_t start_idx = b * hidden_dim;
-            
-            // Note: converting float to json value is costly, but unavoidable here
+            const float* emb = all_embeddings.data() + (b * hidden_dim);
             for (long i = 0; i < hidden_dim; ++i) {
-                embeddingsNode.append(all_embeddings[start_idx + i]);
+                if (i > 0) out += ',';
+                // "%.9g" gives full float precision and picks the shorter of
+                // fixed vs scientific notation automatically
+                snprintf(buf, sizeof(buf), "%.9g", emb[i]);
+                out += buf;
             }
             
-            dataNode["embedding"] = embeddingsNode;
-            dataNode["index"] = (int)b;
-            listNode.append(dataNode);
+            out += "]}";
         }
         
-        rootNode["data"] = listNode;
-        rootNode["object"] = "list";
-        
-        Json::StreamWriterBuilder writer;
-        writer["indentation"] = "";
-        return Json::writeString(writer, rootNode);
+        out += "]}";
+        return out;
     }
 
 private:
