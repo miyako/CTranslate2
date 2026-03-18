@@ -154,3 +154,17 @@ curl -X POST http://127.0.0.1:8080/v1/chat/completions \
   "stream": false
 }'
 ```
+
+## Stream
+
+By default, `stream: true` will return the complete translation as "chunks". It is not possible to stream tokens using beam search because there is no taking back a token that has already been sent. Alternatively, you can pass `sampling: true` to force `beam_size: 1` and receive tokens in streams. You can adjust the hyper parameters shown below to compensate for `beam_size: 1`.
+
+```
+sampling_temperature: 0.7f
+repetition_penalty: 1.3f
+no_repeat_ngram_size: 4
+max_decoding_length: 256
+min_decoding_length: 4
+sampling_topk: 20
+sampling_topp: 0.9f
+```
