@@ -1239,6 +1239,8 @@ public:
                 has_prefix = true;
             }else if(!tgt_lang.empty()) {
                 has_prefix = true;
+            }else if (translate_model_ == TranslateModel::TRANSLATE_MARIAN) {
+                has_prefix = true;
             }
             
             if (tokens.empty() || tokens.back() != eos_token_) {
@@ -1330,6 +1332,8 @@ public:
                 tokens.insert(tokens.begin(), src_lang);
                 has_prefix = true;
             }else if(!tgt_lang.empty()) {
+                has_prefix = true;
+            }else if (translate_model_ == TranslateModel::TRANSLATE_MARIAN) {
                 has_prefix = true;
             }
             
