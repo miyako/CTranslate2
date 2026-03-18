@@ -31,12 +31,11 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	If (Value type:C1509($option.translate_model)=Is object:K8:27) && (OB Instance of:C1731($option.translate_model; 4D:C1709.Folder)) && ($option.translate_model.exists)
 		$command+=" -m "
 		$command+=This:C1470.escape(This:C1470.expand($option.translate_model).path)
-		If ($option.translate_sp_model#Null:C1517) && ($option.translate_sp_model#"")
-			var $translate_sp_model : 4D:C1709.File
-			$translate_sp_model:=This:C1470.expand($option.translate_model.file($option.translate_sp_model))
-			$command+=" -f "
-			$command+=This:C1470.escape($translate_sp_model.path)
-		End if 
+	End if 
+	
+	If (Value type:C1509($option.generate_model)=Is object:K8:27) && (OB Instance of:C1731($option.generate_model; 4D:C1709.Folder)) && ($option.generate_model.exists)
+		$command+=" -a "
+		$command+=This:C1470.escape(This:C1470.expand($option.generate_model).path)
 	End if 
 	
 	If (Value type:C1509($option.port)=Is real:K8:4) && ($option.port#0)
@@ -82,12 +81,12 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 				"e"; "embeddings_model"; \
 				"r"; "rerank_model"; \
 				"g"; "chat_model"; \
+				"a"; "generate_model"; \
 				"t"; "chat_template"; \
 				"p"; "port"; \
 				"h"; "host"; \
 				"pooling"; \
-				"m"; "translate_model"; \
-				"f"; "translate_sp_model"; "HF_TOKEN"].includes($arg.key))
+				"m"; "translate_model"; "HF_TOKEN"].includes($arg.key))
 				continue
 		End case 
 		$valueType:=Value type:C1509($arg.value)

@@ -1,6 +1,6 @@
 property embeddings_model : 4D:C1709.Folder
 property translate_model : 4D:C1709.Folder
-property translate_sp_model : Text
+property generate_model : 4D:C1709.Folder
 property rerank_model : 4D:C1709.Folder
 property chat_model : 4D:C1709.Folder
 
@@ -41,7 +41,8 @@ Function onDownload($oid : Text)
 				This:C1470.options.embeddings_model:=$model
 			: ($downloaded.domain="translate")
 				This:C1470.options.translate_model:=$model
-				This:C1470.options.translate_sp_model:=$downloaded.name
+			: ($downloaded.domain="generate")
+				This:C1470.options.generate_model:=$model
 			: ($downloaded.domain="rerank")
 				This:C1470.options.rerank_model:=$model
 			: ($downloaded.domain="chat")

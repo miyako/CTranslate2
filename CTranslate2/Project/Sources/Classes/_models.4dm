@@ -56,7 +56,8 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 					This:C1470.options.embeddings_model:=$huggingface.folder
 				: ($huggingface.domain="translate")
 					This:C1470.options.translate_model:=$huggingface.folder
-					This:C1470.options.translate_sp_model:=$huggingface.name
+				: ($huggingface.domain="generate")
+					This:C1470.options.generate_model:=$huggingface.folder
 				: ($huggingface.domain="rerank")
 					This:C1470.options.rerank_model:=$huggingface.folder
 				: ($huggingface.domain="chat")
