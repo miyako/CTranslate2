@@ -1263,8 +1263,11 @@ public:
             Json::Value translationNode(Json::objectValue);
             if(result.scores.size() != 0) {
                 translationNode["score"] = result.scores[0];
+                float confidence = std::exp(result.scores[0]);
+                translationNode["confidence"] = confidence;
             }else{
-                translationNode["score"] = Json::nullValue;
+//                translationNode["score"] = Json::nullValue;
+//                translationNode["confidence"] = Json::nullValue;
             }
             Json::Value hypothesesNode(Json::arrayValue);
             for (const auto& hyp : result.hypotheses) {
@@ -2464,6 +2467,7 @@ int main(int argc, OPTARG_T argv[]) {
                 options.max_decoding_length = 128;
                 options.beam_size = 4;
                 bool is_stream = false;
+                options.return_scores = true;
 
                 parse_request_generate("prompt", req.body, prompts, options, src_lang, tgt_lang, &is_stream);
 
@@ -2550,6 +2554,7 @@ int main(int argc, OPTARG_T argv[]) {
                 options.max_decoding_length = 128;
                 options.beam_size = 4;
                 bool is_stream = false;
+                options.return_scores = true;
 
                 parse_request_generate("input", req.body, texts, options, src_lang, tgt_lang, &is_stream);
                 
