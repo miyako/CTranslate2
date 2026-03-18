@@ -1,3 +1,7 @@
+---
+layout: default
+---
+
 # Translate
 
 `/v1/translate` uses `ctranslate2::TranslationOptions`

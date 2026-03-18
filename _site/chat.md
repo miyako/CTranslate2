@@ -1,3 +1,7 @@
+---
+layout: default
+---
+
 # Chat
 
 `/v1/chat/completion` uses `ctranslate2::GenerationOptions`

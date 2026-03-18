@@ -1,3 +1,7 @@
+---
+layout: default
+---
+
 # Generate
 
 `/v1/generate` uses `ctranslate2::TranslationOptions`
