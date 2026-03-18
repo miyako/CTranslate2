@@ -309,7 +309,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D164789E2E61216B00FC9914 /* ct2-server.xcconfig */;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = x86_64;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Y69CWUC25B;
@@ -321,15 +321,15 @@
 					"$(PROJECT_DIR)/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
-				OTHER_CPLUSPLUSFLAGS = (
+				OTHER_CFLAGS = (
 					"-DEIGEN_USE_BLAS",
 					"-flto",
 					"-ffast-math",
 					"-Xpreprocessor",
 					"-fopenmp",
-					"-mavx2",
-					"-mfma",
+					"-march=native",
 				);
+				OTHER_CPLUSPLUSFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					include,
@@ -342,7 +342,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D164789E2E61216B00FC9914 /* ct2-server.xcconfig */;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = x86_64;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Y69CWUC25B;
@@ -361,7 +361,8 @@
 					"-ffast-math",
 					"-Xpreprocessor",
 					"-fopenmp",
-					"-march=native",
+					"-mavx2",
+					"-mfma",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
