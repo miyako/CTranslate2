@@ -80,6 +80,7 @@ struct TranslationOptions {
     std::function<bool(GenerationStepResult)> callback = nullptr;
 };
 ```
+
 # Example (FLAN T5)
 
 ```
