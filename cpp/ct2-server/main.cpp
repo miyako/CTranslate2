@@ -425,10 +425,17 @@ public:
             const auto& result = results[i];
             Json::Value entry(Json::objectValue);
             entry["index"] = (int)i;
+                        
             if (!result.hypotheses.empty()) {
                 completion_tokens += result.hypotheses[0].size();
+                // Convert token strings back to IDs first
+                std::vector<int> output_ids;
+                output_ids.reserve(result.hypotheses[0].size());
+                for (const auto& token : result.hypotheses[0]) {
+                    output_ids.push_back(tokenizer_->PieceToId(token));
+                }
                 std::string text;
-                tokenizer_->Decode(result.hypotheses[0], &text);
+                tokenizer_->Decode(output_ids, &text);
                 entry["text"] = text;
             } else {
                 entry["text"] = "";
