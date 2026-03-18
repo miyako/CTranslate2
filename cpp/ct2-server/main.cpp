@@ -399,47 +399,41 @@ public:
     }
 
     std::string generate_batch(const std::vector<std::string>& prompts,
-                               const ctranslate2::TranslationOptions& options,
+                               ctranslate2::TranslationOptions options,
                                const std::string& model_name) {
-        std::vector<std::vector<std::string>> batch_tokens;
-        batch_tokens.reserve(prompts.size());
-        for (const auto& p : prompts) {
-            std::vector<std::string> toks;
-            tokenizer_->Encode(p, &toks);
-            batch_tokens.push_back(std::move(toks));
-        }
-
-        // Prompt token count
+        // Collect results per prompt
+        size_t n = prompts.size();
+        std::vector<std::string> final_texts(n, "");
+        
         size_t prompt_tokens = 0;
-        for (const auto& t : batch_tokens) prompt_tokens += t.size();
+        size_t completion_tokens = 0;
 
-        auto results = translator_->translate_batch(batch_tokens, options);
+        options.beam_size = 1;
+        
+        // Reuse generate_batch_stream internally
+        generate_batch_stream(
+            prompts,
+            options,
+            [&](const std::string& delta, int idx) -> bool {
+                if (idx >= 0 && (size_t)idx < n) {
+                    final_texts[idx] += delta;
+                }
+                return true; // always continue
+            },
+            prompt_tokens,
+            completion_tokens
+        );
 
+        // Build JSON response
         Json::Value root(Json::objectValue);
-        root["model"] = model_name;
+        root["model"]  = model_name;
         root["object"] = "generate.completion";
 
         Json::Value resultsNode(Json::arrayValue);
-        size_t completion_tokens = 0;
-        for (size_t i = 0; i < results.size(); ++i) {
-            const auto& result = results[i];
+        for (size_t i = 0; i < n; ++i) {
             Json::Value entry(Json::objectValue);
             entry["index"] = (int)i;
-                        
-            if (!result.hypotheses.empty()) {
-                completion_tokens += result.hypotheses[0].size();
-                // Convert token strings back to IDs first
-                std::vector<int> output_ids;
-                output_ids.reserve(result.hypotheses[0].size());
-                for (const auto& token : result.hypotheses[0]) {
-                    output_ids.push_back(tokenizer_->PieceToId(token));
-                }
-                std::string text;
-                tokenizer_->Decode(output_ids, &text);
-                entry["text"] = text;
-            } else {
-                entry["text"] = "";
-            }
+            entry["text"]  = final_texts[i];
             resultsNode.append(entry);
         }
         root["results"] = resultsNode;
