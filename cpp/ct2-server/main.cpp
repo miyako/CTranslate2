@@ -380,20 +380,24 @@ public:
             ctranslate2::set_num_threads(num_threads);
         }
 
-        // Load SentencePiece tokenizer (tokenizer.model preferred, else tokenizer.json path)
         fs::path sp_path = fs::path(model_dir) / "tokenizer.model";
-        tokenizer_ = std::make_unique<sentencepiece::SentencePieceProcessor>();
-        auto status = tokenizer_->Load(sp_path.string());
-        if (!status.ok()) {
-            throw std::runtime_error("GeneratePipeline: failed to load tokenizer: " + status.ToString());
+        if(fs::exists(sp_path)) {
+            tokenizer_ = std::make_unique<sentencepiece::SentencePieceProcessor>();
+            auto status = tokenizer_->Load(sp_path.string());
+            if (!status.ok()) {
+                throw std::runtime_error("GeneratePipeline: failed to load tokenizer: " + status.ToString());
+            }
         }
-
-        ctranslate2::Device device_type = (device == "cuda") ?
-            ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
-        translator_ = std::make_unique<ctranslate2::Translator>(model_dir, device_type);
+        
+        try {
+            ctranslate2::Device device_type = (device == "cuda") ?
+                ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
+            translator_ = std::make_unique<ctranslate2::Translator>(model_dir, device_type);
+        } catch (const std::exception& e) {
+            throw std::runtime_error("Failed to load CTranslate2 Translator: " + std::string(e.what()));
+        }
     }
 
-    // Non-streaming: returns full JSON response with usage counts.
     std::string generate_batch(const std::vector<std::string>& prompts,
                                const ctranslate2::TranslationOptions& options,
                                const std::string& model_name) {
@@ -1217,7 +1221,6 @@ public:
                                 const std::string& src_lang,
                                 const std::string& tgt_lang,
                                 const ctranslate2::TranslationOptions& options) {
-        
         std::vector<std::vector<std::string>> batch_tokens;
         std::vector<std::vector<std::string>> batch_prefixes;
         
@@ -2481,6 +2484,16 @@ int main(int argc, OPTARG_T argv[]) {
                 }
 
                 if (is_stream) {
+                    
+                    options.beam_size = 1;  // force for real streaming
+                    options.sampling_temperature = options.sampling_temperature > 0 ? options.sampling_temperature : 0.7f;
+                    options.repetition_penalty = options.repetition_penalty > 0 ? options.repetition_penalty : 1.3f;
+                    options.no_repeat_ngram_size = options.no_repeat_ngram_size > 0 ? options.no_repeat_ngram_size : 4;
+                    options.max_decoding_length = options.max_decoding_length > 0 ? options.max_decoding_length : 256;
+                    options.min_decoding_length = options.min_decoding_length > 0 ? options.min_decoding_length : 4;
+                    options.sampling_topk = options.sampling_topk > 0 ? options.sampling_topk : 20;
+                    options.sampling_topp = options.sampling_topp > 0 ? options.sampling_topp : 0.9f;
+                    
                     // --- STREAMING MODE ---
                     GeneratePipeline* raw = generate_pipeline.get();
                     std::string mdl = generate_modelName;
