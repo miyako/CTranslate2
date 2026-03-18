@@ -526,6 +526,11 @@ public:
         tokenizer_ = LoadTokenizer(model_dir);
         if (!tokenizer_) throw std::runtime_error("No tokenizer found for ChatPipeline");
         
+        id_to_token_cache_.resize(tokenizer_->GetVocabSize());
+        for (size_t i = 0; i < tokenizer_->GetVocabSize(); ++i) {
+            id_to_token_cache_[i] = tokenizer_->IdToToken((int32_t)i);
+        }
+        
         try {
             ctranslate2::Device device_type = (device == "cuda") ?
                 ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
@@ -544,7 +549,8 @@ public:
         std::vector<int> prompt_ids = tokenizer_->Encode(prompt);
         std::vector<std::string> prompt_tokens;
         prompt_tokens.reserve(prompt_ids.size());
-        for (int id : prompt_ids) prompt_tokens.push_back(tokenizer_->IdToToken(id));
+//        for (int id : prompt_ids) prompt_tokens.push_back(tokenizer_->IdToToken(id));
+        for (int id : prompt_ids) prompt_tokens.push_back(id_to_token_cache_[id]);
         
         // Duplicate the prompt 'n' times to process them as a batch
         std::vector<std::vector<std::string>> batch_tokens(n, prompt_tokens);
@@ -810,6 +816,7 @@ private:
     std::unique_ptr<tokenizers::Tokenizer> tokenizer_;
     inline static const std::vector<std::string> stop_words_ = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>", "<|end_of_text|>",
                         "<|eom_id|>"};
+    std::vector<std::string> id_to_token_cache_;
 };
 
 class RerankerPipeline {
