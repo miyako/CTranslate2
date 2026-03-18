@@ -133,4 +133,10 @@ enum TranslateModel {
 
 static std::string wchar_to_utf8(const wchar_t* wstr);
 
+#if defined(_WIN64) && defined(_M_ARM64)
+#ifndef EIGEN_ARCH_ARM64
+#pragma message("WARNING: Eigen may not be using NEON on ARM64")
+#endif
+#endif
+
 #endif  /* __ONNX_GENAI_H__ */
