@@ -564,8 +564,13 @@ public:
             std::string current_text = tokenizer_->Decode(current_ids[batch_id]);
             
             bool hit_stop = false;
+            // Only check the suffix that could contain a newly completed stop word
+            size_t max_sw_len = 20; // precompute once
+            size_t check_from = current_text.size() > max_sw_len
+                ? current_text.size() - max_sw_len : 0;
+            std::string_view suffix(current_text.c_str() + check_from, current_text.size() - check_from);
             for (const auto& word : stop_words_) {
-                if (current_text.find(word) != std::string::npos) { hit_stop = true; break; }
+                if (suffix.find(word) != std::string_view::npos) { hit_stop = true; break; }
             }
             
             // 1. DYNAMIC TOOL INTERCEPTION
@@ -596,12 +601,17 @@ public:
                     if (start != std::string::npos && end != std::string::npos) {
                         json_str = current_text.substr(start + 11, end - (start + 11));
                     } else if (start != std::string::npos) {
-                        // Failsafe: Model forgot the closing tag. Extract everything!
                         json_str = current_text.substr(start + 11);
+                        size_t earliest = std::string::npos;
                         for (const auto& word : stop_words_) {
                             size_t pos = json_str.find(word);
-                            if (pos != std::string::npos) json_str = json_str.substr(0, pos);
+                            if (pos != std::string::npos) {
+                                if (earliest == std::string::npos || pos < earliest)
+                                    earliest = pos;
+                            }
                         }
+                        if (earliest != std::string::npos)
+                            json_str = json_str.substr(0, earliest);
                     }
                     
                     // Fire the tool callback!
@@ -682,13 +692,14 @@ public:
             current_ids[batch_id].push_back((int)step_result.token_id);
             std::string current_text = tokenizer_->Decode(current_ids[batch_id]);
             
-            // Check for stop words
             bool hit_stop = false;
+            // Only check the suffix that could contain a newly completed stop word
+            size_t max_sw_len = 20; // precompute once
+            size_t check_from = current_text.size() > max_sw_len
+                ? current_text.size() - max_sw_len : 0;
+            std::string_view suffix(current_text.c_str() + check_from, current_text.size() - check_from);
             for (const auto& word : stop_words_) {
-                if (current_text.find(word) != std::string::npos) {
-                    hit_stop = true;
-                    break;
-                }
+                if (suffix.find(word) != std::string_view::npos) { hit_stop = true; break; }
             }
             
             if (hit_stop || step_result.is_last) {
@@ -2747,7 +2758,7 @@ int main(int argc, OPTARG_T argv[]) {
         
         std::cout << "[Server] Listening on " << host << ":" << port << std::endl;
         
-        svr.new_task_queue = []{ return new httplib::ThreadPool(1); };
+        svr.new_task_queue = []{ return new httplib::ThreadPool(2); };
         // Listen (Blocking call)
         if (!svr.listen(host.c_str(), port)) {
             std::cerr << "Error: Could not start server on " << host << ":" << port << std::endl;
