@@ -2632,7 +2632,8 @@ int main(int argc, OPTARG_T argv[]) {
                 try { peek = nlohmann::json::parse(req.body); }
                 catch (...) { throw std::invalid_argument("Malformed JSON body."); }
 
-                const bool has_messages = peek.contains("messages") && peek["messages"].is_array();
+                const bool has_messages = peek.contains("messages")
+                && peek["messages"].is_array() && peek["messages"].size() != 0;
                 const bool has_prompt   = peek.contains("prompt");
                 const bool has_text     = peek.contains("input");
                 
