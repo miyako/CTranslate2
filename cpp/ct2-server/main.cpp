@@ -2747,6 +2747,7 @@ int main(int argc, OPTARG_T argv[]) {
         
         std::cout << "[Server] Listening on " << host << ":" << port << std::endl;
         
+        svr.new_task_queue = []{ return new httplib::ThreadPool(1); };
         // Listen (Blocking call)
         if (!svr.listen(host.c_str(), port)) {
             std::cerr << "Error: Could not start server on " << host << ":" << port << std::endl;
