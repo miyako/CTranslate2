@@ -3,13 +3,10 @@
    version = "1.0">
    <ContextStates>
       <ContextState
-         contextName = "TranslationPipeline::translate_batch:main.cpp">
+         contextName = "main::$_3::operator()(httplib::Request const&amp;, httplib::Response&amp;) const:main.cpp">
       </ContextState>
       <ContextState
          contextName = "TranslationPipeline::translate_batch_stream:main.cpp">
-      </ContextState>
-      <ContextState
-         contextName = "main::$_3::operator()(httplib::Request const&amp;, httplib::Response&amp;) const:main.cpp">
       </ContextState>
       <ContextState
          contextName = "main::$_2::operator()(httplib::Request const&amp;, httplib::Response&amp;) const:main.cpp">
@@ -31,6 +28,14 @@
          </PersistentStrings>
       </ContextState>
       <ContextState
+         contextName = "ChatPipeline::ChatPipeline:main.cpp">
+         <PersistentStrings>
+            <PersistentString
+               value = "tokenizer_-&gt;GetVocabSize()">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
          contextName = "parse_request_generate:main.cpp">
          <PersistentStrings>
             <PersistentString
@@ -46,6 +51,9 @@
                value = "root[&quot;repetition_penalty&quot;].asFloat()">
             </PersistentString>
          </PersistentStrings>
+      </ContextState>
+      <ContextState
+         contextName = "TranslationPipeline::translate_batch:main.cpp">
       </ContextState>
    </ContextStates>
 </VariablesViewState>

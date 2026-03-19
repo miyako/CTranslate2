@@ -519,6 +519,8 @@ private:
     std::unique_ptr<sentencepiece::SentencePieceProcessor> tokenizer_;
 };
 
+#define CACHE_TOKEN_IDS 0
+
 class ChatPipeline {
 public:
     ChatPipeline(const std::string& model_dir,
@@ -531,12 +533,13 @@ public:
 
         tokenizer_ = LoadTokenizer(model_dir);
         if (!tokenizer_) throw std::runtime_error("No tokenizer found for ChatPipeline");
-        
+
+#if CACHE_TOKEN_IDS
         id_to_token_cache_.resize(tokenizer_->GetVocabSize());
         for (size_t i = 0; i < tokenizer_->GetVocabSize(); ++i) {
             id_to_token_cache_[i] = tokenizer_->IdToToken((int32_t)i);
         }
-        
+#endif
         try {
             ctranslate2::Device device_type = (device == "cuda") ?
                 ctranslate2::Device::CUDA : ctranslate2::Device::CPU;
@@ -555,9 +558,14 @@ public:
         std::vector<int> prompt_ids = tokenizer_->Encode(prompt);
         std::vector<std::string> prompt_tokens;
         prompt_tokens.reserve(prompt_ids.size());
-//        for (int id : prompt_ids) prompt_tokens.push_back(tokenizer_->IdToToken(id));
-        for (int id : prompt_ids) prompt_tokens.push_back(id_to_token_cache_[id]);
         
+
+#if CACHE_TOKEN_IDS
+        for (int id : prompt_ids) prompt_tokens.push_back(id_to_token_cache_[id]);
+#else
+        for (int id : prompt_ids) prompt_tokens.push_back(tokenizer_->IdToToken(id));
+#endif
+
         // Duplicate the prompt 'n' times to process them as a batch
         std::vector<std::vector<std::string>> batch_tokens(n, prompt_tokens);
         
@@ -822,7 +830,9 @@ private:
     std::unique_ptr<tokenizers::Tokenizer> tokenizer_;
     inline static const std::vector<std::string> stop_words_ = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>", "<|end_of_text|>",
                         "<|eom_id|>"};
+#if CACHE_TOKEN_IDS
     std::vector<std::string> id_to_token_cache_;
+#endif
 };
 
 class RerankerPipeline {
@@ -1766,7 +1776,7 @@ static void parse_request_generate(const std::string& property_name,
     bool ok = reader->parse(json_str.c_str(), json_str.c_str() + json_str.size(), &root, &errors);
     if (!ok || !root.isObject()) return;
 
-    // "prompt": string or array of strings
+    // "prompt" or "input" : string or array of strings
     Json::Value prompt_node = root[property_name];
     if (prompt_node.isString()) {
         prompts.push_back(prompt_node.asString());
@@ -1776,6 +1786,7 @@ static void parse_request_generate(const std::string& property_name,
         }
     }
     
+    // BART, NLLB
     Json::Value from_lang_node = root["from"];
     if (from_lang_node.isString()) {
         src_lang = from_lang_node.asString();
@@ -1786,24 +1797,49 @@ static void parse_request_generate(const std::string& property_name,
         tgt_lang = to_lang_node.asString();
     }
 
-    // Generation options
-    if (root["max_length"].isNumeric())
-        options.max_decoding_length = root["max_length"].asUInt();
-    if (root["min_length"].isNumeric())
-        options.min_decoding_length = root["min_length"].asUInt();
+    // "input"  : v1/translate uses ctranslate2::TranslationOptions
+    // "prompt" : v1/generate  uses ctranslate2::TranslationOptions
     if (root["beam_size"].isNumeric())
         options.beam_size = root["beam_size"].asUInt();
-    if (root["num_hypotheses"].isNumeric())
-        options.num_hypotheses = root["num_hypotheses"].asUInt();
+    if (root["patience"].isNumeric())
+        options.patience = root["patience"].asDouble();
+    if (root["length_penalty"].isNumeric())
+        options.length_penalty = root["length_penalty"].asFloat();
+    if (root["coverage_penalty"].isNumeric())
+        options.coverage_penalty = root["coverage_penalty"].asFloat();
+    if (root["repetition_penalty"].isNumeric())
+        options.repetition_penalty = root["repetition_penalty"].asFloat();
+    if (root["no_repeat_ngram_size"].isNumeric())
+        options.no_repeat_ngram_size = root["no_repeat_ngram_size"].asUInt();
+    if (root["disable_unk"].isBool())
+        options.disable_unk = root["disable_unk"].asBool();
+    if (root["prefix_bias_beta"].isNumeric())
+        options.prefix_bias_beta = root["prefix_bias_beta"].asFloat();
+    if (root["return_end_token"].isBool())
+        options.return_end_token = root["return_end_token"].asBool();
+    if (root["max_input_length"].isNumeric())
+        options.max_input_length = root["max_input_length"].asUInt();
+    if (root["max_decoding_length"].isNumeric())
+        options.max_decoding_length = root["max_decoding_length"].asUInt();
+    if (root["min_decoding_length"].isNumeric())
+        options.min_decoding_length = root["min_decoding_length"].asUInt();
     if (root["sampling_topk"].isNumeric())
         options.sampling_topk = root["sampling_topk"].asUInt();
     if (root["sampling_topp"].isNumeric())
-        options.sampling_topp = root["sampling_topp"].asDouble();
-    if (root["temperature"].isNumeric())
-        options.sampling_temperature = root["temperature"].asDouble();
-    if (root["repetition_penalty"].isNumeric())
-        options.repetition_penalty = root["repetition_penalty"].asFloat();
-
+        options.sampling_topp = root["sampling_topp"].asFloat();
+    if (root["sampling_temperature"].isNumeric())
+        options.sampling_temperature = root["sampling_temperature"].asFloat();
+    if (root["use_vmap"].isBool())
+        options.use_vmap = root["use_vmap"].asBool();
+    if (root["num_hypotheses"].isNumeric())
+        options.num_hypotheses = root["num_hypotheses"].asUInt();
+    if (root["return_alternatives"].isBool())
+        options.return_alternatives = root["return_alternatives"].asBool();
+    if (root["min_alternative_expansion_prob"].isNumeric())
+        options.min_alternative_expansion_prob = root["min_alternative_expansion_prob"].asFloat();
+    if (root["replace_unknowns"].isBool())
+        options.replace_unknowns = root["replace_unknowns"].asBool();
+    
     if (root["stream"].isBool())
         is_stream = root["stream"].asBool();
     
@@ -2260,7 +2296,7 @@ int main(int argc, OPTARG_T argv[]) {
     //-g:chat
     if (chat_model_path.length() != 0) {
         if (fs::exists(chat_model_path) && fs::is_directory(chat_model_path)) {
-            std::cerr << "[Generator] Loading from " << chat_model_path << std::endl;
+            std::cerr << "[Chat] Loading from " << chat_model_path << std::endl;
             chat_fingerprint = get_system_fingerprint(chat_model_path, "directml");
             try {
     #ifdef WIN32
@@ -2473,16 +2509,13 @@ int main(int argc, OPTARG_T argv[]) {
 
             try {
                 if (!generate_pipeline) {
-                    throw std::invalid_argument("[Generate] T5 pipeline not loaded. Pass a model with tokenizer.model via -g");
+                    throw std::invalid_argument("[Generate] pipeline not loaded. Pass a model with tokenizer.model via -g");
                 }
 
                 std::vector<std::string> prompts;
                 std::string src_lang;
                 std::string tgt_lang;
                 ctranslate2::TranslationOptions options;
-                // Reasonable T5 defaults
-                options.max_decoding_length = 128;
-                options.beam_size = 4;
                 bool is_stream = false;
                 bool use_sampling = false;
                 options.return_scores = true;
@@ -2578,7 +2611,7 @@ int main(int argc, OPTARG_T argv[]) {
             
             try {
                 if (!translation_pipeline) {
-                    throw std::invalid_argument("[Translate] T5 pipeline not loaded. Pass a model with tokenizer.model via -m");
+                    throw std::invalid_argument("[Translate] pipeline not loaded. Pass a model with tokenizer.model via -m");
                 }
 
                 std::vector<std::string> texts;
