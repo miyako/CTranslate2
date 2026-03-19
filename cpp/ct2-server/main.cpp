@@ -1363,6 +1363,7 @@ public:
 
             size_t n = texts.size();
             std::vector<std::vector<size_t>> current_ids(n);
+            std::vector<std::vector<std::string>> current_tokens(n);
             std::vector<std::string> previous_text(n, "");
             std::vector<bool> finished(n, false);
             bool has_pref = has_prefix;
@@ -1371,18 +1372,29 @@ public:
                 size_t sid = step.batch_id;
                 if (sid >= n || finished[sid]) return false;
 
-                // Skip the prefix token on first step
-                if (has_pref && current_ids[sid].empty() && step.token_id == 0)
-                    return false;
-
                 current_ids[sid].push_back(step.token_id);
-
-                std::vector<int> id_ints(current_ids[sid].begin(), current_ids[sid].end());
+                
+                // Skip the prefix token on first step
+                if (has_pref && current_ids[sid].size() == 1) {
+                    return false;
+                }
+                                
+                current_tokens[sid].push_back(step.token);
+                std::vector<std::string> partial(current_tokens[sid].begin(), current_tokens[sid].end());
+                
+//                std::vector<int> id_ints(current_ids[sid].begin(), current_ids[sid].end());
+                
                 std::string current_text;
-                if (translate_model_ == TranslateModel::TRANSLATE_BART)
-                    tokenizer_->Decode(id_ints, &current_text);
-                else
-                    tokenizer_tgt_->Decode(id_ints, &current_text);
+                if (translate_model_ == TranslateModel::TRANSLATE_BART) {
+                    tokenizer_->Decode(partial, &current_text);
+                }else{
+                    tokenizer_tgt_->Decode(partial, &current_text);
+                }
+                
+//                if (translate_model_ == TranslateModel::TRANSLATE_BART)
+//                    tokenizer_->Decode(id_ints, &current_text);
+//                else
+//                    tokenizer_tgt_->Decode(id_ints, &current_text);
 
                 if (current_text.length() > previous_text[sid].length()) {
                     if (current_text.find("\xef\xbf\xbd") == std::string::npos) {
@@ -1408,8 +1420,83 @@ public:
             }
 
         } else {
-            // Fake streaming — existing implementation unchanged
-            // ... your current fake stream code ...
+            
+            std::vector<std::vector<std::string>> batch_tokens;
+            std::vector<std::vector<std::string>> batch_prefixes;
+            
+            bool has_prefix = false;
+            
+            batch_tokens.reserve(texts.size());
+            batch_prefixes.reserve(texts.size());
+                    
+            for (const auto& text : texts) {
+                std::vector<std::string> tokens;
+                if (translate_model_ == TranslateModel::TRANSLATE_BART) {
+                    tokenizer_->Encode(text, &tokens);
+                }else{
+                    tokenizer_src_->Encode(text, &tokens);
+                }
+                
+                if(!src_lang.empty()) {
+                    tokens.insert(tokens.begin(), src_lang);
+                    has_prefix = true;
+                }else if(!tgt_lang.empty()) {
+                    has_prefix = true;
+                }
+                
+                if (tokens.empty() || tokens.back() != eos_token_) {
+                    tokens.push_back(eos_token_);
+                }
+                
+                batch_tokens.push_back(std::move(tokens));
+                batch_prefixes.push_back({tgt_lang});  // force first decoded token
+            }
+            
+            // Count prompt tokens before inference
+            size_t prompt_tokens = 0;
+            for (const auto& toks : batch_tokens) prompt_tokens += toks.size();
+            
+            auto results = translator_->translate_batch(batch_tokens, batch_prefixes, options);
+            
+            // Now fake-stream each result word by word
+            
+            for (size_t i = 0; i < results.size(); ++i) {
+                if (results[i].hypotheses.empty()) continue;
+                
+                // Strip leading tgt lang token
+                auto hyp = results[i].hypotheses[0];
+                
+                auto tokens = hyp;
+                if((has_prefix) && (!tokens.empty())) {
+                    tokens.erase(tokens.begin());
+                }
+                
+                std::string accumulated;
+                
+                // Decode and stream token by token
+                for (size_t t = 0; t < tokens.size(); ++t) {
+                    // Decode tokens seen so far to get cumulative text
+                    std::vector<std::string> partial(tokens.begin(), tokens.begin() + t + 1);
+                    std::string current_text;
+                    if (translate_model_ == TranslateModel::TRANSLATE_BART) {
+                        tokenizer_->Decode(partial, &current_text);
+                    }else{
+                        tokenizer_tgt_->Decode(partial, &current_text);
+                    }
+                    
+                    // Emit only the new suffix since last emission
+                    if (current_text.length() > accumulated.length()) {
+                        if (current_text.find("\xef\xbf\xbd") == std::string::npos) {
+                            std::string delta = current_text.substr(accumulated.length());
+                            accumulated = current_text;
+                            if (!delta.empty()) {
+                                if (!on_token(delta, (int)i)) goto next_sentence;
+                            }
+                        }
+                    }
+                }
+                next_sentence:;
+            }
         }
     }
     

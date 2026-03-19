@@ -28,6 +28,14 @@
          </PersistentStrings>
       </ContextState>
       <ContextState
+         contextName = "TranslationPipeline::translate_batch_stream(std::__1::vector&lt;std::__1::basic_string&lt;char, std::__1::char_traits&lt;char&gt;, std::__1::allocator&lt;char&gt;&gt;, std::__1::allocator&lt;std::__1::basic_string&lt;char, std::__1::char_traits&lt;char&gt;, std::__1::allocator&lt;char&gt;&gt;&gt;&gt; const&amp;, std::__1::basic_string&lt;char, std::__1::char_traits&lt;char&gt;, std::__1::allocator&lt;char&gt;&gt; const&amp;, std::__1::basic_string&lt;char, std::__1::char_traits&lt;char&gt;, std::__1::allocator&lt;char&gt;&gt; const&amp;, ctranslate2::TranslationOptions, std::__1::function&lt;bool (std::__1::basic_string&lt;char, std::__1::char_traits&lt;char&gt;, std::__1::allocator&lt;char&gt;&gt; const&amp;, int)&gt;, bool)::&apos;lambda&apos;(ctranslate2::GenerationStepResult)::operator()(ctranslate2::GenerationStepResult) const:main.cpp">
+         <PersistentStrings>
+            <PersistentString
+               value = "translate_model_">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
          contextName = "ChatPipeline::ChatPipeline:main.cpp">
          <PersistentStrings>
             <PersistentString
