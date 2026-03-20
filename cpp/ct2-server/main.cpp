@@ -1743,9 +1743,9 @@ static void usage(void)
     fprintf(stderr, " -%c path     : %s\n", 'g' , "chat completion model");
     fprintf(stderr, " -%c path     : %s\n", 't' , "chat template");
     fprintf(stderr, " -%c          : %s\n", 'j' , "chat template from stdin");
-    fprintf(stderr, " %c           : %s\n", 'l' , "pooling=last-token (Llama)");
-    fprintf(stderr, " %c           : %s\n", 'c' , "pooling=cls (Qwen)");
-    fprintf(stderr, " %c           : %s\n", 's' , "server (OpenAI compatible endpoint)");
+    fprintf(stderr, " %c           : %s\n", 'l' , "pooling=last-token");
+    fprintf(stderr, " %c           : %s\n", 'c' , "pooling=cls");
+    fprintf(stderr, " %c           : %s\n", 's' , "server");
     fprintf(stderr, " %c           : %s\n", 'p' , "server listening port (default=8080)");
     fprintf(stderr, " %c           : %s\n", 'h' , "server host (default=127.0.0.1)  ");
     fprintf(stderr, " -%c path     : %s\n", 'i' , "input");
