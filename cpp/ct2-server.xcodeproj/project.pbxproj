@@ -14,7 +14,7 @@
 		D18C696D2EFFE33600A4774A /* libtokenizers_cpp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C696C2EFFE33600A4774A /* libtokenizers_cpp.a */; };
 		D190B5EE2F115CBC00F8D023 /* libcpu_features.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D190B5ED2F115CB200F8D023 /* libcpu_features.a */; };
 		D190B5EF2F115CBC00F8D023 /* libctranslate2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D190B5EC2F115CB200F8D023 /* libctranslate2.a */; };
-		D190B5F12F115EB800F8D023 /* libopenblas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D190B5F02F115EB800F8D023 /* libopenblas.a */; };
+		D1E212412F6CE3BA00D88A5F /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1E212402F6CE3BA00D88A5F /* Accelerate.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -50,6 +50,7 @@
 		D190B5EC2F115CB200F8D023 /* libctranslate2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libctranslate2.a; path = a/libctranslate2.a; sourceTree = "<group>"; };
 		D190B5ED2F115CB200F8D023 /* libcpu_features.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcpu_features.a; path = a/libcpu_features.a; sourceTree = "<group>"; };
 		D190B5F02F115EB800F8D023 /* libopenblas.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libopenblas.a; path = a/libopenblas.a; sourceTree = "<group>"; };
+		D1E212402F6CE3BA00D88A5F /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -65,7 +66,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D190B5F12F115EB800F8D023 /* libopenblas.a in Frameworks */,
+				D1E212412F6CE3BA00D88A5F /* Accelerate.framework in Frameworks */,
 				D18C696D2EFFE33600A4774A /* libtokenizers_cpp.a in Frameworks */,
 				D190B5EF2F115CBC00F8D023 /* libctranslate2.a in Frameworks */,
 				D190B5EE2F115CBC00F8D023 /* libcpu_features.a in Frameworks */,
@@ -82,6 +83,7 @@
 		D157F30B2E612DD500DF46D3 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				D1E212402F6CE3BA00D88A5F /* Accelerate.framework */,
 				D190B5F02F115EB800F8D023 /* libopenblas.a */,
 				D190B5ED2F115CB200F8D023 /* libcpu_features.a */,
 				D190B5EC2F115CB200F8D023 /* libctranslate2.a */,
@@ -309,7 +311,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D164789E2E61216B00FC9914 /* ct2-server.xcconfig */;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = x86_64;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Y69CWUC25B;
@@ -321,15 +323,14 @@
 					"$(PROJECT_DIR)/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
-				OTHER_CFLAGS = (
+				OTHER_CFLAGS = "";
+				OTHER_CPLUSPLUSFLAGS = (
 					"-DEIGEN_USE_BLAS",
 					"-flto",
 					"-Xpreprocessor",
 					"-fopenmp",
-					"-mavx2",
-					"-mfma",
+					"-march=native",
 				);
-				OTHER_CPLUSPLUSFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					include,
@@ -342,7 +343,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D164789E2E61216B00FC9914 /* ct2-server.xcconfig */;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = x86_64;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Y69CWUC25B;
@@ -361,7 +362,8 @@
 					"-flto",
 					"-Xpreprocessor",
 					"-fopenmp",
-					"-march=native",
+					"-mavx2",
+					"-mfma",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
