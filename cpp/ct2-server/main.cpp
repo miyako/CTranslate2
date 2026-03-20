@@ -103,24 +103,23 @@ static int GetOptimalIntraOpThreads() {
     int threads = 0;
 
     // --- macOS Implementation ---
-#if defined(__APPLE__)
-    int32_t p_cores = 0, e_cores = 0;
-    size_t size = sizeof(int32_t);
-    sysctlbyname("hw.perflevel0.physicalcpu", &p_cores, &size, NULL, 0);
-    sysctlbyname("hw.perflevel1.physicalcpu", &e_cores, &size, NULL, 0);
-    threads = p_cores + e_cores; // all 8 on M1
-//    #if defined(__APPLE__)
-//        int32_t core_count = 0;
-//        size_t size = sizeof(core_count);
-//        if (sysctlbyname("hw.perflevel0.physicalcpu", &core_count, &size, NULL, 0) == 0) {
-//            threads = core_count;
-//        }
-//        else if (sysctlbyname("hw.physicalcpu", &core_count, &size, NULL, 0) == 0) {
-//            threads = core_count;
-//        }
-//        else {
-//            threads = std::thread::hardware_concurrency();
-//        }
+    #if defined(__APPLE__)
+        int32_t core_count = 0;
+        size_t size = sizeof(core_count);
+        
+        // 1. Try to get "Performance Level 0" cores (P-Cores on Apple Silicon)
+        // This is critical for M1/M2/M3 to avoid using slow E-Cores.
+        if (sysctlbyname("hw.perflevel0.physicalcpu", &core_count, &size, NULL, 0) == 0) {
+            threads = core_count;
+        }
+        // 2. Fallback: Standard Physical Cores (Intel Mac or if perflevel fails)
+        else if (sysctlbyname("hw.physicalcpu", &core_count, &size, NULL, 0) == 0) {
+            threads = core_count;
+        }
+        else {
+            // Absolute fallback
+            threads = std::thread::hardware_concurrency();
+        }
 #else  // Windows and Linux
     unsigned int logical_cores = std::thread::hardware_concurrency();
     threads = (logical_cores > 4) ? (int)(logical_cores / 2) : (int)logical_cores;
