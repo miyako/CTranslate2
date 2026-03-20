@@ -6,17 +6,20 @@ CTranslate2 Inference Engine
 Usage:  ct2-server -s -e embedding_model -p port 
 
  -m path     : translation model
- -f path     : source sentencepiece model
  -e path     : embedding model (pooling=mean)
  -r path     : reranker model
+ -a path     : generate model
  -g path     : chat completion model
  -t path     : chat template
  -j          : chat template from stdin
- -l          : pooling=last-token (Llama)
- -c          : pooling=cls (Qwen)
- -s          : server (OpenAI compatible endpoint)
+ -l          : pooling=last-token
+ -c          : pooling=cls
+ -s          : server
  -p          : server listening port (default=8080)
- -h host     : server host (default=127.0.0.1)    
+ -h host     : server host (default=127.0.0.1)
+ -i          : input
+ -o          : output (default=stdout)
+ -           : use stdin for input
 ```
 
 The CLI is built for `4` platforms:
@@ -44,6 +47,11 @@ The CLI is built for `4` platforms:
 
 - `/v1/contextualizedembeddings`
 - `/v1/contextualized/embeddings` (alias)
+
+## Other Endpoints
+
+- `/v1/generate`
+- `/v1/translate`
 
 ## Converted CT2 Models
 

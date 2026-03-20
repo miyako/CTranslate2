@@ -153,9 +153,9 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DisableSpecificWarnings>4819;5033;4104</DisableSpecificWarnings>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <FloatingPointModel>Fast</FloatingPointModel>
+      <FloatingPointModel>Precise</FloatingPointModel>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <AdditionalOptions>/Zc:lambda /Zc:preprocessor /Ob3 /fp:fast /Ot /arch:AVX2 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/Zc:lambda /Zc:preprocessor /Ob3 /Ot /arch:AVX2 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -188,8 +188,8 @@
       <AdditionalIncludeDirectories>include;include\json</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DisableSpecificWarnings>4819;5033;4104</DisableSpecificWarnings>
-      <FloatingPointModel>Fast</FloatingPointModel>
-      <AdditionalOptions>/Zc:lambda /Zc:preprocessor /Ob3 /fp:fast /Ot /arch:armv8.2 /favor:ARM64 %(AdditionalOptions)</AdditionalOptions>
+      <FloatingPointModel>Precise</FloatingPointModel>
+      <AdditionalOptions>/Zc:lambda /Zc:preprocessor /Ob3 /Ot /arch:armv8.2 /favor:ARM64 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
