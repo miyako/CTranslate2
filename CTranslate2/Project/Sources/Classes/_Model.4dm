@@ -37,15 +37,15 @@ Function onDownload($oid : Text)
 			 ? $downloaded.folder.folder($downloaded.path).parent : $downloaded.folder
 		
 		Case of 
-			: ($downloaded.domain="embedding")
+			: ($downloaded.domain="embedding") && (This:C1470.options.embeddings_model=Null:C1517)
 				This:C1470.options.embeddings_model:=$model
-			: ($downloaded.domain="translate")
+			: ($downloaded.domain="translate") && (This:C1470.options.translate_model=Null:C1517)
 				This:C1470.options.translate_model:=$model
-			: ($downloaded.domain="generate")
+			: ($downloaded.domain="generate") && (This:C1470.options.generate_model=Null:C1517)
 				This:C1470.options.generate_model:=$model
-			: ($downloaded.domain="rerank")
+			: ($downloaded.domain="rerank") && (This:C1470.options.rerank_model=Null:C1517)
 				This:C1470.options.rerank_model:=$model
-			: ($downloaded.domain="chat")
+			: ($downloaded.domain="chat") && (This:C1470.options.chat_model=Null:C1517)
 				This:C1470.options.chat_model:=$model
 		End case 
 	End if 
