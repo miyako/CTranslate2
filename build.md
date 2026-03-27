@@ -15,6 +15,30 @@ title: "Build"
 -Xpreprocessor -fopenmp -march=native
 ```
 
+## Windows
+
+```
+git clone https://github.com/OpenNMT/CTranslate2.git --recursive
+```
+
+```
+cmake -S . -B build ^
+  -DCMAKE_SYSTEM_NAME=Windows ^
+  -DCMAKE_SYSTEM_PROCESSOR=AMD64 ^
+  -DBUILD_SHARED_LIBS=OFF ^
+  -DCMAKE_BUILD_TYPE=Release ^
+  -DENABLE_CPU_DISPATCH=ON ^
+  -DWITH_MKL=ON ^
+  -DWITH_TOKENIZERS=OFF ^
+  -DOPENMP_RUNTIME=COMP ^
+  -DCMAKE_POLICY_DEFAULT_CMP0091=NEW ^
+  -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" ^
+  -DCMAKE_CXX_FLAGS_RELEASE="/MT /O2 /Ob2 /DNDEBUG" ^
+  -DCMAKE_C_FLAGS_RELEASE="/MT /O2 /Ob2 /DNDEBUG" ^
+  -DCMAKE_CXX_FLAGS="/MT /EHsc /utf-8" ^
+  -DCMAKE_C_FLAGS="/MT /utf-8"
+```
+
 ## Windows ARM
 
 * CMakeLists.txt
