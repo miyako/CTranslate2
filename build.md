@@ -80,12 +80,31 @@ cd sentencepiece
 ```
 
 ```
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSPM_ENABLE_SHARED=OFF -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded"
+cmake -S . -B build ^
+      -G "Visual Studio 18 2026" ^
+      -A ARM64 ^
+      -DSPM_ENABLE_SHARED=OFF ^
+      -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" 
+```
+
+```
+rmdir /S /Q build
+```
+
+```
+cmake -S . -B build ^
+      -G "Visual Studio 18 2026" ^
+      -DSPM_ENABLE_SHARED=OFF ^
+      -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" 
 ```
 
 ```
 cmake --build build --config Release 
 ```
+
+
+
+
 
 ```
 git clone https://github.com/mlc-ai/tokenizers-cpp
