@@ -69,6 +69,9 @@ set(CMAKE_SYSTEM_PROCESSOR "ARM64")
 
 ```
 rmdir /S /Q build
+```
+
+```
 cmake -S . -B build ^
   -DCMAKE_SYSTEM_NAME=Windows ^
   -DCMAKE_SYSTEM_PROCESSOR=ARM64 ^
@@ -79,10 +82,11 @@ cmake -S . -B build ^
   -DOPENMP_RUNTIME=COMP ^
   -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" ^
   -DCMAKE_CXX_FLAGS="/EHsc /utf-8 /D CT2_ARM64_BUILD /D __aarch64__" ^
-  -DCMAKE_C_FLAGS="/utf-8 /D CT2_ARM64_BUILD /D __aarch64__"
+  -DCMAKE_C_FLAGS="/utf-8 /D CT2_ARM64_BUILD /D __aarch64__" ^
+  -DCMAKE_POLICY_VERSION_MINIMUM="3.5" 
 ```
 
- ## JsonCpp
+## JsonCpp
 
 ```
 cmake -S . -B build ^
