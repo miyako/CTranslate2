@@ -54,6 +54,9 @@ cmake -S . -B build ^
  
 ```
 rmdir /S /Q build
+```
+
+```
 cmake -S . -B build ^
   -DCMAKE_SYSTEM_NAME=Windows ^
   -DCMAKE_SYSTEM_PROCESSOR=ARM64 ^
