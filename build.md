@@ -49,7 +49,7 @@ cmake -S . -B build ^
   -DCMAKE_POLICY_DEFAULT_CMP0091=NEW ^
   -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" ^
   -DCMAKE_CXX_FLAGS_RELEASE="/MT /O2 /Ob2 /DNDEBUG" ^
-  -DCMAKE_CXX_FLAGS="/MT /EHsc /utf-8" ^
+  -DCMAKE_CXX_FLAGS="/MT /EHsc /utf-8" 
 ``` 
  
 ```
@@ -62,7 +62,7 @@ cmake -S . -B build ^
   -DCMAKE_POLICY_DEFAULT_CMP0091=NEW ^
   -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" ^
   -DCMAKE_CXX_FLAGS_RELEASE="/MT /O2 /Ob2 /DNDEBUG" ^
-  -DCMAKE_CXX_FLAGS="/MT /EHsc /utf-8 /D CT2_ARM64_BUILD /D __aarch64__" ^
+  -DCMAKE_CXX_FLAGS="/MT /EHsc /utf-8 /D CT2_ARM64_BUILD /D __aarch64__" 
 ```  
 
 ```
