@@ -72,11 +72,11 @@ cmake -S . -B build ^
 cmake --build build --config Release 
 ```
 
-## sentencepiece
+## tokenizers-cpp, sentencepiece
 
 ```
-git clone https://github.com/google/sentencepiece.git
-cd sentencepiece
+git clone https://github.com/mlc-ai/tokenizers-cpp --recursive
+cd tokenizers-cpp
 ```
 
 ```
@@ -102,24 +102,8 @@ cmake -S . -B build ^
 cmake --build build --config Release 
 ```
 
+---
 
-
-
-
-```
-git clone https://github.com/mlc-ai/tokenizers-cpp
-cd tokenizers-cpp
-```
-
-```
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded"
-```
-
-```
-cmake --build build --config Release 
-```
-
-## tokenizer-cpp
 
 ```
 cmake -S . -B build `
