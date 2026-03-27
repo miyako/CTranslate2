@@ -15,6 +15,50 @@ title: "Build"
 -Xpreprocessor -fopenmp -march=native
 ```
 
+## Intel
+
+```
+cmake -S . -B build ^
+  -DCMAKE_SYSTEM_NAME=Windows ^
+  -DCMAKE_SYSTEM_PROCESSOR=AMD64 ^
+  -DBUILD_SHARED_LIBS=OFF ^
+  -DCMAKE_BUILD_TYPE=Release ^
+  -DENABLE_CPU_DISPATCH=ON ^
+  -DWITH_MKL=OFF ^
+  -DOPENMP_RUNTIME=COMP ^
+  -DCMAKE_POLICY_DEFAULT_CMP0091=NEW ^
+  -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" ^
+  -DCMAKE_CXX_FLAGS_RELEASE="/MT /O2 /Ob2 /DNDEBUG" ^
+  -DCMAKE_C_FLAGS_RELEASE="/MT /O2 /Ob2 /DNDEBUG" ^
+  -DCMAKE_CXX_FLAGS="/MT /EHsc /utf-8" ^
+  -DCMAKE_C_FLAGS="/MT /utf-8" ^
+  -DCMAKE_POLICY_VERSION_MINIMUM="3.5" 
+```
+
+## Windows (Intel MKL, reference build)
+
+```
+git clone https://github.com/OpenNMT/CTranslate2.git --recursive
+```
+
+```
+cmake -S . -B build ^
+  -DCMAKE_SYSTEM_NAME=Windows ^
+  -DCMAKE_SYSTEM_PROCESSOR=AMD64 ^
+  -DBUILD_SHARED_LIBS=OFF ^
+  -DCMAKE_BUILD_TYPE=Release ^
+  -DENABLE_CPU_DISPATCH=ON ^
+  -DWITH_MKL=ON ^
+  -DOPENMP_RUNTIME=INTEL ^
+  -DCMAKE_POLICY_DEFAULT_CMP0091=NEW ^
+  -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" ^
+  -DCMAKE_CXX_FLAGS_RELEASE="/MT /O2 /Ob2 /DNDEBUG" ^
+  -DCMAKE_C_FLAGS_RELEASE="/MT /O2 /Ob2 /DNDEBUG" ^
+  -DCMAKE_CXX_FLAGS="/MT /EHsc /utf-8" ^
+  -DCMAKE_C_FLAGS="/MT /utf-8" ^
+  -DCMAKE_POLICY_VERSION_MINIMUM="3.5" 
+```
+
 ## Windows ARM
 
 * CMakeLists.txt
@@ -25,6 +69,9 @@ set(CMAKE_SYSTEM_PROCESSOR "ARM64")
 
 ```
 rmdir /S /Q build
+```
+
+```
 cmake -S . -B build ^
   -DCMAKE_SYSTEM_NAME=Windows ^
   -DCMAKE_SYSTEM_PROCESSOR=ARM64 ^
@@ -35,117 +82,70 @@ cmake -S . -B build ^
   -DOPENMP_RUNTIME=COMP ^
   -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" ^
   -DCMAKE_CXX_FLAGS="/EHsc /utf-8 /D CT2_ARM64_BUILD /D __aarch64__" ^
-  -DCMAKE_C_FLAGS="/utf-8 /D CT2_ARM64_BUILD /D __aarch64__"
+  -DCMAKE_C_FLAGS="/utf-8 /D CT2_ARM64_BUILD /D __aarch64__" ^
+  -DCMAKE_POLICY_VERSION_MINIMUM="3.5" 
 ```
 
- ## JsonCpp
+## JsonCpp
+
+```
+cmake -S . -B build ^
+  -DCMAKE_SYSTEM_NAME=Windows ^
+  -DCMAKE_SYSTEM_PROCESSOR=AMD64 ^
+  -DBUILD_SHARED_LIBS=OFF ^
+  -DCMAKE_BUILD_TYPE=Release ^
+  -DCMAKE_POLICY_DEFAULT_CMP0091=NEW ^
+  -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" ^
+  -DCMAKE_CXX_FLAGS_RELEASE="/MT /O2 /Ob2 /DNDEBUG" ^
+  -DCMAKE_CXX_FLAGS="/MT /EHsc /utf-8" 
+``` 
  
 ```
 rmdir /S /Q build
+```
+
+```
 cmake -S . -B build ^
   -DCMAKE_SYSTEM_NAME=Windows ^
   -DCMAKE_SYSTEM_PROCESSOR=ARM64 ^
   -DBUILD_SHARED_LIBS=OFF ^
   -DCMAKE_BUILD_TYPE=Release ^
-  -DENABLE_CPU_DISPATCH=OFF ^
-  -DWITH_MKL=OFF ^
-  -DWITH_TOKENIZERS=OFF ^
-  -DOPENMP_RUNTIME=COMP ^
   -DCMAKE_POLICY_DEFAULT_CMP0091=NEW ^
   -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" ^
   -DCMAKE_CXX_FLAGS_RELEASE="/MT /O2 /Ob2 /DNDEBUG" ^
-  -DCMAKE_C_FLAGS_RELEASE="/MT /O2 /Ob2 /DNDEBUG" ^
-  -DCMAKE_CXX_FLAGS="/MT /EHsc /utf-8 /D CT2_ARM64_BUILD /D __aarch64__" ^
-  -DCMAKE_C_FLAGS="/MT /utf-8 /D CT2_ARM64_BUILD /D __aarch64__"
+  -DCMAKE_CXX_FLAGS="/MT /EHsc /utf-8 /D CT2_ARM64_BUILD /D __aarch64__" 
 ```  
 
 ```
 cmake --build build --config Release 
 ```
 
-## sentencepiece
+## tokenizers-cpp, sentencepiece
 
 ```
-git clone https://github.com/google/sentencepiece.git
-cd sentencepiece
-```
-
-```
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSPM_ENABLE_SHARED=OFF -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded"
-```
-
-```
-cmake --build build --config Release 
-```
-
-```
-git clone https://github.com/mlc-ai/tokenizers-cpp
+git clone https://github.com/mlc-ai/tokenizers-cpp --recursive
 cd tokenizers-cpp
 ```
 
 ```
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded"
+cmake -S . -B build ^
+      -G "Visual Studio 18 2026" ^
+      -A ARM64 ^
+      -DSPM_ENABLE_SHARED=OFF ^
+      -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" 
+```
+
+```
+rmdir /S /Q build
+```
+
+```
+cmake -S . -B build ^
+      -G "Visual Studio 18 2026" ^
+      -DSPM_ENABLE_SHARED=OFF ^
+      -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" 
 ```
 
 ```
 cmake --build build --config Release 
-```
-
-## tokenizer-cpp
-
-```
-cmake -S . -B build `
-    -G "Visual Studio 17 2022" `
-    -A arm64 `
-    -DCMAKE_CXX_FLAGS="/bigobj /openmp /O2 /fp:fast /Ob2" `
-    -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" `
-    -DCMAKE_BUILD_TYPE=Release `
-    -DCMAKE_POLICY_VERSION_MINIMUM="3.5" 
-```
-
-## ONNX Runtime Extensions
-
-```
-python -c "with open('version.txt', 'w', encoding='utf-8') as f: f.write('0.12.0')"
-```
-
-```
-rmdir /s /q build
-cmake -S . -B build -G "Ninja" ^
-  -DCMAKE_BUILD_TYPE=Release ^
-  -DBUILD_SHARED_LIBS=OFF ^
-  -DONNXRUNTIME_EXTENSION_BUILD_SHARED_LIB=OFF ^
-  -DONNXRUNTIME_EXTENSION_ENABLE_PYTHON=OFF ^
-  -DONNXRUNTIME_EXTENSION_ENABLE_EXAMPLES=OFF ^
-  -Dprotobuf_BUILD_TESTS=OFF ^
-  -Dprotobuf_BUILD_PROTOC_BINARIES=OFF ^
-  -Dprotobuf_BUILD_SHARED_LIBS=OFF ^
-  -Ddlib_NO_GUI_SUPPORT=ON ^
-  -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
-    -DCMAKE_C_COMPILER=clang-cl ^
-    -DCMAKE_CXX_COMPILER=clang-cl ^
-    -DCMAKE_C_COMPILER_TARGET=arm64-pc-windows-msvc ^
-    -DCMAKE_SYSTEM_NAME=Windows ^
-    -DCMAKE_CXX_COMPILER_TARGET=arm64-pc-windows-msvc ^
-    -DOCOS_ENABLE_CTEST=OFF -DBUILD_TESTING=OFF
-```
-
-```
-rmdir /s /q build
-cmake -S . -B build -G "Visual Studio 17 2022" -A ARM64 -DOCOS_ENABLE_CTEST=OFF -DBUILD_TESTING=OFF ^
-  -DCMAKE_BUILD_TYPE=Release ^
-  -DBUILD_SHARED_LIBS=OFF ^
-  -DONNXRUNTIME_EXTENSION_ENABLE_TESTS=OFF ^
-  -DONNXRUNTIME_EXTENSION_ENABLE_DOCS=OFF ^
-  -Dprotobuf_BUILD_TESTS=OFF ^
-  -Dprotobuf_BUILD_PROTOC_BINARIES=OFF ^
-  -Dprotobuf_BUILD_SHARED_LIBS=OFF ^
-  -Ddlib_USE_CUDA=OFF ^
-  -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
-    -DCMAKE_C_COMPILER=clang-cl ^
-    -DCMAKE_CXX_COMPILER=clang-cl ^
-    -DCMAKE_C_COMPILER_TARGET=arm64-pc-windows-msvc ^
-    -DCMAKE_SYSTEM_NAME=Windows ^
-    -DCMAKE_CXX_COMPILER_TARGET=arm64-pc-windows-msvc ^
-    -DOCOS_ENABLE_CTEST=OFF -DBUILD_TESTING=OFF
 ```
