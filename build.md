@@ -122,6 +122,8 @@ cmake --build build --config Release
 
 ## tokenizers-cpp, sentencepiece
 
+install rust
+
 ```
 git clone https://github.com/mlc-ai/tokenizers-cpp --recursive
 cd tokenizers-cpp
