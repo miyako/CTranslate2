@@ -26,3 +26,6 @@ exclude:
   - "cpp"
   - "CTranslate2"
   - "package.json"
+  - "JsonCpp-1.9.8"
+  - "CT2-4.7.1"
+  - "sentencepiece"
