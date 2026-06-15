@@ -1,59 +1,16 @@
-# ct2-server
+![version](https://img.shields.io/badge/version-21%2B-3B69E9)
+![platform](https://img.shields.io/static/v1?label=platform&message=mac-intel%20|%20mac-arm%20|%20win-64&color=blue)
+[![license](https://img.shields.io/github/license/miyako/CTranslate2)](LICENSE)
+![downloads](https://img.shields.io/github/downloads/miyako/CTranslate2/total)
 
-CTranslate2 Inference Engine
+# CTranslate2
+Local inference engine
 
-```
-Usage:  ct2-server -s -e embedding_model -p port 
+**aknowledgements**: [OpenNMT/CTranslate2](https://github.com/OpenNMT/CTranslate2)
 
- -m path     : translation model
- -e path     : embedding model (pooling=mean)
- -r path     : reranker model
- -a path     : generate model
- -g path     : chat completion model
- -t path     : chat template
- -j          : chat template from stdin
- -l          : pooling=last-token
- -c          : pooling=cls
- -s          : server
- -p          : server listening port (default=8080)
- -h host     : server host (default=127.0.0.1)
- -i          : input
- -o          : output (default=stdout)
- -           : use stdin for input
-```
+#### Abstract
 
-The CLI is built for `4` platforms:
-
-- macOS Apple Silicon
-- macOS Intel
-- Windows AMD
-- Windows ARM
-
-## Dependencies
-
-- `ctranslate2-4.7.1`
- 
-## OpenAI Compatible Endpoints
-
-- `/v1/models`
-- `/v1/embeddings`
-- `/v1/chat/completion`
-
-## Cohere Compatible Endpoints
-
-- `/v1/rerank`
-
-## MongoDB Compatible Endpoints
-
-- `/v1/contextualizedembeddings`
-- `/v1/contextualized/embeddings` (alias)
-
-## Other Endpoints
-
-- `/v1/generate`
-- `/v1/translate`
-
-## Converted CT2 Models
+[**CTranslate2**](https://github.com/OpenNMT/CTranslate2) is an engine highly optimised for fast local inference, especially **quantised transformer-based models**. Compared to general purpose LLM engines such as llama.cpp, it **uses less memory** and for actual embedding models generates **significantly better results** because it is designed specifically for encoder models whereas GGUF is designed for decoder-only LLM architectures unless manually modified.
 
 #### Quantisation
 
@@ -63,149 +20,142 @@ The `float16` format is also designed for GPUs that support native 16-bit maths.
 
 The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `AVX2` `AVX-512` `VNNI` instructions on Intel or AMD to **accelerate maths**. **You should always use the `int8` format on a PC or Mac with no GPU**.
 
-### Chat Completion with Tool Calling
+#### Usage
 
-||`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
-|-|-:|-:|-:|-:|
-|[`Rakuten/RakutenAI-2.0-mini-instruct`](https://huggingface.co/Rakuten/RakutenAI-2.0-mini-instruct)|[`1540`](https://huggingface.co/keisuke-miyako/Hammer2.1-0.5b-onnx-int4)|`131072`|`2048`|`22`|
-|[`Qwen/Qwen3-0.6B`](https://huggingface.co/Qwen/Qwen3-0.6B)|[`598`](https://huggingface.co/keisuke-miyako/Qwen3-0.6B-ct2-int8)|`40960`|`1024`|`28`|
-|[`Qwen/Qwen3-1.7B`](https://huggingface.co/Qwen/Qwen3-1.7B)|[`1720`](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-ct2-int8)|`40960`|`2048`|`28`|
-|[`katanemo/Arch-Agent-1.5B`](https://huggingface.co/katanemo/Arch-Agent-1.5B)|[`1550`](https://huggingface.co/keisuke-miyako/Arch-Agent-1.5B-ct2-int8)|`32768`|`1536`|`28`|
-|[`katanemo/Arch-Agent-3B`](https://huggingface.co/katanemo/Arch-Agent-3B)|[`3090`](https://huggingface.co/keisuke-miyako/Arch-Agent-3B-ct2-int8)|`32768`|`2048`|`36`|
-|[`meta-llama/Llama-3.2-1B-Instruct`](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)|[`1240`](https://huggingface.co/keisuke-miyako/Llama-3.2-1B-Instruct-ct2-int8)|`131072`|`2048`|`16`|
-|[`meta-llama/Llama-3.2-3B-Instruct`](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct)|[`3220`](https://huggingface.co/keisuke-miyako/Llama-3.2-3B-Instruct-ct2-int8)|`131072`|`3072`|`28`|
-|[`Salesforce/xLAM-2-1b-fc-r`](https://huggingface.co/Salesforce/xLAM-2-1b-fc-r)|[`1550`](https://huggingface.co/keisuke-miyako/xLAM-2-1b-fc-r-ct2-int8)|`32768`|`1536`|`28`|
-|[`Salesforce/xLAM-2-3b-fc-r`](https://huggingface.co/Salesforce/xLAM-2-3b-fc-r)|[`3090`](https://huggingface.co/keisuke-miyako/Llama-3.2-3B-Instruct-ct2-int8)|`32768`|`2048`|`36`|
-|[`tiiuae/Falcon3-1B-Instruct`](https://huggingface.co/tiiuae/Falcon3-1B-Instruct)|[`1670`](https://huggingface.co/keisuke-miyako/Falcon3-1B-Instruct-ct2-int8)|`8192`|`2048`|`18`|
-|[`tiiuae/Falcon3-3B-Instruct`](https://huggingface.co/tiiuae/Falcon3-3B-Instruct)|[`3230`](https://huggingface.co/keisuke-miyako/Falcon3-3B-Instruct-ct2-int8)|`32768`|`3072`|`22`|
+Instantiate `cs.CTranslate2.CTranslate2` in your *On Startup* database method:
 
-### Chat Completion
+```4d
+var $CTranslate2 : cs.CTranslate2.CTranslate2
 
-||`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
-|-|-:|-:|-:|-:|
-|[`elyza/ELYZA-japanese-Llama-2-7b-fast-instruct`](https://huggingface.co/elyza/ELYZA-japanese-Llama-2-7b-fast-instruct)|[`6850`](https://huggingface.co/keisuke-miyako/Hammer2.1-0.5b-onnx-int4)|`4096`|`4096`|`32`|
-|[`Rakuten/RakutenAI-7B-instruct`](https://huggingface.co/Rakuten/RakutenAI-7B-instruct)|[`7380`](https://huggingface.co/keisuke-miyako/TinySwallow-1.5B-Instruct-ct2-int8)|`32768`|`4096`|`32`|
-|[`llm-jp/llm-jp-3-1.8b-instruct`](https://huggingface.co/llm-jp/llm-jp-3-1.8b-instruct)|[`1870`](https://huggingface.co/keisuke-miyako/llm-jp-3-1.8b-instruct-ct2-int8)|`4096`|`2048`|`24`|
-|[`llm-jp/llm-jp-3-3.7b-instruct`](https://huggingface.co/llm-jp/llm-jp-3-3.7b-instruct)|[`3790`](https://huggingface.co/keisuke-miyako/llm-jp-3-3.7b-instruct-ct2-int8)|`4096`|`3072`|`28`|
-|[`SakanaAI/TinySwallow-1.5B-Instruct`](https://huggingface.co/SakanaAI/TinySwallow-1.5B-Instruct)|[`1550`](https://huggingface.co/keisuke-miyako/TinySwallow-1.5B-Instruct-ct2-int8)|`32768`|`1536`|`28`|
-|[`sbintuitions/sarashina2.2-0.5b-instruct-v0.1`](https://huggingface.co/sbintuitions/sarashina2.2-0.5b-instruct-v0.1)|[`795`](https://huggingface.co/keisuke-miyako/TinySwallow-1.5B-Instruct-ct2-int8)|`8192`|`1280`|`24`|
-|[`sbintuitions/sarashina2.2-1b-instruct-v0.1`](https://huggingface.co/sbintuitions/sarashina2.2-1b-instruct-v0.1)|[`1410`](https://huggingface.co/keisuke-miyako/TinySwallow-1.5B-Instruct-ct2-int8)|`8192`|`1792`|`24`|
-|[`sbintuitions/sarashina2.2-3b-instruct-v0.1`](https://huggingface.co/sbintuitions/sarashina2.2-3b-instruct-v0.1)|[`3360`](https://huggingface.co/keisuke-miyako/sarashina2.2-3b-instruct-v0.1-ct2-int8)|`8192`|`2560`|`32`|
-|[`google/gemma-2-2b-jpn-it`](https://huggingface.co/google/gemma-2-2b-jpn-it)|[`2620`](https://huggingface.co/keisuke-miyako/gemma-2-2b-jpn-it-ct2-int8)|`8192`|`2304`|`26`|
-|[`tokyotech-llm/Gemma-2-Llama-Swallow-2b-it-v0.1`](https://huggingface.co/tokyotech-llm/Gemma-2-Llama-Swallow-2b-it-v0.1)|[`2620`](https://huggingface.co/keisuke-miyako/Gemma-2-Llama-Swallow-2b-it-v0.1-ct2-int8)|`8192`|`2304`|`26`|
-|[`SakanaAI/Llama-3-Karamaru-v1`](https://huggingface.co/SakanaAI/Llama-3-Karamaru-v1)|[`8040`](https://huggingface.co/keisuke-miyako/Gemma-2-Llama-Swallow-2b-it-v0.1-ct2-int8)|`8192`|`4096`|`32`|
+If (False)
+    $CTranslate2:=cs.CTranslate2.CTranslate2.new()  //default
+Else 
+    var $homeFolder : 4D.Folder
+    $homeFolder:=Folder(fk home folder).folder(".CTranslate2")
+    var $file : 4D.File
+    var $URL : Text
+    var $port : Integer
+    
+    var $event : cs.event.event
+    $event:=cs.event.event.new()
+    /*
+        Function onError($params : Object; $error : cs.event.error)
+        Function onSuccess($params : Object; $models : cs.event.models)
+        Function onData($request : 4D.HTTPRequest; $event : Object)
+        Function onResponse($request : 4D.HTTPRequest; $event : Object)
+        Function onTerminate($worker : 4D.SystemWorker; $params : Object)
+    */
+    
+    $event.onError:=Formula(ALERT($2.message))
+    $event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
+    $event.onData:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
+    $event.onData:=Formula(MESSAGE(This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
+    $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":download complete"))
+    $event.onResponse:=Formula(MESSAGE(This.file.fullName+":download complete"))
+    $event.onTerminate:=Formula(LOG EVENT(Into 4D debug message; (["process"; $1.pid; "terminated!"].join(" "))))
+    
+    $port:=8080
+    
+    $options:={}
+    var $huggingfaces : cs.event.huggingfaces
+    
+    $folder:=$homeFolder.folder("multilingual-e5-base-ct2-int8_float16")
+    $path:="keisuke-miyako/multilingual-e5-base-ct2-int8_float16"
+    $URL:="keisuke-miyako/multilingual-e5-base-ct2-int8_float16"
+    $embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding")
+    
+    $huggingfaces:=cs.event.huggingfaces.new([$embeddings])
+    $options:={}
+    
+    $CTranslate2:=cs.CTranslate2.CTranslate2.new($port; $huggingfaces; $homeFolder; $options; $event)
+    
+End if 
+```
 
-### Rerank
+Unless the server is already running (in which case the costructor does nothing), the following procedure runs in the background:
 
-||`int8`|`int8_float16`|`float16`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
-|-|-:|-:|-:|-:|-:|-:
-|[`cross-encoder/ms-marco-MiniLM-L6-v2`](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2)|[`23`](https://huggingface.co/keisuke-miyako/ms-marco-MiniLM-L6-v2-ct2-int8)|[`23`](https://huggingface.co/keisuke-miyako/ms-marco-MiniLM-L6-v2-ct2-int8_float16)|[`45`](https://huggingface.co/keisuke-miyako/ms-marco-MiniLM-L6-v2-ct2-float16)|`512`|`384`|`6`
-|[`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`](https://huggingface.co/cross-encoder/mmarco-mMiniLMv2-L12-H384-v1)|[`119`](https://huggingface.co/keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-ct2-int8)|[`119`](https://huggingface.co/keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-ct2-int8_float16)|[`235`](https://huggingface.co/keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-ct2-float16)|`512`|`384`|`12`|
-|[`BAAI/bge-reranker-v2-m3`](https://huggingface.co/BAAI/bge-reranker-v2-m3)|[`594`](https://huggingface.co/keisuke-miyako/bge-reranker-v2-m3-ct2-int8)|[`577`](https://huggingface.co/keisuke-miyako/bge-reranker-v2-m3-ct2-int8_float16)|[`1130`](https://huggingface.co/keisuke-miyako/bge-reranker-v2-m3-ct2-float16)|`8192`|`1024`|`24`|
-|[`BAAI/bge-reranker-base`](https://huggingface.co/BAAI/bge-reranker-base)|[`280`](https://huggingface.co/keisuke-miyako/bge-reranker-base-ct2-int8)|[`279`](https://huggingface.co/keisuke-miyako/bge-reranker-base-ct2-int8_float16)|[`555`](https://huggingface.co/keisuke-miyako/bge-reranker-base-ct2-float16)|`8192`|`768`|`12`|
-|[`BAAI/bge-reranker-large`](https://huggingface.co/BAAI/bge-reranker-large)|[`563`](https://huggingface.co/keisuke-miyako/bge-reranker-large-ct2-int8)|[`561`](https://huggingface.co/keisuke-miyako/bge-reranker-large-ct2-int8_float16)|[`1120`](https://huggingface.co/keisuke-miyako/bge-reranker-large-ct2-float16)|`8192`|`1024`|`24`
+1. The specified model is downloaded via HTTP
+2. The `ct2-embedding-cli` program is started in server mode
 
-### Embedding
+Now you can test the server:
 
-||`int8`|`int8_float16`|`float16`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`|`pooling`
-|-|-:|-:|-:|-:|-:|-:|-:
-|[`sentence-transformers/LaBSE`](https://huggingface.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2)|[`475`](https://huggingface.co/keisuke-miyako/LaBSE-ct2-int8)|[`474`](https://huggingface.co/keisuke-miyako/LaBSE-ct2-int8_float16)|[`942`](https://huggingface.co/keisuke-miyako/LaBSE-ct2-float16)|`512`|`768`|`12`|`cls`
-|[`sentence-transformers/paraphrase-multilingual-mpnet-base-v2`](https://huggingface.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2)|[`280`](keisuke-miyako/paraphrase-multilingual-mpnet-base-v2-ct2-int8)|[`279`](keisuke-miyako/paraphrase-multilingual-mpnet-base-v2-ct2-int8_float16)|[`555`](keisuke-miyako/paraphrase-multilingual-mpnet-base-v2-ct2-float16)|`512`|`768`|`12`|`mean`
-|[`BAAI/bge-small-en-v1.5`](https://huggingface.co/BAAI/bge-small-en-v1.5)|[`34`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-ct2-int8)|[`33`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-ct2-int8_float16)|[`66`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-ct2-float16)|`512`|`384`|`12`|`cls`
-|[`BAAI/bge-base-en-v1.5`](https://huggingface.co/BAAI/bge-base-en-v1.5)|[`111`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-ct2-int8)|[`110`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-ct2-int8_float16)|[`219`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-ct2-float16)|`512`|`768`|`12`|`cls`
-|[`BAAI/bge-large-en-v1.5`](https://huggingface.co/BAAI/bge-large-en-v1.5)|[`338`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-ct2-int8)|[`337`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-ct2-int8_float16)|[`670`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-ct2-float16)|`512`|`1024`|`24`|`cls`
-|[`BAAI/bge-m3`](https://huggingface.co/BAAI/bge-m3)|[`595`](https://huggingface.co/keisuke-miyako/bge-m3-ct2-int8)|[`577`](https://huggingface.co/keisuke-miyako/bge-m3-ct2-int8_float16)|[`1130`](https://huggingface.co/keisuke-miyako/bge-m3-ct2-float16)|`8192`|`1024`|`24`|`cls`
-|[`intfloat/e5-small-v2`](https://huggingface.co/intfloat/e5-small-v2)|[`34`](https://huggingface.co/keisuke-miyako/e5-small-v2-ct2-int8)|[`33`](https://huggingface.co/keisuke-miyako/e5-small-v2-ct2-int8_float16)|[`66`](https://huggingface.co/keisuke-miyako/e5-small-v2-ct2-float16)|`512`|`384`|`12`|`mean`
-|[`intfloat/e5-base-v2`](https://huggingface.co/intfloat/e5-base-v2)|[`111`](https://huggingface.co/keisuke-miyako/e5-base-v2-ct2-int8)|[`110`](https://huggingface.co/keisuke-miyako/e5-base-v2-ct2-int8_float16)|[`219`](https://huggingface.co/keisuke-miyako/e5-base-v2-ct2-float16)|`512`|`768`|`12`|`mean`
-|[`intfloat/e5-large-v2`](https://huggingface.co/intfloat/e5-large-v2)|[`339`](https://huggingface.co/keisuke-miyako/e5-large-v2-ct2-int8)|[`337`](https://huggingface.co/keisuke-miyako/e5-large-v2-ct2-int8_float16)|[`670`](https://huggingface.co/keisuke-miyako/e5-large-v2-ct2-float16)|`512`|`1024`|`24`|`mean`
-|[`intfloat/multilingual-e5-small`](https://huggingface.co/intfloat/multilingual-e5-small)|[`120`](https://huggingface.co/keisuke-miyako/multilingual-e5-small-ct2-int8)|[`119`](https://huggingface.co/keisuke-miyako/multilingual-e5-small-ct2-int8_float16)|[`235`](https://huggingface.co/keisuke-miyako/multilingual-e5-small-ct2-float16)|`512`|`384`|`12`|`mean`
-|[`intfloat/multilingual-e5-base`](https://huggingface.co/intfloat/multilingual-e5-base)|[`280`](https://huggingface.co/keisuke-miyako/multilingual-e5-base-ct2-int8)|[`279`](https://huggingface.co/keisuke-miyako/multilingual-e5-base-ct2-int8_float16)|[`555`](https://huggingface.co/keisuke-miyako/multilingual-e5-base-ct2-float16)|`512`|`768`|`12`|`mean`
-|[`intfloat/multilingual-e5-large`](https://huggingface.co/intfloat/multilingual-e5-large)|[`563`](https://huggingface.co/keisuke-miyako/multilingual-e5-large-ct2-int8)|[`562`](https://huggingface.co/keisuke-miyako/multilingual-e5-large-ct2-int8_float16)|[`1120`](https://huggingface.co/keisuke-miyako/multilingual-e5-large-ct2-float16)|`512`|`1024`|`24`|`mean`
-|[`Snowflake/snowflake-arctic-embed-s`](https://huggingface.co/Snowflake/snowflake-arctic-embed-s)|[`34`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-ct2-int8)|[`33`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-ct2-int8_float16)|[`66`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-ct2-float16)|`512`|`384`|`12`|`cls`
-|[`Snowflake/snowflake-arctic-embed-l`](https://huggingface.co/Snowflake/snowflake-arctic-embed-l)|[`338`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-ct2-int8)|[`337`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-ct2-int8_float16)|[`670`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-ct2-float16)|`512`|`1024`|`24`|`cls`
-|[`sentence-transformers/all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)|[`23`](https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-ct2-int8)|[`23`](https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16)|[`45`](https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-ct2-float16)|`512`|`384`|`6`|`mean`
-|[`sentence-transformers/all-MiniLM-L12-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)|[`34`](https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-ct2-int8)|[`33`](https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-ct2-int8_float16)|[`66`](https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-ct2-float16)|`512`|`384`|`12`|`mean`
-|[`ibm-granite/granite-embedding-30m-english`](https://huggingface.co/ibm-granite/granite-embedding-30m-english)|[`30`](https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-ct2-int8)|[`30`](https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-ct2-int8_float16)|[`60`](https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-ct2-float16)|`512`|`384`|`6`|`cls`
-|[`ibm-granite/granite-embedding-125m-english`](https://huggingface.co/ibm-granite/granite-embedding-125m-english)|[`126`](https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-ct2-int8)|[`126`](https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-ct2-int8_float16)|[`249`](https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-ct2-float16)|`512`|`768`|`12`|`cls`
-|[`ibm-granite/granite-embedding-107m-multilingual`](https://huggingface.co/ibm-granite/granite-embedding-107m-multilingual)|[`108`](https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-ct2-int8)|[`108`](https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-ct2-int8_float16)|[`214`](https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-ct2-float16)|`512`|`384`|`6`|`cls`
-|[`ibm-granite/granite-embedding-278m-multilingual`](https://huggingface.co/ibm-granite/granite-embedding-278m-multilingual)|[`279`](https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-ct2-int8)|[`279`](https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-ct2-int8_float16)|[`555`](https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-ct2-float16)|`512`|`768`|`12`|`cls`
+```
+curl -X POST http://127.0.0.1:8080/v1/embeddings \
+     -H "Content-Type: application/json" \
+     -d '{"input":"雨にも負けず風にも負けず雪にも夏の暑さにも負けぬ丈夫なからだを持ち欲は無く決して瞋からず何時も静かに笑っている"}'
+```
 
-**CTranslate2** can't use models that depend on external python code for tokenisation:
+You may compare the result with enbeddings generated using a different language:
 
-#### BertJapaneseTokenizer
+```
+curl -X POST http://127.0.0.1:8080/v1/embeddings \
+     -H "Content-Type: application/json" \
+     -d '{"input":"Rain won’t stop me. Wind won’t stop me. Neither will driving snow. Sweltering summer heat<2028>will only raise my determination. With a body built for endurance, a heart free of greed, I’ll never lose my temper, trying always to keep a quiet smile on my face."}'
+```
 
-- ruri-base-v2
-- ruri-large-v2
+Or, use AI Kit:
 
-**CTranslate2** does not store or return the dense vector representation of the sentence, which is necessary for using decodes for embeddings. That excludes:
+```4d
+var $AIClient : cs.AIKit.OpenAI
+$AIClient:=cs.AIKit.OpenAI.new()
+$AIClient.baseURL:="http://127.0.0.1:3000/v1"
 
-#### Qwen2ForCausalLM
+var $text : Text
+$text:="The quick brown fox jumps over the lazy dog."
 
-- mixedbread-ai/mxbai-rerank-base-v2
-- mixedbread-ai/mxbai-rerank-large-v2
-- gte-Qwen2-1.5B-instruct
-- gte-Qwen2-7B-instruct
+var $responseEmbeddings : cs.AIKit.OpenAIEmbeddingsResult
+$responseEmbeddings:=$AIClient.embeddings.create($text)
+```
 
-#### LlamaModel
+To test the `/rerank` endpoint:
 
-- sarashina-embedding-v1-1b
-- sarashina-embedding-v2-1b
+```
+curl --request POST \
+  --url http://127.0.0.1:8080/v1/rerank \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "rerank-english-v3.0",
+    "query": "What is the capital of the United States?",
+    "top_n": 3,
+    "documents": [
+      "Carson City is the capital city of the American state of Nevada.",
+      "The Commonwealth of the Northern Mariana Islands is a group of islands in the Pacific Ocean. Its capital is Saipan.",
+      "Washington, D.C. (also known as simply Washington or D.C., and officially as the District of Columbia) is the capital of the United States. It is a federal district.",
+      "Capital punishment (the death penalty) has existed in the United States since before the United States was a country."
+    ]
+  }'
+```
 
-As of February 2026, **CTranslate2** does not support several notable model architectures:
+Finally to terminate the server:
 
-#### NomicBertModel
+```4d
+var $CTranslate2 : cs.CTranslate2.CTranslate2
+$CTranslate2:=cs.CTranslate2.CTranslate2.new()
+$CTranslate2.terminate()
+```
 
-- nomic-embed-text-v1
-- nomic-embed-text-v1.5
+CTranslate2 relies on mapping standard model architectures like **BERT**, **RoBERTa**, or **DistilBERT** to its C++ inference engine. Some LLMs have moved on from the standard BERT architecture to a custom architecture. 
 
-#### NewModel
+If a model is not avaiable in `ct2` format, you can use a `python` utility to convert it. 
 
-- gte-base-en-v1.5
-- gte-large-en-v1.5
+#### Discussion
 
-#### NewForTokenClassification
+Some developers prefer **CTranslate2** over standard inference engines like **llama.cpp** , **ONNX Runtime**, or **PyTorch** because:
+
+* It is a specialised encoder-only inference engine 
+* It has a fast inference routine for CPU  
+
+Most x86 CPUs do not have native `float16` calculation units. That means the `float16` weights are cast to `float32` for computation which adds overhead. CTranslate2 uses optimised instruction sets (AVX2, AVX-512, VNNI) to run operations directly on integers which is drastically faster than `float32` on CPUs.
  
-- gte-multilingual-base
+#### AI Kit compatibility
 
-#### Gemma3TextModel
+The API is compatibile with the following [Open AI](https://platform.openai.com/docs/api-reference/) endpoints: 
 
-- embeddinggemma-300m
-
-#### [ModernBERT](https://github.com/OpenNMT/CTranslate2/issues/1837) 
-
-- ruri-v3-30m 
-- ruri-v3-70m 
-- ruri-v3-130m 
-- ruri-v3-310m 
-- modernbert-ja-30m 
-- modernbert-ja-70m 
-- modernbert-ja-130m 
-- modernbert-ja-310m
-- gte-modernbert-base
-- amber-base
-- amber-large
-- granite-embedding-small-english-r2
-- granite-embedding-english-r2
-
-#### RoPE
-
-> NotImplementedError: RoPE scaling type 'yarn' is not yet implemented. The following RoPE scaling types are currently supported: linear, su, llama3, longrope
-
-- MadeAgents/Hammer2.1-0.5b 
-- MadeAgents/Hammer2.1-1.5b 
-
-#### GraniteMoeHybridConfig
-
-- ibm-granite/granite-4.0-350m
-- ibm-granite/granite-4.0-1b
- 
-
-#### DebertaV2ForSequenceClassification
-
-- mixedbread-ai/mxbai-rerank-base-v1
-- mixedbread-ai/mxbai-rerank-large-v1
-
-#### Qwen 3.5
-
-- Qwen/Qwen3.5-0.8B
-- Qwen/Qwen3.5-2B
+|Class|API|Availability|
+|-|-|:-:|
+|Models|`/v1/models`|✅|
+|Chat|`/v1/chat/completions`|✅|
+|Images|`/v1/images/generations`||
+|Moderations|`/v1/moderations`||
+|Embeddings|`/v1/embeddings`|✅|
+|Files|`/v1/files`||
