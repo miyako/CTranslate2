@@ -1,46 +1,62 @@
 # _CLI_Controller
+### Manages a queue of `4D.SystemWorker` commands for a `_CLI` instance.
 
-`_CLI_Controller` is the base class for `_CLI` controllers. Extend this class to control a specific console program.
+> _CLI_Controller.new (CLI : cs.CTranslate2._CLI)
 
-## .new() 
+| Parameter | Type | | Description |
+| --- | --- | --- | --- |
+| CLI | cs.CTranslate2._CLI | -> | The owning `_CLI` instance |
 
-**.new**($CLI : cs._CLI) : cs._CLI_Controller
+## Description
 
-The constructor should not be called directly. It is invoked when a `_CLI` is instantiated.
+`_CLI_Controller` serializes an ordered queue of shell commands, executing each one in its own `4D.SystemWorker` and advancing to the next only after the previous worker has terminated. It is attached to a `_CLI` instance and is not used directly by application code.
 
-You can over-ride the following properties:
+### Properties
 
-|Property|Type|Description|
-|:-|:-|:-|
-|currentDirectory|4D.Folder||
-|dataType|Text||
-|encoding|Text||
-|hideWindow|Boolean||
-|onData|4D.Function||
-|onDataError|4D.Function||
-|onError|4D.Function||
-|onResponse|4D.Function||
-|onTerminate|4D.Function||
-|timeout|Integer||
-|variables|Object||
+| Property | Type | Description |
+| --- | --- | --- |
+| dataType | Text | Worker data type (`"text"` by default) |
+| encoding | Text | Text encoding (`"UTF-8"` by default) |
+| variables | Object | Environment variables injected into each worker |
+| timeout | Variant | Worker timeout (`Null` = no timeout) |
+| hideWindow | Boolean | Hide the console window on Windows (default: `True`) |
+| currentDirectory | 4D.Folder | Inherited from the owning `_CLI` |
+| SYSTEM_WORKER_CONTEXT | Object | Key-value store keyed by worker PID for per-command context |
+| complete | Boolean | `True` when the command queue has been fully drained |
+| worker | 4D.SystemWorker | The currently running worker (`Null` when idle) |
+| commands | Collection | Pending command strings |
+| instance | cs.CTranslate2._CLI | The owning `_CLI` instance |
 
-The constructor defines the following properties:
+### Event callbacks
 
-|Property|Type|Description|
-|:-|:-|:-|
-|commands|Collection|read-only|
-|complete|Boolean|read-only|
-|instance|cs._CLI|read-only|
-|worker|4D.SystemWorker|read-only|
+The following properties may be set to `4D.Function` values before calling `execute`. If not set in a subclass they default to the built-in `_onEvent` no-op handler.
 
-## .execute() 
+| Property | Signature | Description |
+| --- | --- | --- |
+| onData | ($worker; $params) | Fired when the worker emits stdout data |
+| onDataError | ($worker; $params) | Fired when the worker emits stderr data |
+| onError | ($worker; $params) | Fired on worker error |
+| onResponse | ($worker; $params) | Fired when the worker responds (command finished) |
+| onTerminate | ($worker; $params) | Fired when the worker terminates |
 
-**.execute**($command : Variant)
+### Methods
 
-Execute one or more commands sequentially. Pass either a text or a collection of text. Subsequent calls to `.execute()` will add the new command to the task queue if an assoicaited worker is already running or else launch a new worker. Private callback functions intecept the `onResponse` and `onTerminate` events during exection to manage to task queue. All custom event hooks, including `onResponse` and `onTerminate` are invoked. Test `This.complete` to know if the event is the last in queue. 
+#### execute (command, message, context) → cs.CTranslate2._CLI_Controller
 
-## .terminate() 
+Enqueues one or more commands and starts execution if no worker is currently running.
 
-**.terminate**()
+| Parameter | Type | | Description |
+| --- | --- | --- | --- |
+| command | Text \| Collection | -> | Shell command string, or a collection of command strings |
+| message | Variant \| Collection | -> | Optional stdin payload(s) sent to the worker |
+| context | Variant \| Collection | -> | Optional per-command context object(s) |
+| Result | cs.CTranslate2._CLI_Controller | <- | `This` — enables chaining |
 
-Clear the task queue and abort the running system worker.
+#### terminate ()
+
+Aborts the queue, clears all pending commands, terminates the active worker, and resets internal state.
+
+## See also
+
+- [`_CLI`](_CLI.md) — owns and instantiates the controller
+- [`_CTranslate2_Controller`](_CTranslate2_Controller.md) — extends `_CLI_Controller` with `onTerminate` forwarding
