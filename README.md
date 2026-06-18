@@ -154,3 +154,13 @@ The API is compatibile with the following [Open AI](https://platform.openai.com/
 |Moderations|`/v1/moderations`||
 |Embeddings|`/v1/embeddings`|✅|
 |Files|`/v1/files`||
+
+In addition, the following endpoints are available:
+
+|API|Alias|Trigger
+|-|-|:-:|
+|`/v1/translate`|`/v1/chat/completions`|Payload root element is `input`
+|`/v1/generate`|`/v1/chat/completions`|Payload root element is `prompt`
+|`/v1/rerank`||
+|`/v1/contextualizedembeddings`|`/v1/contextualized/embeddings`
+
