@@ -21,9 +21,83 @@ root = pathlib.Path(__file__).resolve().parents[2]
 os.chdir(root)
 build = root / ".build-native/build"
 stage = root / ".build-native/dist"
+query = build / ".cmake/api/v1/query"
+query.mkdir(parents=True, exist_ok=True)
+(query / "codemodel-v2").touch()
 configure = ["cmake", "-S", "cpp", "-B", str(build), "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_TESTING=ON"]
 if os.name == "nt":
-    configure += ["-A", "ARM64" if args.arch == "arm64" else "x64"]
+    # Ninja works with both VS 2022 and VS 2026 even when the pinned CMake
+    # predates a new Visual Studio generator. Initialize its actual native tools.
+    native_arch = "arm64" if args.arch == "arm64" else "x64"
+    build_tools = {name: shutil.which(name) for name in ("cmake", "ninja")}
+    if not all(build_tools.values()):
+        raise SystemExit("Install the pinned CMake and Ninja before initializing MSVC")
+    vswhere = shutil.which("vswhere.exe") or str(
+        pathlib.Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
+        / "Microsoft Visual Studio/Installer/vswhere.exe"
+    )
+    if not pathlib.Path(vswhere).is_file():
+        raise SystemExit("Visual Studio Installer's vswhere.exe is required")
+    installations = json.loads(subprocess.check_output(
+        [vswhere, "-products", "*", "-sort", "-format", "json", "-utf8"],
+        encoding="utf-8-sig",
+    ))
+    for installation in installations:
+        visual_studio = pathlib.Path(installation["installationPath"])
+        developer_command = visual_studio / "Common7/Tools/VsDevCmd.bat"
+        version_file = visual_studio / "VC/Auxiliary/Build/Microsoft.VCToolsVersion.default.txt"
+        if not developer_command.is_file() or not version_file.is_file():
+            continue
+        tool_version = version_file.read_text(encoding="utf-8-sig").strip()
+        compiler = (
+            visual_studio / "VC/Tools/MSVC" / tool_version
+            / "bin" / f"Host{native_arch}" / native_arch / "cl.exe"
+        )
+        if compiler.is_file():
+            break
+    else:
+        raise SystemExit(f"No Visual Studio installation has native {native_arch} MSVC tools")
+    environment = os.environ.copy()
+    # Do not let an inherited developer prompt suppress reinitialization.
+    for key in list(environment):
+        if key.upper().startswith(("VSCMD_", "__VSCMD_")) or key.upper() in (
+            "VSINSTALLDIR", "VCINSTALLDIR", "VCTOOLSINSTALLDIR", "INCLUDE", "LIB", "LIBPATH",
+        ):
+            environment.pop(key)
+    marker = "__CT2_NATIVE_MSVC_ENVIRONMENT__"
+    command = (
+        f'"{os.environ.get("COMSPEC", "cmd.exe")}" /d /u /s /c '
+        f'""{developer_command}" -no_logo -arch={native_arch} '
+        f'-host_arch={native_arch} && echo {marker} && set"'
+    )
+    initialized = subprocess.run(
+        command, env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    if initialized.returncode:
+        raise SystemExit(f"Failed to initialize native MSVC environment: {developer_command}")
+    parts = initialized.stdout.split(marker.encode("utf-16-le"), 1)
+    if len(parts) != 2:
+        raise SystemExit("VsDevCmd did not return its initialized environment")
+    for line in parts[1].decode("utf-16-le").splitlines():
+        name, separator, value = line.partition("=")
+        if separator and name:
+            os.environ[name] = value
+    for key in ("CMAKE_GENERATOR", "CMAKE_GENERATOR_PLATFORM", "CMAKE_GENERATOR_TOOLSET",
+                "CMAKE_GENERATOR_INSTANCE"):
+        os.environ.pop(key, None)
+    # VsDevCmd can prepend VS's bundled CMake/Ninja; retain our pinned tools.
+    os.environ["PATH"] = os.pathsep.join([
+        *(str(pathlib.Path(tool).parent) for tool in build_tools.values()),
+        os.environ["PATH"],
+    ])
+    resolved_compiler = shutil.which("cl.exe")
+    if not resolved_compiler or pathlib.Path(resolved_compiler).resolve() != compiler.resolve():
+        raise SystemExit(f"VsDevCmd did not select the expected native compiler: {compiler}")
+    print(f"Native MSVC {tool_version}: {compiler}", flush=True)
+    configure += [
+        "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={build_tools['ninja']}",
+        f"-DCMAKE_C_COMPILER={compiler}", f"-DCMAKE_CXX_COMPILER={compiler}",
+    ]
 else:
     configure += ["-G", "Ninja", f"-DCMAKE_OSX_ARCHITECTURES={args.arch}"]
 
@@ -115,3 +189,4 @@ manifest = {
 # libraries may contain crates with attribution beyond the top-level license.
 run("cargo", "vendor", "--locked", "--manifest-path",
     str(build / "_deps/tokenizers_cpp-src/rust/Cargo.toml"), str(stage / "rust-vendor"))
+run(sys.executable, str(root / "scripts/ci/export-native-sdk.py"), args.arch)

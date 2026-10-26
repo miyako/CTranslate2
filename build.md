@@ -8,8 +8,10 @@ title: "Build"
 `.github/workflows/build-native.yml` builds **fresh upstream CTranslate2 4.8.4**
 and this repository's `cpp/ct2-server` together. It does not link the old
 `cpp/lib` archives or use the vendored CTranslate2, tokenizer, SentencePiece or
-JsonCpp headers. It never replaces tracked binaries. The legacy Xcode and
-Visual Studio projects are not used by this workflow.
+JsonCpp headers. Ordinary builds stage output without changing tracked files.
+The workflow also exports replacement static SDKs, verifies the existing Xcode
+and Visual Studio Release projects against them, and can open a PR updating
+the tracked dependencies those projects consume.
 
 ## Platforms and triggers
 
@@ -20,14 +22,16 @@ Visual Studio projects are not used by this workflow.
 | Windows x64 (`x86_64`) | `windows-2025` | MSVC x64, static Ruy |
 | Windows ARM64 (`arm64`) | `windows-11-arm` | MSVC ARM64, static Ruy |
 
-Windows ARM uses the actual native ARM64 runner, Visual Studio `-A ARM64`
-toolchain, and `aarch64-pc-windows-msvc` Rust target, not an x64 build with
+Windows ARM uses the actual native ARM64 runner, native ARM64 MSVC tools
+initialized with `VsDevCmd`, Ninja, and the `aarch64-pc-windows-msvc` Rust target, not an x64 build with
 architecture macros. The ARM runner label is subject to GitHub availability
 (including repository/plan restrictions); no emulated or x64 fallback occurs.
 MSVC ARM64 currently uses upstream's portable/generic kernels, not the GCC
 NEON path; this trades performance for portability without false defines.
 Intel builds use upstream runtime CPU dispatch, not `-march=native` or a
 process-wide AVX2 requirement.
+Windows explicitly selects Ninja rather than inheriting the runner's NMake
+default; installed Visual Studio 2022/2026 tools are discovered with `vswhere`.
 
 Pull requests and pushes to `main` run when `cpp/**`, `scripts/ci/**`,
 the workflow, or this document changes. **All automatic/PR builds are
@@ -48,18 +52,79 @@ Run manually in Actions → **Build native server** → **Run workflow**:
   A missing secret, invalid signature, rejected notarization or Gatekeeper
   failure fails that macOS job; it **never falls back to unsigned output**.
 * `signed_macos: false`: four unsigned ZIPs for development.
+* `update_libraries: true` (default): after all four jobs succeed, a dispatch
+  on **main** additionally opens the static-library replacement PR described
+  below. Disable this input for a distribution-only build.
 
 CLI equivalents:
 
 ```sh
-gh workflow run build-native.yml --ref main -f signed_macos=false
-gh workflow run build-native.yml --ref main -f signed_macos=true
+gh workflow run build-native.yml --ref main -f signed_macos=false -f update_libraries=true
+gh workflow run build-native.yml --ref main -f signed_macos=true -f update_libraries=false
 ```
 
 Artifacts are attached to the Actions run for 14 days, with platform,
 architecture and signing state in the name. They contain a distribution
 archive plus SHA-256 checksum; this workflow does not publish a GitHub
 Release or modify the existing component `publish.yml`.
+
+## Static SDKs and library-update pull requests
+
+Every successful matrix build also uploads `ct2-sdk-macOS-arm64`,
+`ct2-sdk-macOS-x86_64`, `ct2-sdk-Windows-arm64`, or
+`ct2-sdk-Windows-x86_64`. Each contains a ZIP with five reusable static
+archives, matching public headers, dependency notices and `build-info.json`.
+Local exports are under `.build-native/sdk/<platform>-<architecture>/`;
+the ZIPs are in `.build-native/sdk-artifacts/`.
+
+The export uses CMake's resolved link closure rather than copying only CT2's
+top-level archive. Abseil is folded into SentencePiece, and any static
+Ruy/CPU-feature dependencies are folded into CT2. The exported archives are
+independently link-tested, and the actual IDE Release project is compiled
+and HTTP-smoke-tested against a staged copy of the replacement dependencies.
+Windows project verification selects the installed MSVC toolset explicitly.
+
+With `update_libraries: true`, a trusted manual run on main downloads all four
+SDKs, checks identical source revisions and public headers, combines the Mac
+architectures with `lipo`, and opens a **reviewable PR**, not a direct main push:
+
+| Project input | PR replacement |
+| --- | --- |
+| Xcode, `cpp/a/` | Universal arm64/x86_64 `libctranslate2.a`, `libsentencepiece.a`, `libtokenizers_cpp.a`, `libtokenizers_c.a`, `libjsoncpp.a` |
+| Visual Studio ARM64, `cpp/lib/arm64/` | `ctranslate2.lib`, `sentencepiece.lib`, `tokenizers_cpp.lib`, `tokenizers_c.lib`, `jsoncpp.lib` |
+| Visual Studio x64, `cpp/lib/windows64/` | The same five `.lib` filenames, built for x64 |
+| Shared `cpp/include/` | Matching CT2, half-float, nlohmann/json, JsonCpp, tokenizer and SentencePiece public headers |
+
+That PR also updates the IDE link settings: no obsolete separate CPU-feature
+or OpenMP archive; CoreFoundation and Accelerate on Mac; the Rust-required
+Windows system libraries; portable architecture flags and Mac 13.0 minimum.
+Xcode's default architecture becomes `ARCHS_STANDARD` instead of Intel-only.
+Only the existing **Release x64/ARM64** Visual Studio configurations are
+refreshed; the exported Windows libraries use `/MT`, not the Debug CRT.
+Dependency notices live in `cpp/dependency-licenses/` and provenance in
+`cpp/native-dependencies.json`. Unused legacy archives are not deleted.
+
+All four builds must succeed; the workflow never proposes a partial update.
+The aggregate stage also builds the Xcode project against both slices of the
+universal archives. A main-branch change during the run makes publication fail
+rather than proposing stale replacements. Each run uses its own
+`automation/native-libraries-<run>-<attempt>` branch, leaving existing PRs and
+manual edits untouched. PR/push builds never create dependency PRs, preventing
+an update loop. Static archives are not signed/notarized; signing applies to
+the executable/DMG distribution only.
+
+The repository must allow **Settings → Actions → General → Workflow permissions
+→ Allow GitHub Actions to create and approve pull requests**. This workflow
+only creates a PR: it does not approve or merge it. Its privileged publication
+job alone requests `contents: write` and `pull-requests: write`.
+PRs opened with `GITHUB_TOKEN` do not automatically trigger other Actions
+workflows. If those PR checks are required, provide the optional
+`NATIVE_LIBRARIES_PR_TOKEN` secret (a dedicated token with repository contents
+and pull-request write access); the workflow uses it for checkout/push/PR creation.
+
+After you merge the generated PR, pull main in your normal checkout. The
+replacement `.a`/`.lib` files and matching headers will then be available
+at the paths above, not just inside the runner's `.build-native/` directory.
 
 ## Signing and notarization secrets
 
@@ -172,5 +237,5 @@ Windows ARM64 Python 3.12 builds.
 All fetched source, compiler output and installed files live under
 `.build-native/`; delete that directory for a completely fresh build.
 Installed output is `.build-native/dist/bin/ct2-server[.exe]`.
-These files are build output, not replacements for tracked `cpp/lib` or
-`cpp/include` contents.
+The normal build and SDK export remain staged output. Only merging the
+generated dependency-update PR replaces tracked IDE-project libraries/headers.
