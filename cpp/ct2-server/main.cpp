@@ -6,6 +6,7 @@
 //
 
 #include "ct2-server.h"
+#include "model_support.h"
 
 namespace fs = std::filesystem;
 using namespace tokenizers;
@@ -48,7 +49,7 @@ static void LoadSpecialTokenIds(const std::string& model_path,
     // 2. Try to read overrides from config.json
     fs::path config_path = fs::path(model_path);
     if (fs::is_directory(config_path)) {
-        config_path = config_path / "config.json";
+        config_path /= fs::exists(config_path / "source_config.json") ? "source_config.json" : "config.json";
     }
     
     if (fs::exists(config_path) && config_path.extension() == ".json") {
@@ -177,42 +178,7 @@ static std::vector<ParsedToolCall> parse_tool_call_json(const std::string& json_
 
 static // Helper to read the template file from the model directory
 int LoadMaxPositionEmbeddings(const std::string& model_path) {
-    fs::path path(model_path);
-    fs::path config_path = path;
-
-    if (fs::is_directory(path)) {
-        config_path = path / "config.json";
-    }
-    
-    if (fs::exists(config_path) && config_path.extension() == ".json") {
-//        std::cout << "Loading max_position_embeddings from: " << config_path << std::endl;
-        
-        std::string json = LoadBytesFromFile(config_path.string());
-        
-        Json::Value root;
-        Json::CharReaderBuilder builder;
-        std::string errors;
-        
-        std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-        bool parse = reader->parse(json.c_str(),
-                                   json.c_str() + json.size(),
-                                   &root,
-                                   &errors);
-        
-        if(parse)
-        {
-            if(root.isObject())
-            {
-                Json::Value max_position_embeddings_node = root["max_position_embeddings"];
-                if(max_position_embeddings_node.isNumeric())
-                {
-                    return  max_position_embeddings_node.asInt();
-                }
-            }
-        }
-    }
-    
-    return 512;
+    return ct2_server::encoder_length(ct2_server::load_source_config(model_path));
 }
 
 static const std::unordered_map<std::string, RerankingMode> kModelTypeMap = {
@@ -224,47 +190,15 @@ static const std::unordered_map<std::string, RerankingMode> kModelTypeMap = {
 
 static
 RerankingMode LoadRerankingMode(const std::string& model_path) {
-    fs::path path(model_path);
-    fs::path config_path = path;
-    
-    if (fs::is_directory(path)) {
-        config_path = path / "config.json";
-    }
-    
-    if (fs::exists(config_path) && config_path.extension() == ".json") {
-        
-        std::string json = LoadBytesFromFile(config_path.string());
-        
-        Json::Value root;
-        Json::CharReaderBuilder builder;
-        std::string errors;
-        
-        std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-        bool parse = reader->parse(json.c_str(),
-                                   json.c_str() + json.size(),
-                                   &root,
-                                   &errors);
-        
-        if(parse)
-        {
-            if(root.isObject())
-            {
-                Json::Value model_type_node = root["model_type"];
-                if(model_type_node.isString())
-                {
-                    std::string model_type = model_type_node.asString();
-                    
-                    auto it = kModelTypeMap.find(model_type);
-                    if (it != kModelTypeMap.end()) {
-                        std::cout << "[Rerank] model_type: " << model_type << std::endl;
-                        return it->second;
-                    }
-                    std::cout << "[Rerank] model_type: '" << model_type << "' unrecognized, defaulting to roberta" << std::endl;
-                }
-            }
-        }
-    }
-    
+    const auto type = ct2_server::model_type(ct2_server::load_source_config(model_path));
+    if (ct2_server::is_decoder(type) || ct2_server::is_seq2seq(type))
+        throw std::runtime_error("Model '" + type + "' is not an Encoder model; use -g for chat or -a for seq2seq generation");
+    const auto it = kModelTypeMap.find(type);
+    if (it != kModelTypeMap.end())
+        return it->second;
+    if (!type.empty())
+        throw std::runtime_error("Unsupported encoder model_type: " + type);
+    std::cerr << "[Encoder] No source model_type; using legacy RoBERTa token layout. Copy source_config.json for reliable detection." << std::endl;
     return RERANKING_ROBERTA;
 }
 
@@ -291,19 +225,19 @@ static void parse_request_chat_completion(const std::string &json,
                                           ctranslate2::GenerationOptions &options,
                                           bool &is_stream,
                                           int &n,
-                                          bool &has_tools) {
-    nlohmann::json data;
-    try {
-        data = nlohmann::json::parse(json);
-    } catch (const std::exception& e) {
-        std::cerr << "Failed to parse request JSON: " << e.what() << std::endl;
-        return;
-    }
+                                          bool &has_tools,
+                                          const std::string& model_type,
+                                          const nlohmann::json& runtime_config) {
+    nlohmann::json data = nlohmann::json::parse(json);
+    ct2_server::validate_messages(data);
 
     // --- 1. Template rendering ---
     try {
-        if (!data.contains("bos_token")) data["bos_token"] = "<|im_start|>";
-        if (!data.contains("eos_token")) data["eos_token"] = "<|im_end|>";
+        data["add_generation_prompt"] = true;
+        if (!data.contains("bos_token"))
+            data["bos_token"] = ct2_server::runtime_token(runtime_config, "bos_token", "<|im_start|>");
+        if (!data.contains("eos_token"))
+            data["eos_token"] = ct2_server::runtime_token(runtime_config, "eos_token", "<|im_end|>");
 
         has_tools = data.contains("tools") && data["tools"].is_array() && !data["tools"].empty();
         data["has_tools"] = has_tools;
@@ -316,15 +250,19 @@ static void parse_request_chat_completion(const std::string &json,
             return args.at(0)->get<std::string>();
         });
 
-        prompt = env.render(chat_template, data);
+        prompt = chat_template.empty()
+            ? ct2_server::native_chat_prompt(data, model_type)
+            : env.render(chat_template, data);
 
     } catch (const std::exception& e) {
-        std::cerr << "Template rendering failed: " << e.what() << std::endl;
+        throw std::invalid_argument("Template rendering failed: " + std::string(e.what()));
     }
 
     // --- 2. Parse generation options ---
     is_stream = data.value("stream", false);
     n         = data.value("n", 1);
+    if (n < 1)
+        throw std::invalid_argument("'n' must be positive");
 
     options.sampling_temperature  = data.value("temperature", 0.7);
     options.sampling_topp         = data.value("top_p", options.sampling_topp);
@@ -350,6 +288,8 @@ std::unique_ptr<tokenizers::Tokenizer> LoadTokenizer(const std::string& model_pa
         // If user gave a folder, look for standard names
         json_path = path / "tokenizer.json";
         model_file_path = path / "tokenizer.model";
+        if (!fs::exists(model_file_path))
+            model_file_path = path / "spiece.model";
     }
 
     // 2. Try to load Hugging Face JSON first (preferred for modern models)
@@ -369,6 +309,20 @@ std::unique_ptr<tokenizers::Tokenizer> LoadTokenizer(const std::string& model_pa
     return nullptr;
 }
 
+static std::vector<std::string> EncodeTokens(tokenizers::Tokenizer& tokenizer, const std::string& text) {
+    std::vector<std::string> tokens;
+    for (const auto id : tokenizer.Encode(text))
+        tokens.push_back(tokenizer.IdToToken(id));
+    return tokens;
+}
+
+static int TokenId(tokenizers::Tokenizer& tokenizer, const std::string& token) {
+    const int id = tokenizer.TokenToId(token);
+    if (id < 0)
+        throw std::runtime_error("Model output token is absent from tokenizer vocabulary: " + token);
+    return id;
+}
+
 class GeneratePipeline {
 public:
     GeneratePipeline(const std::string& model_dir,
@@ -379,14 +333,16 @@ public:
             ctranslate2::set_num_threads(num_threads);
         }
 
-        fs::path sp_path = fs::path(model_dir) / "tokenizer.model";
-        if(fs::exists(sp_path)) {
-            tokenizer_ = std::make_unique<sentencepiece::SentencePieceProcessor>();
-            auto status = tokenizer_->Load(sp_path.string());
-            if (!status.ok()) {
-                throw std::runtime_error("GeneratePipeline: failed to load tokenizer: " + status.ToString());
-            }
-        }
+        tokenizer_ = LoadTokenizer(model_dir);
+        if (!tokenizer_)
+            throw std::runtime_error("GeneratePipeline requires tokenizer.json, tokenizer.model, or spiece.model");
+        const auto config = ct2_server::read_config(fs::path(model_dir) / "config.json");
+        eos_token_ = config.value("eos_token", std::string("</s>"));
+        runtime_config_ = config;
+        model_type_ = ct2_server::model_type(ct2_server::load_source_config(model_dir));
+        const auto tokenizer_path = fs::path(model_dir) / "tokenizer.json";
+        if (fs::exists(tokenizer_path))
+            tokenizer_config_ = ct2_server::read_config(tokenizer_path);
         
         try {
             ctranslate2::Device device_type = (device == "cuda") ?
@@ -458,8 +414,8 @@ public:
         std::vector<std::vector<std::string>> batch_tokens;
         batch_tokens.reserve(prompts.size());
         for (const auto& p : prompts) {
-            std::vector<std::string> toks;
-            tokenizer_->Encode(p, &toks);
+            auto toks = ct2_server::seq2seq_input(EncodeTokens(*tokenizer_, p), tokenizer_config_,
+                                                runtime_config_, model_type_);
             batch_tokens.push_back(std::move(toks));
         }
 
@@ -475,14 +431,18 @@ public:
         options.callback = [&](ctranslate2::GenerationStepResult step) -> bool {
             size_t sid = step.batch_id;
             
-            // ✅ Skip finished sentences but DON'T stop the batch
-            if (sid >= n || finished[sid]) return false;
+            if (sid >= n || finished[sid]) return true;
 
-            current_ids[sid].push_back(step.token_id);
+            if (step.token == eos_token_) {
+                finished[sid] = true;
+                return true;
+            }
+            current_ids[sid].push_back(TokenId(*tokenizer_, step.token));
+            ++out_completion_tokens;
 
             std::string current_text;
             std::vector<int> id_ints(current_ids[sid].begin(), current_ids[sid].end());
-            tokenizer_->Decode(id_ints, &current_text);
+            current_text = tokenizer_->Decode(id_ints);
 
             if (current_text.length() > previous_text[sid].length()) {
                 // Guard incomplete UTF-8
@@ -490,7 +450,6 @@ public:
                     std::string delta = current_text.substr(previous_text[sid].length());
                     previous_text[sid] = current_text;
                     if (!delta.empty()) {
-                        ++out_completion_tokens;
                         if (!on_token(delta, (int)sid)) return true;
                     }
                 }
@@ -498,24 +457,21 @@ public:
 
             if (step.is_last) finished[sid] = true;
 
-            // ✅ Only stop when ALL sentences are done
-            bool all_done = true;
-            for (bool f : finished) if (!f) { all_done = false; break; }
-            return all_done;
+            return finished[sid];
         };
 
         auto futures = translator_->translate_batch_async(batch_tokens, options);
         
-        try {
-            for (auto& f : futures) f.get();
-        } catch (std::exception& e) {
-            std::cerr << e.what() << std::endl;
-        }
+        for (auto& f : futures) f.get();
     }
 
 private:
     std::unique_ptr<ctranslate2::Translator> translator_;
-    std::unique_ptr<sentencepiece::SentencePieceProcessor> tokenizer_;
+    std::unique_ptr<tokenizers::Tokenizer> tokenizer_;
+    std::string eos_token_;
+    std::string model_type_;
+    nlohmann::json runtime_config_;
+    nlohmann::json tokenizer_config_;
 };
 
 #define CACHE_TOKEN_IDS 0
@@ -532,6 +488,9 @@ public:
 
         tokenizer_ = LoadTokenizer(model_dir);
         if (!tokenizer_) throw std::runtime_error("No tokenizer found for ChatPipeline");
+        const auto type = ct2_server::model_type(ct2_server::load_source_config(model_dir));
+        if (ct2_server::is_seq2seq(type))
+            throw std::runtime_error("Encoder-decoder models use -a and /v1/generate, not the chat Generator");
 
 #if CACHE_TOKEN_IDS
         id_to_token_cache_.resize(tokenizer_->GetVocabSize());
@@ -574,23 +533,15 @@ public:
         std::vector<bool> finished(n, false);
         std::vector<bool> tool_mode(n, false);
         
-        options.callback = [&](ctranslate2::GenerationStepResult step_result) {
+        options.callback = [&](ctranslate2::GenerationStepResult step_result) -> bool {
             
             size_t batch_id = step_result.batch_id;
             if (finished[batch_id]) return true;
             
-            current_ids[batch_id].push_back((int)step_result.token_id);
+            current_ids[batch_id].push_back(TokenId(*tokenizer_, step_result.token));
             std::string current_text = tokenizer_->Decode(current_ids[batch_id]);
             
-            bool hit_stop = false;
-            // Only check the suffix that could contain a newly completed stop word
-            size_t max_sw_len = 20; // precompute once
-            size_t check_from = current_text.size() > max_sw_len
-                ? current_text.size() - max_sw_len : 0;
-            std::string_view suffix(current_text.c_str() + check_from, current_text.size() - check_from);
-            for (const auto& word : stop_words_) {
-                if (suffix.find(word) != std::string_view::npos) { hit_stop = true; break; }
-            }
+            const bool hit_stop = ct2_server::visible_text(current_text, stop_words_, true).size() != current_text.size();
             
             // 1. DYNAMIC TOOL INTERCEPTION
             if (has_tools && !tool_mode[batch_id]) {
@@ -638,52 +589,24 @@ public:
                         if (!on_token(json_str, (int)batch_id, true)) return true;
                     }
                     
-                    bool all_done = true;
-                    for (bool f : finished) if (!f) all_done = false;
-                    if (all_done) return true;
+                    return true;
                 }
                 return false;
             }
             
-            // 3. NORMAL TEXT STREAMING
-            if (current_text.length() > previous_text[batch_id].length()) {
-                std::string new_text = current_text.substr(previous_text[batch_id].length());
-                
-                if (hit_stop) {
-                    finished[batch_id] = true;
-                    
-                    // Strip the stop word before sending to the client
-                    for (const auto& word : stop_words_) {
-                        size_t pos = new_text.find(word);
-                        if (pos != std::string::npos) new_text = new_text.substr(0, pos);
-                    }
-                    
-                    if (!new_text.empty()) {
-                        if (!on_token(new_text, (int)batch_id, false)) return false;
-                    }
-                    
-                    bool all_done = true;
-                    for (bool f : finished) if (!f) { all_done = false; break; }
-                    return all_done;
-                }
-                
-                // Normal token: Wait for complete UTF-8 characters
-                if (new_text.find("\xef\xbf\xbd") == std::string::npos) {
-                    previous_text[batch_id] = current_text;
-                    if (!on_token(new_text, (int)batch_id, false)) return true;
-                }
+            const auto visible = ct2_server::visible_text(current_text, stop_words_, step_result.is_last);
+            if (visible.size() > previous_text[batch_id].size()
+                && visible.find("\xef\xbf\xbd") == std::string::npos) {
+                const auto delta = visible.substr(previous_text[batch_id].size());
+                previous_text[batch_id] = visible;
+                if (!on_token(delta, (int)batch_id, false)) return true;
             }
-            
-            if (step_result.is_last) finished[batch_id] = true;
-            return false;
+            if (hit_stop || step_result.is_last) finished[batch_id] = true;
+            return finished[batch_id];
         };
         
         std::vector<std::future<ctranslate2::GenerationResult>> futures = generator_->generate_batch_async(batch_tokens, options, 0, ctranslate2::BatchType::Examples);
-        try {
-            for (auto& f : futures) f.get();
-        } catch (std::exception& e) {
-            std::cerr << e.what() << std::endl;
-        }
+        for (auto& f : futures) f.get();
     }
     
     std::string chat_completion(const std::string& prompt,
@@ -703,36 +626,21 @@ public:
         std::vector<std::vector<int>> current_ids(n);
         std::vector<bool> finished(n, false);
         
-        options.callback = [&](ctranslate2::GenerationStepResult step_result) {
+        options.callback = [&](ctranslate2::GenerationStepResult step_result) -> bool {
             
             size_t batch_id = step_result.batch_id;
             if (finished[batch_id]) return true;
             
-            current_ids[batch_id].push_back((int)step_result.token_id);
+            current_ids[batch_id].push_back(TokenId(*tokenizer_, step_result.token));
             std::string current_text = tokenizer_->Decode(current_ids[batch_id]);
             
-            bool hit_stop = false;
-            // Only check the suffix that could contain a newly completed stop word
-            size_t max_sw_len = 20; // precompute once
-            size_t check_from = current_text.size() > max_sw_len
-                ? current_text.size() - max_sw_len : 0;
-            std::string_view suffix(current_text.c_str() + check_from, current_text.size() - check_from);
-            for (const auto& word : stop_words_) {
-                if (suffix.find(word) != std::string_view::npos) { hit_stop = true; break; }
-            }
+            const bool hit_stop = ct2_server::visible_text(current_text, stop_words_, true).size() != current_text.size();
             
             if (hit_stop || step_result.is_last) {
                 finished[batch_id] = true;
             }
             
-            // If ALL choices have hit a stop word, return false to ABORT compute!
-            bool all_done = true;
-            for (bool f : finished) {
-                if (!f) all_done = false;
-            }
-            if (all_done) return true;
-            
-            return false; // Keep generating for remaining choices
+            return finished[batch_id];
         };
         
         // ----------------------------------------------
@@ -751,18 +659,13 @@ public:
         // Loop through all 'n' choices returned by the future
         for (int i = 0; i < n; i++) {
             ctranslate2::GenerationResult result = futures[i].get();
-            const auto& output_ids_size_t = result.sequences_ids[0];
-            std::vector<int> output_ids(output_ids_size_t.begin(), output_ids_size_t.end());
+            std::vector<int> output_ids;
+            for (const auto& token : result.sequences.at(0))
+                output_ids.push_back(TokenId(*tokenizer_, token));
             
             completion_tokens += output_ids.size();
             
-            std::string response_text = tokenizer_->Decode(output_ids);
-            
-            // Strip the stop word from the final response
-            for (const auto& word : stop_words_) {
-                size_t pos = response_text.find(word);
-                if (pos != std::string::npos) response_text = response_text.substr(0, pos);
-            }
+            std::string response_text = ct2_server::visible_text(tokenizer_->Decode(output_ids), stop_words_, true);
             
             Json::Value choice(Json::objectValue);
             choice["index"] = i;
@@ -828,7 +731,7 @@ private:
     std::unique_ptr<ctranslate2::Generator> generator_;
     std::unique_ptr<tokenizers::Tokenizer> tokenizer_;
     inline static const std::vector<std::string> stop_words_ = {"<|im_end|>", "</s>", "<|endoftext|>", "<|eot_id|>", "<EOD>", "<end_of_turn>", "<eos>", "<|end_of_text|>",
-                        "<|eom_id|>"};
+                        "<|eom_id|>", "<turn|>"};
 #if CACHE_TOKEN_IDS
     std::vector<std::string> id_to_token_cache_;
 #endif
@@ -1009,6 +912,7 @@ class RerankerPipeline {
         }else{
             hidden_states = forward_bert_reranker_batch(batch_ids, 1, std::vector<std::vector<size_t>>());
         }
+        hidden_states = hidden_states.to(ctranslate2::DataType::FLOAT32);
         
         // Access raw pointer
         const float* raw_data = hidden_states.data<float>();
@@ -1562,16 +1466,8 @@ public:
         batch_ids.reserve(texts.size());
         
         for (const auto& text : texts) {
-            auto ids_int = tokenize_one(text);
-            std::vector<size_t> ids_size_t;
-            size_t input_len = ids_int.size();
-            if (input_len > max_position_embeddings_ - 2)
-                input_len = max_position_embeddings_ - 2;
-            ids_size_t.reserve(input_len + 2);
-            ids_size_t.push_back(cls_id_);
-            ids_size_t.insert(ids_size_t.end(), ids_int.begin(), ids_int.begin() + input_len);
-            ids_size_t.push_back(sep_id_);
-            batch_ids.push_back(std::move(ids_size_t));
+            auto ids = ct2_server::encoder_input(tokenize_one(text), cls_id_, sep_id_, max_position_embeddings_);
+            batch_ids.emplace_back(ids.begin(), ids.end());
         }
         
         // 2. Forward Pass
@@ -1580,6 +1476,7 @@ public:
         ctranslate2::StorageView hidden_states_cpu = result.last_hidden_state.to(ctranslate2::Device::CPU);
         
         // 3. Zero-Copy Setup
+        hidden_states_cpu = hidden_states_cpu.to(ctranslate2::DataType::FLOAT32);
         float* raw_data = hidden_states_cpu.data<float>();
         const auto& shape = hidden_states_cpu.shape();
         long batch_size = shape[0];
@@ -1804,11 +1701,11 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:e:r:g:a:i:o:sp:jt:bcld-jh"
+#define ARGS (OPTARG_T)L"m:e:r:g:a:i:o:sp:jt:bcld-jh:"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:e:r:g:a:i:o:sp:jt:bcld-jh"
+#define ARGS "m:e:r:g:a:i:o:sp:jt:bcld-jh:"
 #define _atoi atoi
 #define _atof atof
 #endif
@@ -2376,6 +2273,8 @@ int main(int argc, OPTARG_T argv[]) {
     std::string chat_fingerprint;
     long long chat_model_created = 0;
     std::string chat_modelName;
+    std::string chat_model_type;
+    nlohmann::json chat_runtime_config = nlohmann::json::object();
     
     std::unique_ptr<ChatPipeline> chat_pipeline;
     
@@ -2391,7 +2290,11 @@ int main(int argc, OPTARG_T argv[]) {
                 chat_modelName = get_model_name(fs::path(chat_model_path));
     #endif
                 chat_pipeline = std::make_unique<ChatPipeline>(chat_model_path, intra_op_threads);
-                if(chat_template == "") {
+                chat_runtime_config = ct2_server::read_config(fs::path(chat_model_path) / "config.json");
+                chat_model_type = ct2_server::chat_format(
+                    ct2_server::model_type(ct2_server::load_source_config(chat_model_path)),
+                    chat_runtime_config);
+                if(chat_template.empty() && !ct2_server::has_native_chat(chat_model_type)) {
                     chat_template = LoadChatTemplate(chat_model_path);
                 }
                 chat_model_created = get_created_timestamp();
@@ -2452,6 +2355,14 @@ int main(int argc, OPTARG_T argv[]) {
                 modelCard["owned_by"] = "system";
                 root["data"].append(modelCard);
             }
+            if(chat_model_created != 0) {
+                Json::Value modelCard(Json::objectValue);
+                modelCard["id"] = chat_modelName;
+                modelCard["object"] = "model";
+                modelCard["created"] = (Json::UInt64)chat_model_created;
+                modelCard["owned_by"] = "system";
+                root["data"].append(modelCard);
+            }
             // Serialize
             Json::StreamWriterBuilder writer;
             writer["indentation"] = ""; // Minified JSON
@@ -2467,7 +2378,7 @@ int main(int argc, OPTARG_T argv[]) {
             
             try {
                 
-                if (generate_model_created == 0) {
+                if (!chat_pipeline) {
                     throw std::invalid_argument("[Generator] Model not loaded. Pass model directory via -g");
                 }
                 
@@ -2477,7 +2388,8 @@ int main(int argc, OPTARG_T argv[]) {
                 int n = 1;
                 bool has_tools = false;
                 
-                parse_request_chat_completion(req.body, prompt, chat_template, options, is_stream, n, has_tools);
+                parse_request_chat_completion(req.body, prompt, chat_template, options, is_stream, n, has_tools,
+                                              chat_model_type, chat_runtime_config);
                 
                 if (prompt.empty()) {
                     throw std::invalid_argument("Request must contain a valid 'messages' array.");
@@ -2491,7 +2403,7 @@ int main(int argc, OPTARG_T argv[]) {
                     
                     // 2. Pass everything by value (copy) or safe pointer
                     res.set_chunked_content_provider("text/event-stream",
-                                                     [raw_chat_pipeline, prompt, options, generate_modelName, req_id, n, has_tools](size_t offset, httplib::DataSink &sink) {
+                                                     [raw_chat_pipeline, prompt, options, chat_modelName, req_id, n, has_tools](size_t offset, httplib::DataSink &sink) {
                         
                         // 3. Callback to handle tokens as they are generated
                         auto token_callback = [&](const std::string& token, int choice_index, bool is_tool) {
@@ -2499,7 +2411,7 @@ int main(int argc, OPTARG_T argv[]) {
                             root["id"] = req_id;
                             root["object"] = "chat.completion.chunk";
                             root["created"] = (Json::UInt64)get_created_timestamp();
-                            root["model"] = generate_modelName;
+                            root["model"] = chat_modelName;
                             Json::Value choices(Json::arrayValue);
                             Json::Value choice(Json::objectValue);
                             choice["index"] = choice_index;
@@ -2579,7 +2491,7 @@ int main(int argc, OPTARG_T argv[]) {
                     }
                                                      );
                 }else{
-                    std::string response_json = chat_pipeline->chat_completion(prompt, options, n, generate_modelName);
+                    std::string response_json = chat_pipeline->chat_completion(prompt, options, n, chat_modelName);
                     
                     res.set_content(response_json, "application/json");
                     res.status = 200;
@@ -2595,7 +2507,7 @@ int main(int argc, OPTARG_T argv[]) {
 
             try {
                 if (!generate_pipeline) {
-                    throw std::invalid_argument("[Generate] pipeline not loaded. Pass a model with tokenizer.model via -g");
+                    throw std::invalid_argument("[Generate] pipeline not loaded. Pass a seq2seq model via -a");
                 }
 
                 std::vector<std::string> prompts;

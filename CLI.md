@@ -31,13 +31,17 @@ The CLI is built for `4` platforms:
 
 ## Dependencies
 
-- `ctranslate2-4.7.1`
+- Native source builds: `ctranslate2-4.8.4` (see [Build](build.md)).
+- Previously checked-in binaries remain on their original version until replaced by build artifacts.
+
+See [Chat](chat.md), [Generate](generate.md), and [Embeddings](embeddings.md) for
+Qwen 3, Gemma 3/4, T5Gemma2, UMT5, and RoBERTa support and conversion requirements.
  
 ## OpenAI Compatible Endpoints
 
 - `/v1/models`
 - `/v1/embeddings`
-- `/v1/chat/completion`
+- `/v1/chat/completions` (`/v1/chat/completion` alias)
 
 ## Cohere Compatible Endpoints
 

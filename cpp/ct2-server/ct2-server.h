@@ -55,7 +55,6 @@ extern "C" {
 #include <cmath>
 #include <numeric>
 #include <Eigen/Dense>
-#include <omp.h>
 #include <fstream>
 #include "tokenizers_cpp.h"
 

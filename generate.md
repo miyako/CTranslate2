@@ -5,6 +5,31 @@ title: "Generate"
 
 # Generate
 
+## T5Gemma2 and UMT5
+
+Use `ct2-server -s -a /path/to/ct2-model` and POST to `/v1/generate`.
+These are **encoder-decoder** models and use `ctranslate2::Translator`, not the
+decoder-only `Generator` used for chat. Supply a task prompt appropriate to the
+checkpoint; this endpoint does not turn a pretrained model into a chat model.
+
+The generation tokenizer loader accepts `tokenizer.json` (preferred),
+`tokenizer.model`, and `spiece.model`. Copy the source HF `config.json` as
+`source_config.json` alongside the converted files (see [Chat](chat.md)).
+The tokenizer's single-input `TemplateProcessing` postprocessor is applied explicitly,
+since tokenizers-cpp encodes without special tokens. SentencePiece-only T5/MT5/UMT5
+inputs receive EOS; T5Gemma/T5Gemma2 inputs receive BOS. Keep `tokenizer.json` for
+checkpoints with non-default input formatting or added tokens.
+The CT2 configuration supplies the decoder-start token automatically.
+
+```sh
+curl http://127.0.0.1:8080/v1/generate \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"Question: Why is the sky blue? Answer:","max_decoding_length":128}'
+```
+
+Streaming and non-streaming generation use the same tokenizer path, and inference
+errors are propagated instead of returning a successful-looking partial result.
+
 `/v1/generate` uses `ctranslate2::TranslationOptions`
 
 ```c
