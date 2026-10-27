@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 from unittest.mock import patch
 
 from native_sdk import (HEADER_DIRS, HEADER_FILES, LIBRARIES, apply_sdks, archive_groups,
-                        copy_headers, library_name, update_ide_projects)
+                        cmake_path, copy_headers, library_name, update_ide_projects)
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
@@ -57,6 +57,10 @@ class NativeSDKTests(unittest.TestCase):
         (source / "header.h").write_bytes(b"one\r\ntwo\r\n")
         copy_headers(source, self.root / "headers")
         self.assertEqual((self.root / "headers/header.h").read_bytes(), b"one\ntwo\n")
+
+    def test_windows_cmake_paths_do_not_contain_escape_sequences(self):
+        self.assertEqual(cmake_path(pathlib.PureWindowsPath(r"D:\a\CTranslate2\main.cpp")),
+                         '"D:/a/CTranslate2/main.cpp"')
 
     def test_resolved_archive_closure(self):
         reply = self.root / ".cmake/api/v1/reply"

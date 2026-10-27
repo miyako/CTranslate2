@@ -22,6 +22,10 @@ def library_name(name, windows=False):
     return f"{name}.lib" if windows else f"lib{name}.a"
 
 
+def cmake_path(path):
+    return json.dumps(path.as_posix())
+
+
 def archive_groups(build):
     """Use CMake's resolved link closure, including Rust, Abseil and Ruy."""
     build = build.resolve()

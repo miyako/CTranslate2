@@ -14,6 +14,16 @@ if kind == "ct2":
         'CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(aarch64)"':
             'CMAKE_SYSTEM_PROCESSOR MATCHES "(ARM64)|(arm64)|(aarch64)"',
     }
+    ruy = root / "third_party/ruy/ruy/CMakeLists.txt"
+    ruy_text = ruy.read_text()
+    old = "elseif(CMAKE_SYSTEM_NAME STREQUAL Fuchsia)"
+    new = ('elseif(CMAKE_SYSTEM_NAME STREQUAL Fuchsia OR '
+           '(MSVC AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$"))')
+    if ruy_text.count(old) == 2:
+        ruy_text = ruy_text.replace(old, new)
+    elif ruy_text.count(new) != 2:
+        raise SystemExit("Ruy changed its cpuinfo feature guards; review Windows ARM64 compatibility")
+    ruy.write_text(ruy_text)
 elif kind == "tokenizers":
     replacements = {
         'set(TOKENIZERS_CPP_CARGO_FLAGS "")':

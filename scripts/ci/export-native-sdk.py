@@ -1,12 +1,11 @@
 """Export and independently link-check a source-built static SDK."""
 
-import json
 import os
 import pathlib
 import shutil
 import sys
 
-from native_sdk import LIBRARIES, cache_value, export_sdk, library_name, run
+from native_sdk import LIBRARIES, cache_value, cmake_path, export_sdk, library_name, run
 
 root = pathlib.Path(__file__).resolve().parents[2]
 arch = sys.argv[1]
@@ -15,7 +14,7 @@ build = root / ".build-native/build"
 check = sdk / "link-check"
 check.mkdir()
 sources = root / "cpp/ct2-server/main.cpp"
-libraries = "\n".join(json.dumps(str(sdk / "libraries" / library_name(name, os.name == "nt")))
+libraries = "\n".join(cmake_path(sdk / "libraries" / library_name(name, os.name == "nt"))
                       for name in LIBRARIES)
 system_libraries = ("ntdll userenv ws2_32 wsock32 bcrypt iphlpapi psapi" if os.name == "nt"
                     else '"-framework Accelerate" "-framework CoreFoundation"')
@@ -25,9 +24,9 @@ cmake_policy(SET CMP0091 NEW)
 project(sdk_link_check LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded)
-add_executable(sdk-check {json.dumps(str(sources))})
-target_include_directories(sdk-check PRIVATE {json.dumps(str(sdk / 'include'))}
-  {json.dumps(str(build / 'portable-headers'))})
+add_executable(sdk-check {cmake_path(sources)})
+target_include_directories(sdk-check PRIVATE {cmake_path(sdk / 'include')}
+  {cmake_path(build / 'portable-headers')})
 target_link_libraries(sdk-check PRIVATE {libraries} {system_libraries})
 if(MSVC)
   target_compile_options(sdk-check PRIVATE /utf-8 /EHsc /Zc:__cplusplus /Zc:preprocessor)

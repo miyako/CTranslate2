@@ -28,6 +28,9 @@ architecture macros. The ARM runner label is subject to GitHub availability
 (including repository/plan restrictions); no emulated or x64 fallback occurs.
 MSVC ARM64 currently uses upstream's portable/generic kernels, not the GCC
 NEON path; this trades performance for portability without false defines.
+Ruy's cpuinfo queries are disabled for MSVC ARM64: the pinned cpuinfo has no
+working Windows ARM64 ISA implementation. Ruy uses its conservative built-in
+cache defaults instead of linking an unavailable `cpuinfo_isa` symbol.
 Intel builds use upstream runtime CPU dispatch, not `-march=native` or a
 process-wide AVX2 requirement.
 Windows explicitly selects Ninja rather than inheriting the runner's NMake
