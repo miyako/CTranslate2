@@ -3,9 +3,46 @@ Local inference engine
 
 **aknowledgements**: [OpenNMT/CTranslate2](https://github.com/OpenNMT/CTranslate2)
 
+#### Native builds and releases
+
+The native build pins CTranslate2 **4.8.4** and builds fresh dependencies for
+macOS Intel/Apple Silicon and Windows x64/ARM64. See [Build](build.md) for
+artifacts, local builds, signing secrets, and library-update instructions.
+
+| Workflow | Purpose |
+|---|---|
+| **Build native server** | Builds native servers and static SDKs; manual runs can sign and notarize the Mac distributions |
+| **Build native server**, `update_libraries=true` on `main` | Opens a PR replacing IDE-consumed static libraries, matching headers, and linker settings |
+| **Publish** | Packages and releases the 4D component; does **not** automatically incorporate native-build artifacts |
+
+After merging the generated dependency PR, pull `main` in your normal checkout:
+universal Mac archives are in `cpp/a/`, Windows ARM64 libraries in
+`cpp/lib/arm64/`, and Windows x64 libraries in `cpp/lib/windows64/`.
+Local `.build-native/` output is Git-ignored and is not automatically copied
+into another checkout. Rebuild and replace the bundled server executables
+before using **Publish** to release updated native code in the 4D component.
+
+#### Model support
+
+The source-built native server adds the following model-family support.
+Use a checkpoint accepted by the pinned upstream converter; architecture
+support does not guarantee compatibility with every checkpoint.
+
+| Model family | Server capability | Guide |
+|---|---|---|
+| Qwen 3 (dense), Gemma 3/4 (text) | Text chat completion through `/v1/chat/completions` | [Chat](chat.md) |
+| T5Gemma2, UMT5 | Encoder-decoder generation through `/v1/generate`, not decoder-only chat | [Generate](generate.md) |
+| RoBERTa | Encoder embeddings through `/v1/embeddings`; use an embedding-trained checkpoint | [Embeddings](embeddings.md) |
+
+Keep the original Hugging Face configuration as **`source_config.json`** beside
+the converted model, without overwriting CT2's own `config.json`. See the guides
+for tokenizer files and conversion examples. Multimodal inputs, Qwen 3 MoE,
+and decoder-based embeddings such as Qwen3-Embedding and EmbeddingGemma are
+not implemented by this server.
+
 #### Abstract
 
-[**CTranslate2**](https://github.com/OpenNMT/CTranslate2) is an engine highly optimised for fast local inference, especially **quantised transformer-based models**. Compared to general purpose LLM engines such as llama.cpp, it **uses less memory** and for actual embedding models generates **significantly better results** because it is designed specifically for encoder models whereas GGUF is designed for decoder-only LLM architectures unless manually modified.
+[**CTranslate2**](https://github.com/OpenNMT/CTranslate2) is an engine highly optimised for fast local inference, especially **quantised transformer-based models**. It supports encoder-only, decoder-only, and encoder-decoder architectures for embeddings, text generation, and translation.
 
 #### Quantisation
 
@@ -137,7 +174,7 @@ If a model is not avaiable in `ct2` format, you can use a `python` utility to co
 
 Some developers prefer **CTranslate2** over standard inference engines like **llama.cpp** , **ONNX Runtime**, or **PyTorch** because:
 
-* It is a specialised encoder-only inference engine 
+* It is a specialised transformer inference engine supporting encoder-only, decoder-only, and encoder-decoder models
 * It has a fast inference routine for CPU  
 
 Most x86 CPUs do not have native `float16` calculation units. That means the `float16` weights are cast to `float32` for computation which adds overhead. CTranslate2 uses optimised instruction sets (AVX2, AVX-512, VNNI) to run operations directly on integers which is drastically faster than `float32` on CPUs.
@@ -163,4 +200,3 @@ In addition, the following endpoints are available:
 |`/v1/generate`|`/v1/chat/completions`|Payload root element is `prompt`
 |`/v1/rerank`||
 |`/v1/contextualizedembeddings`|`/v1/contextualized/embeddings`
-
