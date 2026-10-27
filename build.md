@@ -147,7 +147,11 @@ The signed dispatch uses the same repository secrets as `publish.yml`:
 executable with hardened runtime and secure timestamp, verifies the
 signature/team, creates and signs a DMG, waits for an explicitly
 `Accepted` notarization result, staples and validates its ticket, and
-checks Gatekeeper assessment of the DMG and executable. A shell exit trap
+checks Gatekeeper assessment of the DMG. The standalone CLI is verified with
+`codesign`, not `spctl --type execute`, which expects an app and can reject a
+valid notarized command-line tool. Stapling and ticket validation retry up to
+three times only for recognized Apple network errors; invalid tickets and
+other failures remain fatal. A shell exit trap
 restores the original keychain search list and deletes the private keychain
 and decoded certificate on success **or failure**. Apple credentials are
 passed only to the signed step and never stored in an artifact. The
