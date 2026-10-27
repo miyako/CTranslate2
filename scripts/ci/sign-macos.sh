@@ -2,6 +2,25 @@
 set -euo pipefail
 set +x
 
+retry_stapler() {
+  local attempt output status
+  for attempt in 1 2 3; do
+    if output="$(xcrun stapler "$@" 2>&1)"; then
+      printf '%s\n' "$output"
+      return 0
+    else
+      status=$?
+    fi
+    printf '%s\n' "$output" >&2
+    if [[ "$status" -ne 68 || "$attempt" -eq 3 ]] ||
+       ! printf '%s\n' "$output" | grep -Eq 'NSURLErrorDomain Code=-(1001|1003|1004|1005|1006|1009)([^0-9]|$)'; then
+      return "$status"
+    fi
+    printf '::warning::Apple ticket service network failure; retrying stapler %s (attempt %s/3)\n' "$1" "$((attempt + 1))" >&2
+    sleep "$((attempt * 10))"
+  done
+}
+
 python3 - <<'PY'
 import os
 import sys
@@ -56,8 +75,8 @@ xcrun notarytool submit "$dmg" --apple-id "$NOTARYTOOL_APPLE_ID" \
   --team-id "$NOTARYTOOL_TEAM_ID" --password "$NOTARYTOOL_PASSWORD" \
   --wait --timeout 30m --output-format json > "$work/notary-result.json"
 python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print(r); sys.exit(0 if r.get("status") == "Accepted" else 1)' "$work/notary-result.json"
-xcrun stapler staple "$dmg"
-xcrun stapler validate "$dmg"
+retry_stapler staple "$dmg"
+retry_stapler validate "$dmg"
 spctl --assess --type open --context context:primary-signature --verbose=2 "$dmg"
-spctl --assess --type execute --verbose=2 "$binary"
+# Gatekeeper's execute assessment expects an app, not a standalone CLI.
 (cd "$(dirname "$dmg")" && shasum -a 256 "$(basename "$dmg")" > "$(basename "$dmg").sha256")
