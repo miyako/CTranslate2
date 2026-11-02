@@ -9,6 +9,7 @@ on:
       - '*/Project/Sources/*/*.4DForm'
       - '*/Project/Sources/*.4DCatalog'
       - '*/Project/Resources/**'
+      - 'CTranslate2/Resources/**'
   workflow_dispatch:
     inputs:
         use_self_hosted:
@@ -27,12 +28,20 @@ on:
 
 env: 
   project_path: CTranslate2/Project/CTranslate2.4DProject
+
+permissions:
+  contents: read
+
+concurrency:
+  group: component-publish
+  cancel-in-progress: false
   
 jobs:
 
   publish:
-    if: ${{ github.event.inputs.use_self_hosted != 'true' }}
-    permissions: write-all
+    if: ${{ github.ref == 'refs/heads/main' && github.event.inputs.use_self_hosted != 'true' }}
+    permissions:
+      contents: write
     runs-on: [macos-latest]
     steps:
 
@@ -111,8 +120,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}    
 
   publish-locally:
-    if: ${{ github.event.inputs.use_self_hosted == 'true' }}
-    permissions: write-all
+    if: ${{ github.ref == 'refs/heads/main' && github.event.inputs.use_self_hosted == 'true' }}
+    permissions:
+      contents: write
     runs-on: [self-hosted, macos]
     steps:
 

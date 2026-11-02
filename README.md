@@ -14,15 +14,27 @@ artifacts, local builds, signing secrets, and library-update instructions.
 | Workflow | Purpose |
 |---|---|
 | **Build native server** | Builds native servers and static SDKs; manual runs can sign and notarize the Mac distributions |
+| **Build native server**, `update_resources=true` on `main` | Verifies all four targets, signs/notarizes a universal Mac server, then **commits actual server Resources to main**; does not publish |
 | **Build native server**, `update_libraries=true` on `main` | Opens a PR replacing IDE-consumed static libraries, matching headers, and linker settings |
-| **Publish** | Packages and releases the 4D component; does **not** automatically incorporate native-build artifacts |
+| **Publish** | Quickly packages the 4D sources and **checked-in Resources**, without rebuilding native code |
 
 After merging the generated dependency PR, pull `main` in your normal checkout:
 universal Mac archives are in `cpp/a/`, Windows ARM64 libraries in
 `cpp/lib/arm64/`, and Windows x64 libraries in `cpp/lib/windows64/`.
-Local `.build-native/` output is Git-ignored and is not automatically copied
-into another checkout. Rebuild and replace the bundled server executables
-before using **Publish** to release updated native code in the 4D component.
+The SDK PR alone does not update the component's server. To refresh it, dispatch
+**Build native server** on `main` with `signed_macos=true`,
+`update_resources=true`, `update_libraries=false`. Both update inputs default
+to false. The resource refresh commits the Mac universal, Windows x64 and
+Windows ARM64 servers, licenses and final-byte provenance under
+`CTranslate2/Resources/`; legacy translators and wrapper contracts stay intact.
+It refuses stale main, partial target sets and files at or above 100 MiB.
+
+After that commit, explicitly dispatch **Publish** on `main` when ready to
+release the component: a `GITHUB_TOKEN` push does **not** trigger dependent
+workflows. Ordinary 4D-only Publish runs reuse those committed servers and
+never fetch native artifacts or rebuild dependencies. Local `.build-native/`
+output remains Git-ignored. See [Build](build.md#component-resource-refresh)
+for permissions, verification, signing limitations and failure recovery.
 
 #### Model support
 

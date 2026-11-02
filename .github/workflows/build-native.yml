@@ -6,6 +6,7 @@ on:
       - 'cpp/**'
       - 'scripts/ci/**'
       - '.github/workflows/build-native.yml'
+      - '.gitattributes'
       - 'build.md'
   push:
     branches: [main]
@@ -13,6 +14,7 @@ on:
       - 'cpp/**'
       - 'scripts/ci/**'
       - '.github/workflows/build-native.yml'
+      - '.gitattributes'
       - 'build.md'
   workflow_dispatch:
     inputs:
@@ -24,7 +26,12 @@ on:
       update_libraries:
         description: 'Open a PR replacing IDE-project static libraries and headers (main only)'
         type: boolean
-        default: true
+        default: false
+        required: true
+      update_resources:
+        description: 'Commit all verified server Resources to main (requires signed_macos; does not Publish)'
+        type: boolean
+        default: false
         required: true
 
 permissions:
@@ -35,7 +42,31 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require trusted signed refresh
+        env:
+          UPDATE: ${{ inputs.update_resources }}
+          SIGNED: ${{ inputs.signed_macos }}
+          LIBRARIES: ${{ inputs.update_libraries }}
+        run: |
+          set -euo pipefail
+          if [[ "$UPDATE" == true ]]; then
+            if [[ "$GITHUB_REF" != refs/heads/main || "$GITHUB_EVENT_NAME" != workflow_dispatch ||
+                  "$SIGNED" != true || "$LIBRARIES" == true ]]; then
+              echo "::error::Resource refresh requires a main dispatch, signed_macos=true and update_libraries=false."
+              exit 1
+            fi
+          fi
+          if [[ "$SIGNED" == true && "$GITHUB_REF" != refs/heads/main ]]; then
+            echo "::error::Signing is restricted to trusted main dispatches."
+            exit 1
+          fi
+
   build:
+    needs: policy
     name: ${{ matrix.os }} / ${{ matrix.arch }}
     strategy:
       fail-fast: false
@@ -60,6 +91,8 @@ jobs:
       BUILD_ARCH: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.13'
@@ -104,6 +137,133 @@ jobs:
           path: .build-native/packages/*
           if-no-files-found: error
           retention-days: 14
+      - name: Export verified server and license closure
+        if: github.event_name == 'workflow_dispatch' && inputs.update_resources
+        run: python scripts/ci/refresh-resources.py export --target ${{ runner.os }}-${{ matrix.arch }}
+      - name: Upload resource input
+        if: github.event_name == 'workflow_dispatch' && inputs.update_resources
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: resource-${{ runner.os }}-${{ matrix.arch }}
+          path: .build-native/resource-bundle/
+          if-no-files-found: error
+          retention-days: 14
+
+  assemble-resources:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.update_resources && github.ref == 'refs/heads/main'
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: resource-*
+          path: .build-native/resource-inputs
+      - name: Assemble complete resource set
+        run: |
+          set -euo pipefail
+          mkdir .build-native/resource-downloads
+          for target in macOS-arm64 macOS-x86_64 Windows-arm64 Windows-x86_64; do
+            mv ".build-native/resource-inputs/resource-$target" ".build-native/resource-downloads/$target"
+          done
+          python3 scripts/ci/refresh-resources.py assemble
+          mkdir -p .build-native/dist/bin
+          cp .build-native/resources/bin/macOS/ct2-server .build-native/dist/bin/ct2-server
+      - name: Sign and notarize the final universal executable
+        env:
+          BUILD_ARCH: universal
+          APPLE_DEVELOPER_ID_CERTIFICATE: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE }}
+          APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          CODESIGN_APPLE_ID: ${{ secrets.CODESIGN_APPLE_ID }}
+          NOTARYTOOL_APPLE_ID: ${{ secrets.NOTARYTOOL_APPLE_ID }}
+          NOTARYTOOL_TEAM_ID: ${{ secrets.NOTARYTOOL_TEAM_ID }}
+          NOTARYTOOL_PASSWORD: ${{ secrets.NOTARYTOOL_PASSWORD }}
+        run: bash scripts/ci/sign-macos.sh
+      - name: Seal and verify final bytes
+        env:
+          NOTARYTOOL_TEAM_ID: ${{ secrets.NOTARYTOOL_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          cp .build-native/dist/bin/ct2-server .build-native/resources/bin/macOS/ct2-server
+          cp .build-native/signing/notary-result.json .build-native/resources/native/notarization.json
+          python3 scripts/ci/refresh-resources.py seal
+          python3 scripts/ci/refresh-resources.py verify
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verified-component-resources
+          path: .build-native/resources/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain universal notarized distribution
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ct2-server-macos-universal-signed
+          path: .build-native/packages/*
+          if-no-files-found: error
+          retention-days: 14
+
+  verify-intel-resources:
+    needs: assemble-resources
+    runs-on: macos-15-intel
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: verified-component-resources
+          path: .build-native/resources
+      - name: Verify and smoke the final Intel slice
+        env:
+          NOTARYTOOL_TEAM_ID: ${{ secrets.NOTARYTOOL_TEAM_ID }}
+        run: python3 scripts/ci/refresh-resources.py verify
+
+  commit-resources:
+    needs: [assemble-resources, verify-intel-resources]
+    if: github.event_name == 'workflow_dispatch' && inputs.update_resources && github.ref == 'refs/heads/main'
+    runs-on: macos-15
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: verified-component-resources
+          path: .build-native/resources
+      - name: Verify, install and commit exact Resources paths
+        env:
+          NOTARYTOOL_TEAM_ID: ${{ secrets.NOTARYTOOL_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain --untracked-files=no)"
+          git fetch origin main
+          if [[ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]]; then
+            echo "::error::main changed during the native build; rerun against the new main."
+            exit 1
+          fi
+          python3 scripts/ci/refresh-resources.py install
+          git add -- CTranslate2/Resources/bin/macOS/ct2-server \
+            CTranslate2/Resources/bin/Windows/ct2-server.exe \
+            CTranslate2/Resources/bin/WindowsARM/ct2-server.exe \
+            CTranslate2/Resources/native
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if ! git diff --cached --quiet; then
+            git commit -m "Refresh bundled native servers from $GITHUB_SHA" \
+              -m "Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>"
+            # No rebase or force: reject a competing main update, including one
+            # landing after the initial freshness check.
+            git push origin HEAD:refs/heads/main
+          fi
+          echo "Native Resources committed. Dispatch Publish explicitly on main when ready; GITHUB_TOKEN pushes do not trigger it." >> "$GITHUB_STEP_SUMMARY"
 
   propose-libraries:
     name: Propose IDE library replacements

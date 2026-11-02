@@ -1,6 +1,7 @@
 """Configure, build, test and stage a native, source-built server."""
 
 import argparse
+import hashlib
 import json
 import os
 import pathlib
@@ -183,6 +184,14 @@ manifest = {
     "platform": platform.platform(),
     "cmake": subprocess.check_output(["cmake", "--version"], text=True).splitlines()[0],
     "rust": subprocess.check_output(["rustc", "--version"], text=True).strip(),
+    "rust_lock_sha256": hashlib.sha256(
+        (root / "scripts/ci/tokenizers-Cargo.lock").read_bytes()).hexdigest(),
+    "target": f"{'Windows' if os.name == 'nt' else 'macOS'}-{args.arch}",
+    "backend": "Accelerate" if platform.system() == "Darwin" else "Ruy",
+    "compiler": f"MSVC {tool_version}" if os.name == "nt" else subprocess.check_output(
+        ["c++", "--version"],
+        stderr=subprocess.STDOUT, text=True,
+    ).strip(),
 }
 (stage / "build-info.json").write_text(json.dumps(manifest, indent=2) + "\n")
 # Include the complete Rust closure's licensing metadata and sources: static Rust

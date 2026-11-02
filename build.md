@@ -51,11 +51,14 @@ instead. These are build/startup tests, not model inference coverage.
 Run manually in Actions → **Build native server** → **Run workflow**:
 
 * `signed_macos: true` (default): two signed/notarized macOS DMGs plus two unsigned
-  Windows ZIPs. Only dispatch can sign. Use a trusted reviewed ref.
+  Windows ZIPs. Only a trusted dispatch on **main** can sign.
   A missing secret, invalid signature, rejected notarization or Gatekeeper
   failure fails that macOS job; it **never falls back to unsigned output**.
 * `signed_macos: false`: four unsigned ZIPs for development.
-* `update_libraries: true` (default): after all four jobs succeed, a dispatch
+* `update_resources: true` (default **false**): requires `signed_macos=true`,
+  `update_libraries=false` and **main**. Commits complete component server
+  Resources after all native and final universal checks pass; see below.
+* `update_libraries: true` (default **false**): after all four jobs succeed, a dispatch
   on **main** additionally opens the static-library replacement PR described
   below. Disable this input for a distribution-only build.
 
@@ -64,12 +67,91 @@ CLI equivalents:
 ```sh
 gh workflow run build-native.yml --ref main -f signed_macos=false -f update_libraries=true
 gh workflow run build-native.yml --ref main -f signed_macos=true -f update_libraries=false
+# Adopt all server outputs into the component, without publishing:
+gh workflow run build-native.yml --ref main -f signed_macos=true -f update_resources=true -f update_libraries=false
 ```
 
 Artifacts are attached to the Actions run for 14 days, with platform,
 architecture and signing state in the name. They contain a distribution
 archive plus SHA-256 checksum; this workflow does not publish a GitHub
 Release or modify the existing component `publish.yml`.
+
+## Component resource refresh
+
+This is separate from the optional SDK PR. A trusted opt-in
+`update_resources=true` dispatch builds the **actual `ct2-server` executable**,
+not just static libraries. All four native jobs must pass architecture,
+system-only runtime import checks, CTest and installed HTTP smoke tests.
+The refresh exports the server, source/toolchain provenance, Rust lockfile
+and dependency/license notices from each target. It verifies every input
+hash and pinned dependency and rejects missing/mixed targets before assembly.
+
+The aggregate job combines both Mac slices with `lipo`, then signs and
+notarizes the **final universal** executable in a signed/stapled DMG using
+the same fail-closed signing script. An explicit notary `Accepted` result,
+signature/team/timestamp checks, DMG Gatekeeper assessment and final-byte
+hashes are required. The exact universal server is HTTP-smoke-tested on
+both native Apple Silicon and Intel runners, with both architectures'
+system-library closure checked again. Windows final bytes must match the
+individually tested native server hashes.
+The universal signed DMG and its checksum are retained as
+`ct2-server-macos-universal-signed` alongside the final resource artifact.
+
+Only after those jobs succeed does the write job install and commit:
+
+| Component path | Refreshed content |
+| --- | --- |
+| `CTranslate2/Resources/bin/macOS/ct2-server` | Universal arm64/x86_64 server |
+| `CTranslate2/Resources/bin/Windows/ct2-server.exe` | Native Windows x64 server |
+| `CTranslate2/Resources/bin/WindowsARM/ct2-server.exe` | Native Windows ARM64 server |
+| `CTranslate2/Resources/native/` | Per-target provenance, dependency/Rust/header licenses and final inventory |
+
+`native/` is exclusively refresh-managed. No other Resources paths are staged:
+the legacy `ct2-translator[.exe]` executables, filenames, wrapper platform
+selection and CLI contracts remain unchanged. The Mac server minimum is
+macOS **13.0**, with Accelerate; Windows uses static Ruy and the OS prerequisites
+above. Models, Python converters, GPU drivers and CUDA backends are not
+included. Startup smoke is not inference or 4D application-runtime coverage.
+The server has no `--help`/`--version` contract; `-h` is the host flag.
+
+Every file must be nonempty and **below 100 MiB** before Git staging. Actual
+source-built outputs from run `40430436881` measured 13,370,328 bytes
+(Mac arm64), 14,448,520 bytes (Mac Intel), 7,337,984 bytes (Windows x64) and
+6,667,776 bytes (Windows ARM64). Combining the actual Mac slices and locally
+ad-hoc signing produced a **27,908,896-byte universal server**; this is size
+and startup evidence, not Developer ID/notarization evidence.
+The workflow checks actual future outputs rather than assuming these sizes.
+No Git LFS is used. A future oversized output fails instead of pushing an
+oversized blob; changing to release-asset reuse requires a separate decision.
+
+The workflow serializes runs on main. Its sole direct-commit job grants only
+`contents: write` and uses `GITHUB_TOKEN`, not a user token. Repository rules
+must permit that token's ordinary fast-forward main push; protected branches
+may reject it, and the workflow does not bypass protections. Main must still
+equal the dispatched SHA before installation, and a competing push makes the
+normal non-force push fail. Rerun against the new main rather than rebasing
+binary results. PR and automatic push validation remain read-only, unsigned,
+secret-free and unable to commit resources. No partial matrix update is made.
+
+**No component release is dispatched.** After reviewing the resource commit,
+explicitly run **Publish** on main with the desired version increment.
+`GITHUB_TOKEN` commits do not trigger another workflow, even though Publish
+watches Resources paths. Human-pushed 4D/source/resource changes can still
+trigger the ordinary Publish path. It packages checked-in binaries without
+calling the native workflow or downloading native artifacts. Publish is
+serialized and restricted to main for both hosted and self-hosted runners.
+
+The inventory identifies final **native-refresh bytes**, after native signing.
+Component packaging can re-sign embedded code, so its final executable bytes
+may differ; the native inventory is then source-build provenance, not a
+checksum of the signed component. The existing external component signing
+action still traverses executables **and dylibs (including generated
+`Libraries/`)**; this change does not replace or narrow that traversal.
+That external helper has `continue-on-error` signing and does not parse an
+explicit notary `Accepted` result. A green component Publish is therefore
+**not** equivalent to the native refresh's fail-closed notarization evidence.
+Hardening that component-release helper is separate work; inspect the actual
+published component's signatures/notary result before claiming acceptance.
 
 ## Static SDKs and library-update pull requests
 
@@ -183,7 +265,7 @@ processor name, tokenizer Cargo uses the lockfile, and SentencePiece's
 Abseil tag is resolved to its immutable commit. Upstream and Rust source
 licenses, header-only inputs and vendored Rust sources accompany each
 distribution. `build-info.json` records the server/dependency commits,
-architecture and observed tool versions.
+architecture, backend, compiler, Rust lockfile hash and observed tool versions.
 
 To update, change the SHA/version in `cpp/CMakeLists.txt`, patch expectations
 and manifest in `scripts/ci/`, and this table together. Regenerate the Cargo
