@@ -14,14 +14,26 @@ description: "Local Transformers, no GPU required. Run chat, embeddings, generat
       <a class="button secondary" href="#quickstart">Start a local server</a>
     </div>
   </div>
-  <div class="hero-art">
-    <div class="icon-frame"><img src="{{ site.logo | relative_url }}" alt="CTranslate2 wrapper app icon" width="216" height="216"></div>
-    <span class="art-caption">CTranslate2 <span>for 4D</span></span>
-    <span class="art-detail">Your models. Your machine.</span>
+  <div class="engine-panel" aria-label="4D connects over local HTTP to ct2-server, which runs a converted CT2 model on your machine">
+    <div class="panel-top"><span class="panel-label">The local stack</span><span class="local-tag">On your machine</span></div>
+    <div class="app-node"><span class="node-symbol" aria-hidden="true">4D</span><div><strong>Your application</strong><span>Component, AI Kit or your own HTTP client</span></div></div>
+    <div class="connection"><span>HTTP / 127.0.0.1</span></div>
+    <div class="engine-node">
+      <img src="{{ site.logo | relative_url }}" width="72" height="72" alt="">
+      <div><strong>CTranslate2</strong><span>Local inference engine</span></div>
+      <span class="engine-badge">SERVER</span>
+    </div>
+    <div class="model-node"><span class="file-mark" aria-hidden="true">CT2</span><div><strong>A model you choose</strong><span>Converted CT2 model, not GGUF</span></div></div>
+    <ul class="endpoint-list" aria-label="Endpoints">
+      <li><span>chat</span><code>/v1/chat/completions</code></li>
+      <li><span>generate</span><code>/v1/generate</code></li>
+      <li><span>embeddings</span><code>/v1/embeddings</code></li>
+    </ul>
+    <div class="panel-bottom"><span class="status-dot" aria-hidden="true"></span> One server. An API your app can use.</div>
   </div>
 </section>
 
-<div class="platform-strip" aria-label="Project at a glance">
+<div class="platform-strip capability-strip" aria-label="Project at a glance">
   <span>macOS <strong>Intel + Apple Silicon</strong></span>
   <span>Windows <strong>x64 + ARM64</strong></span>
   <span>CPU-first <strong>int8 inference</strong></span>
@@ -99,6 +111,25 @@ $engine.terminate()
 
 <p>See the integration guide for model configuration, events, and AI Kit examples.</p>
   </div>
+</section>
+
+<section id="api" aria-labelledby="api-title" markdown="1">
+<p class="eyebrow">Connect with tools you know</p>
+## A local API for each task.
+{: #api-title }
+
+<div class="table-wrap" markdown="1">
+
+| Capability | Endpoint | Models |
+| --- | --- | --- |
+| **Chat** | `/v1/chat/completions` | Qwen 3, Gemma 3/4 (streaming supported) |
+| **Generate** | `/v1/generate` | Encoder-decoder models such as T5Gemma2 and UMT5 |
+| **Embeddings & reranking** | `/v1/embeddings`, `/v1/rerank` | Compatible encoder models |
+| **Translation** | `/v1/translate` | Converted translation models |
+
+</div>
+
+Model support depends on the checkpoint and converter. See the [chat]({{ '/chat.html#model-families' | relative_url }}), [generation]({{ '/generate.html' | relative_url }}) and [embeddings]({{ '/embeddings.html' | relative_url }}) guides for architectures and limitations.
 </section>
 
 <section id="requirements" aria-labelledby="requirements-title" markdown="1">
