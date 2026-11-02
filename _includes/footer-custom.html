@@ -1,11 +1,28 @@
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("main table").forEach((table) => {
+    let wrapper = table.closest(".table-wrap");
+    if (!wrapper) {
+      wrapper = document.createElement("div");
+      wrapper.className = "table-wrap";
+      table.parentNode.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+    }
+    wrapper.tabIndex = 0;
+    wrapper.setAttribute("role", "region");
+    wrapper.setAttribute("aria-label", table.caption?.textContent || "Scrollable table");
+    table.querySelectorAll("thead th").forEach((header) => {
+      if (!header.hasAttribute("scope")) header.setAttribute("scope", "col");
+    });
+  });
+
   document.querySelectorAll("pre > code").forEach((codeBlock) => {
     const pre = codeBlock.parentNode;
     const wrapper = document.createElement("div");
     wrapper.className = "code-wrapper";
     pre.parentNode.insertBefore(wrapper, pre);
     wrapper.appendChild(pre);
+    pre.tabIndex = 0;
 
     // Create button
     const button = document.createElement("button");

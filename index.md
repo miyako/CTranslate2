@@ -14,22 +14,23 @@ description: "Local Transformers, no GPU required. Run chat, embeddings, generat
       <a class="button secondary" href="#quickstart">Start a local server</a>
     </div>
   </div>
-  <div class="engine-panel" aria-label="4D connects over local HTTP to ct2-server, which runs a converted CT2 model on your machine">
+  <div class="engine-panel" role="group" aria-label="4D connects over local HTTP to ct2-server, which runs a converted CT2 model on your machine">
     <div class="panel-top"><span class="panel-label">The local stack</span><span class="local-tag">On your machine</span></div>
     <div class="app-node"><span class="node-symbol" aria-hidden="true">4D</span><div><strong>Your application</strong><span>Component, AI Kit or your own HTTP client</span></div></div>
-    <div class="connection"><span>HTTP / 127.0.0.1</span></div>
+    <div class="connection"><span>HTTP / 127.0.0.1:8080</span></div>
     <div class="engine-node">
-      <img src="{{ site.logo | relative_url }}" width="72" height="72" alt="">
+      <img src="{{ site.logo | relative_url }}" width="52" height="52" alt="">
       <div><strong>CTranslate2</strong><span>Local inference engine</span></div>
       <span class="engine-badge">SERVER</span>
     </div>
-    <div class="model-node"><span class="file-mark" aria-hidden="true">CT2</span><div><strong>A model you choose</strong><span>Converted CT2 model, not GGUF</span></div></div>
+    <div class="connection"><span>loads</span></div>
+    <div class="model-node"><span class="file-mark" aria-hidden="true">CT2</span><div><strong>A model you choose</strong><span>Converted CT2 model directory, not GGUF</span></div></div>
     <ul class="endpoint-list" aria-label="Endpoints">
       <li><span>chat</span><code>/v1/chat/completions</code></li>
       <li><span>generate</span><code>/v1/generate</code></li>
       <li><span>embeddings</span><code>/v1/embeddings</code></li>
     </ul>
-    <div class="panel-bottom"><span class="status-dot" aria-hidden="true"></span> One server. An API your app can use.</div>
+    <div class="panel-bottom"><span class="status-dot" aria-hidden="true"></span><span>One server. An API your app can use.</span></div>
   </div>
 </section>
 

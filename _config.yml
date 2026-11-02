@@ -45,6 +45,7 @@ exclude:
   - "resources"
   - "LICENSE"
   - "README.md"
+  - "SITE-DESIGN.md"
   - "Gemfile"
   - "cpp"
   - "CTranslate2"
