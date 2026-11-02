@@ -8,9 +8,32 @@ plugins_dir: _plugins
 baseurl: /CTranslate2
 
 title: "CTranslate2"
-description: "Use CTranslate2 from 4D"
-logo: "/assets/logo.png"   # optional
-show_downloads: true       # controls the download links in header
+description: "Local Transformers, no GPU required. CTranslate2 for 4D on Mac and Windows."
+logo: "/assets/logo.png"
+image: "/assets/logo.png"
+navigation:
+  - label: Get started
+    items:
+      - title: Overview
+        url: /
+      - title: 4D integration
+        url: /integration.html
+      - title: Native builds & downloads
+        url: /build.html
+  - label: Work with models
+    items:
+      - title: Chat
+        url: /chat.html
+      - title: Embeddings & reranking
+        url: /embeddings.html
+      - title: Generation
+        url: /generate.html
+      - title: Translation
+        url: /translate.html
+  - label: Reference
+    items:
+      - title: CLI & model catalog
+        url: /CLI.html
 github:
   is_user_page: true
   owner_url: "https://github.com/miyako"
@@ -29,3 +52,5 @@ exclude:
   - "JsonCpp-1.9.8"
   - "CT2-4.7.1"
   - "sentencepiece"
+  - "scripts"
+  - "Gemfile.lock"

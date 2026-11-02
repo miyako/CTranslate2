@@ -1,6 +1,8 @@
 # CTranslate2
 Local inference engine
 
+[Documentation & getting started](https://miyako.github.io/CTranslate2/) · [4D integration](https://miyako.github.io/CTranslate2/integration.html)
+
 **acknowledgements**: [OpenNMT/CTranslate2](https://github.com/OpenNMT/CTranslate2)
 
 #### Native builds and releases

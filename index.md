@@ -1,208 +1,128 @@
 ---
 layout: default
+title: "Overview"
+description: "Local Transformers, no GPU required. Run chat, embeddings, generation, and translation from 4D on Mac and Windows."
 ---
 
-![version](https://img.shields.io/badge/version-21%2B-3B69E9)
-![platform](https://img.shields.io/static/v1?label=platform&message=mac-intel%20|%20mac-arm%20|%20win-64&color=blue)
-[![license](https://img.shields.io/github/license/miyako/CTranslate2)](LICENSE)
-![downloads](https://img.shields.io/github/downloads/miyako/CTranslate2/total)
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-copy">
+    <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Local inference / Native performance</p>
+    <h1 id="hero-title">Local Transformers,<br><span>no GPU required.</span></h1>
+    <p class="lede">Chat, embed, generate, and translate. Bring transformer models to your application with a native inference server built for the CPU you already have.</p>
+    <div class="actions">
+      <a class="button primary" href="{{ '/integration.html' | relative_url }}">Integrate with 4D <span aria-hidden="true">&rarr;</span></a>
+      <a class="button secondary" href="#quickstart">Start a local server</a>
+    </div>
+  </div>
+  <div class="hero-art">
+    <div class="icon-frame"><img src="{{ site.logo | relative_url }}" alt="CTranslate2 wrapper app icon" width="216" height="216"></div>
+    <span class="art-caption">CTranslate2 <span>for 4D</span></span>
+    <span class="art-detail">Your models. Your machine.</span>
+  </div>
+</section>
 
-# Use CTranslate2 from 4D
+<div class="platform-strip" aria-label="Project at a glance">
+  <span>macOS <strong>Intel + Apple Silicon</strong></span>
+  <span>Windows <strong>x64 + ARM64</strong></span>
+  <span>CPU-first <strong>int8 inference</strong></span>
+  <span>Open source <strong>MIT license</strong></span>
+</div>
 
-#### Native builds and releases
+<section aria-labelledby="capabilities-title">
+  <div class="section-heading">
+    <div><p class="eyebrow">One engine, several ways to build</p><h2 id="capabilities-title">Put local models to work.</h2></div>
+    <p>Pick the task. Bring a compatible model.<br>Keep inference on your machine.</p>
+  </div>
+  <div class="capability-grid">
+    <a class="capability-card" href="{{ '/chat.html' | relative_url }}"><span class="card-index">01 / Conversation</span><h3>Chat <span aria-hidden="true">&nearr;</span></h3><p>Build text conversations with Qwen 3 and Gemma 3/4, with streaming responses.</p><code>/v1/chat/completions</code></a>
+    <a class="capability-card" href="{{ '/embeddings.html' | relative_url }}"><span class="card-index">02 / Semantic search</span><h3>Embed &amp; rerank <span aria-hidden="true">&nearr;</span></h3><p>Turn text into vectors and rank documents with compatible encoder models.</p><code>/v1/embeddings</code></a>
+    <a class="capability-card" href="{{ '/generate.html' | relative_url }}"><span class="card-index">03 / Text to text</span><h3>Generate <span aria-hidden="true">&nearr;</span></h3><p>Run encoder-decoder tasks with models such as T5Gemma2 and UMT5.</p><code>/v1/generate</code></a>
+    <a class="capability-card" href="{{ '/translate.html' | relative_url }}"><span class="card-index">04 / Across languages</span><h3>Translate <span aria-hidden="true">&nearr;</span></h3><p>Add local machine translation with a converted translation model.</p><code>/v1/translate</code></a>
+  </div>
+  <p class="section-note">Model support depends on the checkpoint and converter. These server integrations are text-only; see each guide for supported architectures and limitations.</p>
+</section>
 
-The native build pins CTranslate2 **4.8.4** and builds fresh dependencies for
-macOS Intel/Apple Silicon and Windows x64/ARM64. See [Build](build.md) for
-artifacts, local builds, signing secrets, and library-update instructions.
+<section id="quickstart" aria-labelledby="quickstart-title" markdown="1">
+<p class="eyebrow">From terminal to first response</p>
+## Local starts here.
+{: #quickstart-title }
 
-| Workflow | Purpose |
-|---|---|
-| **Build native server** | Builds native servers and static SDKs; manual runs can sign and notarize the Mac distributions |
-| **Build native server**, `update_libraries=true` on `main` | Opens a PR replacing IDE-consumed static libraries, matching headers, and linker settings |
-| **Publish** | Packages and releases the 4D component; does **not** automatically incorporate native-build artifacts |
+Get a [native server build]({{ '/build.html#platforms-and-triggers' | relative_url }}) for your platform, then prepare a compatible CT2 model using the [chat conversion guide]({{ '/chat.html#model-families' | relative_url }}). Model files are separate from the executable; check the model's license and memory requirements.
 
-After merging the generated dependency PR, pull `main` in your normal checkout:
-universal Mac archives are in `cpp/a/`, Windows ARM64 libraries in
-`cpp/lib/arm64/`, and Windows x64 libraries in `cpp/lib/windows64/`.
-Local `.build-native/` output is Git-ignored and is not automatically copied
-into another checkout. Rebuild and replace the bundled server executables
-before using **Publish** to release updated native code in the 4D component.
+<div class="code-heading"><span><b>01</b> Start the server with your converted chat model</span><span>Terminal</span></div>
 
-#### Model support
-
-The source-built native server adds the following model-family support.
-Use a checkpoint accepted by the pinned upstream converter; architecture
-support does not guarantee compatibility with every checkpoint.
-
-| Model family | Server capability | Guide |
-|---|---|---|
-| Qwen 3 (dense), Gemma 3/4 (text) | Text chat completion through `/v1/chat/completions` | [Chat](chat.md) |
-| T5Gemma2, UMT5 | Encoder-decoder generation through `/v1/generate`, not decoder-only chat | [Generate](generate.md) |
-| RoBERTa | Encoder embeddings through `/v1/embeddings`; use an embedding-trained checkpoint | [Embeddings](embeddings.md) |
-
-Keep the original Hugging Face configuration as **`source_config.json`** beside
-the converted model, without overwriting CT2's own `config.json`. See the guides
-for tokenizer files and conversion examples. Multimodal inputs, Qwen 3 MoE,
-and decoder-based embeddings such as Qwen3-Embedding and EmbeddingGemma are
-not implemented by this server.
-
-#### Abstract
-
-[**CTranslate2**](https://github.com/OpenNMT/CTranslate2) is an engine highly optimised for fast local inference, especially **quantised transformer-based models**. It supports encoder-only, decoder-only, and encoder-decoder architectures for embeddings, text generation, and translation.
-
-#### Quantisation
-
-The `int8_float16` format is primarily designed for **NVIDIA GPUs**. It stores weights in 8-bit integers but converts them to 16-bit floating point for maximum efficiency (storage+speed). CTranslate2 falls back to `float32` if CUDA is unavailable, which defeats the purpose of this hybrid format. 
-
-The `float16` format is also designed for GPUs that support native 16-bit maths. The CPU backend of **CTranslate2** usually performs calculations in `float32` even on a CPU like Apple Silicon that actually has native 16-bit maths. The weights are automatically converted to 32-bit at startup.
-
-The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `AVX2` `AVX-512` `VNNI` instructions on Intel or AMD to **accelerate maths**. **You should always use the `int8` format on a PC or Mac with no GPU**.
-
-#### Usage
-
-Instantiate `cs.CTranslate2.CTranslate2` in your *On Startup* database method:
-
-```4d
-var $CTranslate2 : cs.CTranslate2.CTranslate2
-
-If (False)
-    $CTranslate2:=cs.CTranslate2.CTranslate2.new()  //default
-Else 
-    var $homeFolder : 4D.Folder
-    $homeFolder:=Folder(fk home folder).folder(".CTranslate2")
-    var $file : 4D.File
-    var $URL : Text
-    var $port : Integer
-    
-    var $event : cs.event.event
-    $event:=cs.event.event.new()
-    /*
-        Function onError($params : Object; $error : cs.event.error)
-        Function onSuccess($params : Object; $models : cs.event.models)
-        Function onData($request : 4D.HTTPRequest; $event : Object)
-        Function onResponse($request : 4D.HTTPRequest; $event : Object)
-        Function onTerminate($worker : 4D.SystemWorker; $params : Object)
-    */
-    
-    $event.onError:=Formula(ALERT($2.message))
-    $event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
-    $event.onData:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
-    $event.onData:=Formula(MESSAGE(This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
-    $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":download complete"))
-    $event.onResponse:=Formula(MESSAGE(This.file.fullName+":download complete"))
-    $event.onTerminate:=Formula(LOG EVENT(Into 4D debug message; (["process"; $1.pid; "terminated!"].join(" "))))
-    
-    $port:=8080
-    
-    $options:={}
-    var $huggingfaces : cs.event.huggingfaces
-    
-    $folder:=$homeFolder.folder("multilingual-e5-base-ct2-int8_float16")
-    $path:="keisuke-miyako/multilingual-e5-base-ct2-int8_float16"
-    $URL:="keisuke-miyako/multilingual-e5-base-ct2-int8_float16"
-    $embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding")
-    
-    $huggingfaces:=cs.event.huggingfaces.new([$embeddings])
-    $options:={}
-    
-    $CTranslate2:=cs.CTranslate2.CTranslate2.new($port; $huggingfaces; $homeFolder; $options; $event)
-    
-End if 
+```sh
+./ct2-server -s -g /path/to/ct2-model -h 127.0.0.1 -p 8080
 ```
 
-Unless the server is already running (in which case the costructor does nothing), the following procedure runs in the background:
+On Windows, run `.\ct2-server.exe` with the same options. Keep the process running. In another terminal, wait until `GET /v1/models` succeeds and lists your model before sending a request.
 
-1. The specified model is downloaded via HTTP
-2. The `ct2-embedding-cli` program is started in server mode
+<div class="code-heading"><span><b>02</b> Check the loaded models</span><span>Shell</span></div>
 
-Now you can test the server:
-
-```
-curl -X POST http://127.0.0.1:8080/v1/embeddings \
-     -H "Content-Type: application/json" \
-     -d '{"input":"雨にも負けず風にも負けず雪にも夏の暑さにも負けぬ丈夫なからだを持ち欲は無く決して瞋からず何時も静かに笑っている"}'
+```sh
+curl http://127.0.0.1:8080/v1/models
 ```
 
-You may compare the result with enbeddings generated using a different language:
+<div class="code-heading"><span><b>03</b> Send a message</span><span>POSIX shell</span></div>
 
-```
-curl -X POST http://127.0.0.1:8080/v1/embeddings \
-     -H "Content-Type: application/json" \
-     -d '{"input":"Rain won’t stop me. Wind won’t stop me. Neither will driving snow. Sweltering summer heat<2028>will only raise my determination. With a body built for endurance, a heart free of greed, I’ll never lose my temper, trying always to keep a quiet smile on my face."}'
-```
-
-Or, use AI Kit:
-
-```4d
-var $AIClient : cs.AIKit.OpenAI
-$AIClient:=cs.AIKit.OpenAI.new()
-$AIClient.baseURL:="http://127.0.0.1:3000/v1"
-
-var $text : Text
-$text:="The quick brown fox jumps over the lazy dog."
-
-var $responseEmbeddings : cs.AIKit.OpenAIEmbeddingsResult
-$responseEmbeddings:=$AIClient.embeddings.create($text)
-```
-
-To test the `/rerank` endpoint:
-
-```
-curl --request POST \
-  --url http://127.0.0.1:8080/v1/rerank \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "model": "rerank-english-v3.0",
-    "query": "What is the capital of the United States?",
-    "top_n": 3,
-    "documents": [
-      "Carson City is the capital city of the American state of Nevada.",
-      "The Commonwealth of the Northern Mariana Islands is a group of islands in the Pacific Ocean. Its capital is Saipan.",
-      "Washington, D.C. (also known as simply Washington or D.C., and officially as the District of Columbia) is the capital of the United States. It is a federal district.",
-      "Capital punishment (the death penalty) has existed in the United States since before the United States was a country."
-    ]
+```sh
+curl http://127.0.0.1:8080/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "messages": [{"role": "user", "content": "Hello from my app."}],
+    "max_tokens": 128
   }'
 ```
 
-Finally to terminate the server:
+The multiline request uses POSIX shell quoting; on Windows, use Git Bash or WSL for this example. For streaming, add `"stream": true` to the JSON and use `curl -N`. Keep the server on `127.0.0.1` unless you have deliberately secured network access.
+
+<a class="text-link" href="{{ '/CLI.html' | relative_url }}">All server options and model references <span aria-hidden="true">&rarr;</span></a>
+</section>
+
+<section class="integration-feature" aria-labelledby="integration-title">
+  <div>
+    <p class="eyebrow">Less plumbing, more application</p>
+    <h2 id="integration-title">A native engine.<br>A familiar 4D workflow.</h2>
+    <p>The component handles model downloads and starts the server in the background. Use the local HTTP API from your application, or connect through 4D AI Kit for supported endpoints.</p>
+    <a class="text-link" href="{{ '/integration.html' | relative_url }}">Explore the component lifecycle <span aria-hidden="true">&rarr;</span></a>
+  </div>
+  <div class="integration-code" markdown="1">
+<div class="code-heading"><span>4D / Component lifecycle</span></div>
 
 ```4d
-var $CTranslate2 : cs.CTranslate2.CTranslate2
-$CTranslate2:=cs.CTranslate2.CTranslate2.new()
-$CTranslate2.terminate()
+var $engine : cs.CTranslate2.CTranslate2
+$engine:=cs.CTranslate2.CTranslate2.new()
+
+// When your application is done
+$engine.terminate()
 ```
 
-CTranslate2 relies on mapping standard model architectures like **BERT**, **RoBERTa**, or **DistilBERT** to its C++ inference engine. Some LLMs have moved on from the standard BERT architecture to a custom architecture. 
+<p>See the integration guide for model configuration, events, and AI Kit examples.</p>
+  </div>
+</section>
 
-If a model is not avaiable in `ct2` format, you can use a `python` utility to convert it. 
+<section id="requirements" aria-labelledby="requirements-title" markdown="1">
+<p class="eyebrow">Know your runtime</p>
+## Built for the machine in front of you.
+{: #requirements-title }
 
-#### Discussion
+The native build pins **CTranslate2 4.8.4**, with Accelerate on macOS and Ruy on Windows. For CPU inference, start with **`int8`** models rather than GPU-oriented `float16` or `int8_float16` weights.
 
-Some developers prefer **CTranslate2** over standard inference engines like **llama.cpp** , **ONNX Runtime**, or **PyTorch** because:
+<div class="table-wrap" markdown="1">
 
-* It is a specialised transformer inference engine supporting encoder-only, decoder-only, and encoder-decoder models
-* It has a fast inference routine for CPU  
+| Choose your path | What to know |
+| --- | --- |
+| **4D component** | 4D 21+. Download the component from [Releases](https://github.com/miyako/CTranslate2/releases) and follow the [integration guide]({{ '/integration.html' | relative_url }}). |
+| **Native server** | macOS Intel / Apple Silicon or Windows x64 / ARM64. Obtain platform-specific artifacts from the [native build workflow]({{ '/build.html#platforms-and-triggers' | relative_url }}). |
+| **Compatible model** | Use converted CT2 files, not GGUF. Preserve the original Hugging Face configuration as `source_config.json`, separate from CT2's `config.json`. |
 
-Most x86 CPUs do not have native `float16` calculation units. That means the `float16` weights are cast to `float32` for computation which adds overhead. CTranslate2 uses optimised instruction sets (AVX2, AVX-512, VNNI) to run operations directly on integers which is drastically faster than `float32` on CPUs.
- 
-#### AI Kit compatibility
+</div>
 
-The API is compatible with the following [Open AI](https://platform.openai.com/docs/api-reference/) endpoints: 
+<aside class="callout" markdown="1">
+**Native builds and component releases are separate.**
 
-|Class|API|Availability|
-|-|-|:-:|
-|Models|`/v1/models`|✅|
-|Chat|`/v1/chat/completions`|✅|
-|Images|`/v1/images/generations`||
-|Moderations|`/v1/moderations`||
-|Embeddings|`/v1/embeddings`|✅|
-|Files|`/v1/files`||
+The native workflow produces server and SDK artifacts, not component releases. Previously bundled executables retain their original capabilities until replaced. Use a fresh native build for the model support described in these guides.
+</aside>
 
-In addition, the following endpoints are available:
-
-|API|Alias|Trigger
-|-|-|:-:|
-|`/v1/translate`|`/v1/chat/completions`|Payload root element is `input`
-|`/v1/generate`|`/v1/chat/completions`|Payload root element is `prompt`
-|`/v1/rerank`||
-|`/v1/contextualizedembeddings`|`/v1/contextualized/embeddings`
+<a class="text-link" href="{{ '/build.html' | relative_url }}">Builds, signing, and release details <span aria-hidden="true">&rarr;</span></a>
+</section>

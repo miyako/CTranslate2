@@ -10,6 +10,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Create button
     const button = document.createElement("button");
     button.className = "copy-btn";
+    button.type = "button";
+    button.setAttribute("aria-label", "Copy code to clipboard");
     button.setAttribute("data-tooltip", "Copied!");
     button.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
@@ -19,18 +21,27 @@ document.addEventListener("DOMContentLoaded", () => {
       Copy
     `;
     wrapper.appendChild(button);
+    const status = document.createElement("span");
+    status.setAttribute("role", "status");
+    status.className = "copy-status";
+    wrapper.appendChild(status);
 
     // Copy behavior
     button.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(codeBlock.innerText);
+        status.textContent = "Code copied.";
+        button.setAttribute("data-tooltip", "Copied!");
         button.classList.add("show-tooltip");
         setTimeout(() => button.classList.remove("show-tooltip"), 1200);
       } catch (err) {
         console.error("Copy failed:", err);
+        status.textContent = "Copy failed. Select the code and copy it manually.";
+        button.setAttribute("data-tooltip", "Copy failed");
+        button.classList.add("show-tooltip");
+        setTimeout(() => button.classList.remove("show-tooltip"), 2500);
       }
     });
   });
 });
 </script>
-
