@@ -1,7 +1,7 @@
 # CTranslate2
 Local inference engine
 
-**aknowledgements**: [OpenNMT/CTranslate2](https://github.com/OpenNMT/CTranslate2)
+**acknowledgements**: [OpenNMT/CTranslate2](https://github.com/OpenNMT/CTranslate2)
 
 #### Native builds and releases
 
