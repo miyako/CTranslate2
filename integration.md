@@ -1,0 +1,209 @@
+---
+layout: default
+title: "4D integration"
+---
+
+![version](https://img.shields.io/badge/version-21%2B-3B69E9)
+![platform](https://img.shields.io/static/v1?label=platform&message=mac-intel%20|%20mac-arm%20|%20win-64&color=blue)
+[![license](https://img.shields.io/github/license/miyako/CTranslate2)](https://github.com/miyako/CTranslate2/blob/main/LICENSE)
+![downloads](https://img.shields.io/github/downloads/miyako/CTranslate2/total)
+
+# Use CTranslate2 from 4D
+
+#### Native builds and releases
+
+The native build pins CTranslate2 **4.8.4** and builds fresh dependencies for
+macOS Intel/Apple Silicon and Windows x64/ARM64. See [Build](build.html) for
+artifacts, local builds, signing secrets, and library-update instructions.
+
+| Workflow | Purpose |
+|---|---|
+| **Build native server** | Builds native servers and static SDKs; manual runs can sign and notarize the Mac distributions |
+| **Build native server**, `update_libraries=true` on `main` | Opens a PR replacing IDE-consumed static libraries, matching headers, and linker settings |
+| **Publish** | Packages and releases the 4D component; does **not** automatically incorporate native-build artifacts |
+
+After merging the generated dependency PR, pull `main` in your normal checkout:
+universal Mac archives are in `cpp/a/`, Windows ARM64 libraries in
+`cpp/lib/arm64/`, and Windows x64 libraries in `cpp/lib/windows64/`.
+Local `.build-native/` output is Git-ignored and is not automatically copied
+into another checkout. Rebuild and replace the bundled server executables
+before using **Publish** to release updated native code in the 4D component.
+
+#### Model support
+
+The source-built native server adds the following model-family support.
+Use a checkpoint accepted by the pinned upstream converter; architecture
+support does not guarantee compatibility with every checkpoint.
+
+| Model family | Server capability | Guide |
+|---|---|---|
+| Qwen 3 (dense), Gemma 3/4 (text) | Text chat completion through `/v1/chat/completions` | [Chat](chat.html) |
+| T5Gemma2, UMT5 | Encoder-decoder generation through `/v1/generate`, not decoder-only chat | [Generate](generate.html) |
+| RoBERTa | Encoder embeddings through `/v1/embeddings`; use an embedding-trained checkpoint | [Embeddings](embeddings.html) |
+
+Keep the original Hugging Face configuration as **`source_config.json`** beside
+the converted model, without overwriting CT2's own `config.json`. See the guides
+for tokenizer files and conversion examples. Multimodal inputs, Qwen 3 MoE,
+and decoder-based embeddings such as Qwen3-Embedding and EmbeddingGemma are
+not implemented by this server.
+
+#### Abstract
+
+[**CTranslate2**](https://github.com/OpenNMT/CTranslate2) is an engine highly optimised for fast local inference, especially **quantised transformer-based models**. It supports encoder-only, decoder-only, and encoder-decoder architectures for embeddings, text generation, and translation.
+
+#### Quantisation
+
+The `int8_float16` format is primarily designed for **NVIDIA GPUs**. It stores weights in 8-bit integers but converts them to 16-bit floating point for maximum efficiency (storage+speed). CTranslate2 falls back to `float32` if CUDA is unavailable, which defeats the purpose of this hybrid format. 
+
+The `float16` format is also designed for GPUs that support native 16-bit maths. The CPU backend of **CTranslate2** usually performs calculations in `float32` even on a CPU like Apple Silicon that actually has native 16-bit maths. The weights are automatically converted to 32-bit at startup.
+
+The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `AVX2` `AVX-512` `VNNI` instructions on Intel or AMD to **accelerate maths**. **You should always use the `int8` format on a PC or Mac with no GPU**.
+
+#### Usage
+
+Instantiate `cs.CTranslate2.CTranslate2` in your *On Startup* database method:
+
+```4d
+var $CTranslate2 : cs.CTranslate2.CTranslate2
+
+If (False)
+    $CTranslate2:=cs.CTranslate2.CTranslate2.new()  //default
+Else 
+    var $homeFolder : 4D.Folder
+    $homeFolder:=Folder(fk home folder).folder(".CTranslate2")
+    var $file : 4D.File
+    var $URL : Text
+    var $port : Integer
+    
+    var $event : cs.event.event
+    $event:=cs.event.event.new()
+    /*
+        Function onError($params : Object; $error : cs.event.error)
+        Function onSuccess($params : Object; $models : cs.event.models)
+        Function onData($request : 4D.HTTPRequest; $event : Object)
+        Function onResponse($request : 4D.HTTPRequest; $event : Object)
+        Function onTerminate($worker : 4D.SystemWorker; $params : Object)
+    */
+    
+    $event.onError:=Formula(ALERT($2.message))
+    $event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
+    $event.onData:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
+    $event.onData:=Formula(MESSAGE(This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
+    $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":download complete"))
+    $event.onResponse:=Formula(MESSAGE(This.file.fullName+":download complete"))
+    $event.onTerminate:=Formula(LOG EVENT(Into 4D debug message; (["process"; $1.pid; "terminated!"].join(" "))))
+    
+    $port:=8080
+    
+    $options:={}
+    var $huggingfaces : cs.event.huggingfaces
+    
+    $folder:=$homeFolder.folder("multilingual-e5-base-ct2-int8_float16")
+    $path:="keisuke-miyako/multilingual-e5-base-ct2-int8_float16"
+    $URL:="keisuke-miyako/multilingual-e5-base-ct2-int8_float16"
+    $embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding")
+    
+    $huggingfaces:=cs.event.huggingfaces.new([$embeddings])
+    $options:={}
+    
+    $CTranslate2:=cs.CTranslate2.CTranslate2.new($port; $huggingfaces; $homeFolder; $options; $event)
+    
+End if 
+```
+
+Unless the server is already running (in which case the costructor does nothing), the following procedure runs in the background:
+
+1. The specified model is downloaded via HTTP
+2. The `ct2-embedding-cli` program is started in server mode
+
+Now you can test the server:
+
+```
+curl -X POST http://127.0.0.1:8080/v1/embeddings \
+     -H "Content-Type: application/json" \
+     -d '{"input":"雨にも負けず風にも負けず雪にも夏の暑さにも負けぬ丈夫なからだを持ち欲は無く決して瞋からず何時も静かに笑っている"}'
+```
+
+You may compare the result with enbeddings generated using a different language:
+
+```
+curl -X POST http://127.0.0.1:8080/v1/embeddings \
+     -H "Content-Type: application/json" \
+     -d '{"input":"Rain won’t stop me. Wind won’t stop me. Neither will driving snow. Sweltering summer heat<2028>will only raise my determination. With a body built for endurance, a heart free of greed, I’ll never lose my temper, trying always to keep a quiet smile on my face."}'
+```
+
+Or, use AI Kit:
+
+```4d
+var $AIClient : cs.AIKit.OpenAI
+$AIClient:=cs.AIKit.OpenAI.new()
+$AIClient.baseURL:="http://127.0.0.1:3000/v1"
+
+var $text : Text
+$text:="The quick brown fox jumps over the lazy dog."
+
+var $responseEmbeddings : cs.AIKit.OpenAIEmbeddingsResult
+$responseEmbeddings:=$AIClient.embeddings.create($text)
+```
+
+To test the `/rerank` endpoint:
+
+```
+curl --request POST \
+  --url http://127.0.0.1:8080/v1/rerank \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "rerank-english-v3.0",
+    "query": "What is the capital of the United States?",
+    "top_n": 3,
+    "documents": [
+      "Carson City is the capital city of the American state of Nevada.",
+      "The Commonwealth of the Northern Mariana Islands is a group of islands in the Pacific Ocean. Its capital is Saipan.",
+      "Washington, D.C. (also known as simply Washington or D.C., and officially as the District of Columbia) is the capital of the United States. It is a federal district.",
+      "Capital punishment (the death penalty) has existed in the United States since before the United States was a country."
+    ]
+  }'
+```
+
+Finally to terminate the server:
+
+```4d
+var $CTranslate2 : cs.CTranslate2.CTranslate2
+$CTranslate2:=cs.CTranslate2.CTranslate2.new()
+$CTranslate2.terminate()
+```
+
+CTranslate2 relies on mapping standard model architectures like **BERT**, **RoBERTa**, or **DistilBERT** to its C++ inference engine. Some LLMs have moved on from the standard BERT architecture to a custom architecture. 
+
+If a model is not avaiable in `ct2` format, you can use a `python` utility to convert it. 
+
+#### Discussion
+
+Some developers prefer **CTranslate2** over standard inference engines like **llama.cpp** , **ONNX Runtime**, or **PyTorch** because:
+
+* It is a specialised transformer inference engine supporting encoder-only, decoder-only, and encoder-decoder models
+* It has a fast inference routine for CPU  
+
+Most x86 CPUs do not have native `float16` calculation units. That means the `float16` weights are cast to `float32` for computation which adds overhead. CTranslate2 uses optimised instruction sets (AVX2, AVX-512, VNNI) to run operations directly on integers which is drastically faster than `float32` on CPUs.
+ 
+#### AI Kit compatibility
+
+The API is compatible with the following [Open AI](https://platform.openai.com/docs/api-reference/) endpoints: 
+
+|Class|API|Availability|
+|-|-|:-:|
+|Models|`/v1/models`|✅|
+|Chat|`/v1/chat/completions`|✅|
+|Images|`/v1/images/generations`||
+|Moderations|`/v1/moderations`||
+|Embeddings|`/v1/embeddings`|✅|
+|Files|`/v1/files`||
+
+In addition, the following endpoints are available:
+
+|API|Alias|Trigger
+|-|-|:-:|
+|`/v1/translate`|`/v1/chat/completions`|Payload root element is `input`
+|`/v1/generate`|`/v1/chat/completions`|Payload root element is `prompt`
+|`/v1/rerank`||
+|`/v1/contextualizedembeddings`|`/v1/contextualized/embeddings`

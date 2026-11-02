@@ -14,7 +14,7 @@ checkpoint; this endpoint does not turn a pretrained model into a chat model.
 
 The generation tokenizer loader accepts `tokenizer.json` (preferred),
 `tokenizer.model`, and `spiece.model`. Copy the source HF `config.json` as
-`source_config.json` alongside the converted files (see [Chat](chat.md)).
+`source_config.json` alongside the converted files (see [Chat](chat.html)).
 The tokenizer's single-input `TemplateProcessing` postprocessor is applied explicitly,
 since tokenizers-cpp encodes without special tokens. SentencePiece-only T5/MT5/UMT5
 inputs receive EOS; T5Gemma/T5Gemma2 inputs receive BOS. Keep `tokenizer.json` for

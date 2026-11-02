@@ -1,3 +1,8 @@
+---
+layout: default
+title: "CLI & model catalog"
+---
+
 # ct2-server
 
 CTranslate2 Inference Engine
@@ -31,10 +36,10 @@ The CLI is built for `4` platforms:
 
 ## Dependencies
 
-- Native source builds: `ctranslate2-4.8.4` (see [Build](build.md)).
+- Native source builds: `ctranslate2-4.8.4` (see [Build](build.html)).
 - Previously checked-in binaries remain on their original version until replaced by build artifacts.
 
-See [Chat](chat.md), [Generate](generate.md), and [Embeddings](embeddings.md) for
+See [Chat](chat.html), [Generate](generate.html), and [Embeddings](embeddings.html) for
 Qwen 3, Gemma 3/4, T5Gemma2, UMT5, and RoBERTa support and conversion requirements.
  
 ## OpenAI Compatible Endpoints
@@ -114,7 +119,7 @@ The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `A
 ||`int8`|`int8_float16`|`float16`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`|`pooling`
 |-|-:|-:|-:|-:|-:|-:|-:
 |[`sentence-transformers/LaBSE`](https://huggingface.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2)|[`475`](https://huggingface.co/keisuke-miyako/LaBSE-ct2-int8)|[`474`](https://huggingface.co/keisuke-miyako/LaBSE-ct2-int8_float16)|[`942`](https://huggingface.co/keisuke-miyako/LaBSE-ct2-float16)|`512`|`768`|`12`|`cls`
-|[`sentence-transformers/paraphrase-multilingual-mpnet-base-v2`](https://huggingface.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2)|[`280`](keisuke-miyako/paraphrase-multilingual-mpnet-base-v2-ct2-int8)|[`279`](keisuke-miyako/paraphrase-multilingual-mpnet-base-v2-ct2-int8_float16)|[`555`](keisuke-miyako/paraphrase-multilingual-mpnet-base-v2-ct2-float16)|`512`|`768`|`12`|`mean`
+|[`sentence-transformers/paraphrase-multilingual-mpnet-base-v2`](https://huggingface.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2)|[`280`](https://huggingface.co/keisuke-miyako/paraphrase-multilingual-mpnet-base-v2-ct2-int8)|[`279`](https://huggingface.co/keisuke-miyako/paraphrase-multilingual-mpnet-base-v2-ct2-int8_float16)|[`555`](https://huggingface.co/keisuke-miyako/paraphrase-multilingual-mpnet-base-v2-ct2-float16)|`512`|`768`|`12`|`mean`
 |[`BAAI/bge-small-en-v1.5`](https://huggingface.co/BAAI/bge-small-en-v1.5)|[`34`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-ct2-int8)|[`33`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-ct2-int8_float16)|[`66`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-ct2-float16)|`512`|`384`|`12`|`cls`
 |[`BAAI/bge-base-en-v1.5`](https://huggingface.co/BAAI/bge-base-en-v1.5)|[`111`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-ct2-int8)|[`110`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-ct2-int8_float16)|[`219`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-ct2-float16)|`512`|`768`|`12`|`cls`
 |[`BAAI/bge-large-en-v1.5`](https://huggingface.co/BAAI/bge-large-en-v1.5)|[`338`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-ct2-int8)|[`337`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-ct2-int8_float16)|[`670`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-ct2-float16)|`512`|`1024`|`24`|`cls`
