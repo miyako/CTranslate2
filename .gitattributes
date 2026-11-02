@@ -1,0 +1,4 @@
+scripts/ci/tokenizers-Cargo.lock text eol=lf
+LICENSE text eol=lf
+CTranslate2/Resources/bin/** binary
+CTranslate2/Resources/native/** -text

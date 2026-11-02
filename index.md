@@ -121,7 +121,11 @@ The native build pins **CTranslate2 4.8.4**, with Accelerate on macOS and Ruy on
 <aside class="callout" markdown="1">
 **Native builds and component releases are separate.**
 
-The native workflow produces server and SDK artifacts, not component releases. Previously bundled executables retain their original capabilities until replaced. Use a fresh native build for the model support described in these guides.
+The native workflow produces server and SDK artifacts, not component releases.
+A trusted opt-in [resource refresh]({{ '/build.html#component-resource-refresh' | relative_url }})
+commits all verified server targets into the component's Resources. Then
+**Publish** packages those checked-in binaries without rebuilding native code.
+Until a refresh is run, previously bundled executables retain their original capabilities.
 </aside>
 
 <a class="text-link" href="{{ '/build.html' | relative_url }}">Builds, signing, and release details <span aria-hidden="true">&rarr;</span></a>
