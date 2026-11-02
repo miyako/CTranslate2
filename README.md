@@ -1,7 +1,7 @@
 # CTranslate2
 Local inference engine
 
-**aknowledgements**: [OpenNMT/CTranslate2](https://github.com/OpenNMT/CTranslate2)
+**acknowledgements**: [OpenNMT/CTranslate2](https://github.com/OpenNMT/CTranslate2)
 
 #### Native builds and releases
 
@@ -181,7 +181,7 @@ Most x86 CPUs do not have native `float16` calculation units. That means the `fl
  
 #### AI Kit compatibility
 
-The API is compatibile with the following [Open AI](https://platform.openai.com/docs/api-reference/) endpoints: 
+The API is compatible with the following [Open AI](https://platform.openai.com/docs/api-reference/) endpoints: 
 
 |Class|API|Availability|
 |-|-|:-:|
