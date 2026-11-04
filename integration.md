@@ -98,7 +98,7 @@ Else
     */
     
     $event.onError:=Formula(ALERT($2.message))
-    $event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
+    $event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" launch requested"))  //not yet ready; poll /v1/models
     $event.onData:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
     $event.onData:=Formula(MESSAGE(This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
     $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":download complete"))
@@ -127,6 +127,8 @@ Unless the server is already running (in which case the costructor does nothing)
 
 1. The specified model is downloaded via HTTP
 2. The `ct2-embedding-cli` program is started in server mode
+
+If there is nothing to download (none of the `huggingfaces` resolves to a file), the server is started when one of the model options (`embeddings_model`, `translate_model`, `generate_model`, `rerank_model`, `chat_model`) is an existing local folder. Otherwise `event.onError` receives an error with code `2` and the server is not started. When the Hugging Face API cannot be reached, the configured folders are used as before. The server is launched at most once per wrapper attempt, and `onSuccess` means the launch was requested, not that the server is ready. The wrapper accepts a `Null` `event` (no callbacks are delivered), but files that still need downloading go through `cs.event.download`, which currently expects an `event` object.
 
 Now you can test the server:
 

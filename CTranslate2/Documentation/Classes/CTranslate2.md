@@ -21,7 +21,9 @@ Parameter defaults applied by the constructor:
 
 - `port`: defaults to `8080` if `0`, negative, or greater than `65535`
 - `HOME`: defaults to `Folder(fk home folder).folder(".CTranslate2")` if not provided or non-existent
-- `huggingfaces`: defaults to `keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16` (embedding) if `Null` or empty
+- `huggingfaces`: defaults to `keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16` (embedding) if `Null` or empty; in that case `options` is also replaced with `{}`
+
+If `huggingfaces` is given but none of its entries resolves to a file to download, the server is started only when one of the model folder options below is an existing local folder; otherwise `event.onError` receives an error with code `2` (naming any path that was given) and nothing is launched. The server is launched at most once per wrapper attempt. `event.onSuccess` reports that the launch was requested; it does not mean the server is ready (poll `/v1/models`). The wrapper accepts a `Null` `event`, but files that still need downloading go through `cs.event.download`, which currently expects an `event` object.
 
 ### options properties
 
@@ -70,6 +72,8 @@ var $CTranslate2 : cs.CTranslate2.CTranslate2
 $CTranslate2:=cs.CTranslate2.CTranslate2.new()
 ```
 
+If no server is listening on port 8080, this starts `ct2-server` with the default embedding model, downloading it into `HOME` first if needed.
+
 ### Embedding model
 
 ```4d
@@ -79,7 +83,7 @@ $homeFolder:=Folder(fk home folder).folder(".CTranslate2")
 var $event : cs.event.event
 $event:=cs.event.event.new()
 $event.onError:=Formula(ALERT($2.message))
-$event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
+$event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" launch requested"))  //not yet ready; poll /v1/models
 $event.onData:=Formula(MESSAGE(This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
 $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":download complete"))
 $event.onTerminate:=Formula(LOG EVENT(Into 4D debug message; (["process"; $1.pid; "terminated!"].join(" "))))
@@ -145,7 +149,7 @@ $responseEmbeddings:=$AIClient.embeddings.create($text)
 
 ```4d
 var $CTranslate2 : cs.CTranslate2.CTranslate2
-$CTranslate2:=cs.CTranslate2.CTranslate2.new()
+$CTranslate2:=cs.CTranslate2.CTranslate2.new()  //does nothing if a server is already listening on 8080
 $CTranslate2.terminate()
 ```
 

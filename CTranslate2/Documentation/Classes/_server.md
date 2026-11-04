@@ -46,7 +46,7 @@ After the named options, remaining keys in `option` are emitted as long-form fla
 
 | Value type | CLI form |
 | --- | --- |
-| Real / Integer | `--flag value` |
+| Real / Integer | `--flag value` (always `.` as the decimal separator, via `_argNumber`; very small values may use exponent form such as `1E-05`) |
 | Text | `--flag escaped-value` |
 | Boolean `True` | `--flag` (no value) |
 | 4D.File (exists) | `--flag escaped-path` |

@@ -28,8 +28,9 @@ Obtains the server worker via `cs.CTranslate2.workers.worker` and calls `termina
 ## Examples
 
 ```4d
-// Terminate from anywhere — CTranslate2.new() with no arguments returns
-// a lightweight handle without starting a new server
+// Terminate from anywhere. CTranslate2.new() with no arguments is not a
+// passive handle: if a server is already listening on 8080 the constructor
+// does nothing; otherwise it starts the default embedding model (downloading it if needed)
 var $CTranslate2 : cs.CTranslate2.CTranslate2
 $CTranslate2:=cs.CTranslate2.CTranslate2.new()
 $CTranslate2.terminate()

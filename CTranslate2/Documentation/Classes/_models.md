@@ -7,9 +7,9 @@
 | --- | --- | --- | --- |
 | port | Integer | -> | Port stored in `options.port` |
 | huggingfaces | cs.event.huggingfaces | -> | One or more Hugging Face model descriptors |
-| options | Object | -> | Server options object (mutated to add `port`, `onTerminate`, `onStdErr`, `onStdOut`) |
+| options | Object | -> | Server options object (mutated to add `port`; when `event` is not `Null`, also `onTerminate`, `onStdErr`, `onStdOut`) |
 | formula | 4D.Function | -> | Internal response callback forwarded to the download helper |
-| event | cs.event.event | -> | Callback functions |
+| event | cs.event.event | -> | Callback functions, or `Null` for no callbacks |
 
 ## Description
 
@@ -40,6 +40,8 @@ When `huggingface.folder` is a `4D.Folder` the entire repository tree is fetched
 
 Iterates `files`. For each file already present on disk with the correct size, `onDownload` is called immediately (skipping the HTTP fetch). Otherwise a `cs.event.download` is created to fetch the file from Hugging Face.
 
+If `files` is empty, it calls `_onNothingToDownload()` instead (the base implementation calls `start()`; see [`_Model`](_Model.md)).
+
 #### onDownload (oid : Text)
 
 | Parameter | Type | | Description |
@@ -47,6 +49,14 @@ Iterates `files`. For each file already present on disk with the correct size, `
 | oid | Text | -> | OID of the file that finished downloading |
 
 Removes the completed file from `files`. When `files` is empty (all downloads done) it calls `start()`.
+
+#### _onNothingToDownload () *(virtual)*
+
+Called by `download()` when there is nothing to download. The base implementation calls `start()`. Overridden in [`_Model`](_Model.md).
+
+#### _notifyError (error : cs.event.error)
+
+Calls `event.onError` with receiver `This` and arguments `(options; error)` when `event` is not `Null` and `onError` is a function.
 
 #### models () → cs.event.models *(virtual)*
 
@@ -58,5 +68,5 @@ Called automatically when all downloads complete. The base implementation is a n
 
 ## See also
 
-- [`_Model`](_Model.md) — concrete subclass that overrides `models()`, `onDownload()`, and `start()`
+- [`_Model`](_Model.md) — concrete subclass that overrides `models()`, `onDownload()`, `_onNothingToDownload()`, and `start()`
 - [`CTranslate2`](CTranslate2.md) — the public entry point
