@@ -23,7 +23,7 @@ Parameter defaults applied by the constructor:
 - `HOME`: defaults to `Folder(fk home folder).folder(".CTranslate2")` if not provided or non-existent
 - `huggingfaces`: defaults to `keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16` (embedding) if `Null` or empty; in that case `options` is also replaced with `{}`
 
-If `huggingfaces` is given but none of its entries resolves to a file to download, the server is started only when one of the model folder options below is an existing local folder; otherwise `event.onError` receives an error with code `2` (naming any path that was given) and nothing is launched. The server is launched at most once per wrapper attempt. `event.onSuccess` reports that the launch was requested; it does not mean the server is ready (poll `/v1/models`). The wrapper accepts a `Null` `event`, but files that still need downloading go through `cs.event.download`, which currently expects an `event` object.
+If `huggingfaces` is given but none of its entries resolves to a file to download, the server is started only when one of the model folder options below is an existing local folder; otherwise `event.onError` receives an error with code `2` (naming any path that was given) and nothing is launched. The server is launched at most once per wrapper attempt. `event.onSuccess` reports that the launch was requested; it does not mean the server is ready (poll `/v1/models`). `event` may be `Null`, in which case no callbacks are delivered. When files still need downloading, this requires an `event` component newer than 20.0.19 ([miyako/event#1](https://github.com/miyako/event/pull/1)); 20.0.19 and earlier raise error -10716 when the download starts.
 
 ### options properties
 
