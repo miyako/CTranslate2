@@ -37,7 +37,8 @@ The command always begins with `ct2-server -s` (server mode). Named model paths 
 | `generate_model` | `-a` | Folder exists |
 | `port` | `-p` | Non-zero Integer |
 | `host` | `-h` | Non-empty Text |
-| `chat_template` | `-t` | Non-empty Text |
+| `chat_template` | `-j` | Non-empty Text, sent to the server on stdin |
+| `chat_template` | `-t` | Existing 4D.File (template file path) |
 | `pooling: "cls"` | `-c` | — |
 | `pooling: "last-token"` | `-l` | — |
 | `pooling: "mean"` | _(no flag)_ | Default |

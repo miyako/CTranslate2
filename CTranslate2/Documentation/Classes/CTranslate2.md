@@ -36,7 +36,7 @@ If `huggingfaces` is given but none of its entries resolves to a file to downloa
 | generate_model | 4D.Folder | `-a` | Path to a CTranslate2 text generation model directory |
 | port | Integer | `-p` | Port to listen on |
 | host | Text | `-h` | Host address to bind |
-| chat_template | Text | `-t` | Chat template string |
+| chat_template | Text or 4D.File | `-j` / `-t` | Jinja chat template: Text is sent on stdin with `-j`; an existing `4D.File` is passed as `-t path` |
 | pooling | Text | `-c` / `-l` | Pooling strategy: `"cls"` → `-c`, `"last-token"` → `-l`, `"mean"` (default, no flag) |
 | HF_TOKEN | Text | _(auth header)_ | Hugging Face access token for gated models |
 

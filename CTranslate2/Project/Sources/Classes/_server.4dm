@@ -48,11 +48,16 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		$command+=$option.host
 	End if 
 	
-	var $chat_template : Text
-	If (Value type:C1509($option.chat_template)=Is text:K8:3) && ($option.chat_template#"")
-		$command+=" -t "
-		$chat_template:=$option.chat_template
-	End if 
+	var $chat_template : Variant
+	Case of 
+		: (Value type:C1509($option.chat_template)=Is text:K8:3) && ($option.chat_template#"")
+			//-j reads the template from stdin until EOF; execute() posts it and closes the input
+			$command+=" -j "
+			$chat_template:=$option.chat_template
+		: (Value type:C1509($option.chat_template)=Is object:K8:27) && (OB Instance of:C1731($option.chat_template; 4D:C1709.File)) && ($option.chat_template.exists)
+			$command+=" -t "
+			$command+=This:C1470.escape(This:C1470.expand($option.chat_template).path)
+	End case 
 	
 	If (Value type:C1509($option.pooling)=Is text:K8:3) && ($option.pooling#"")
 		Case of 
@@ -76,5 +81,5 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	//SET TEXT TO PASTEBOARD($command)
 	
-	return This:C1470.controller.execute($command).worker
+	return This:C1470.controller.execute($command; $chat_template).worker
 	
