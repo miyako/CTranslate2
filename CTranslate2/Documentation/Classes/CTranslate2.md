@@ -40,7 +40,7 @@ If `huggingfaces` is given but none of its entries resolves to a file to downloa
 | pooling | Text | `-c` / `-l` | Pooling strategy: `"cls"` → `-c`, `"last-token"` → `-l`, `"mean"` (default, no flag) |
 | HF_TOKEN | Text | _(auth header)_ | Hugging Face access token for gated models |
 
-Additional options with underscore-separated names (e.g. `max_length`) are passed through as `--max-length value`. Boolean `true` values produce flags without a value.
+Other properties are not passed to `ct2-server`, which has no other command-line options. Set generation parameters such as `temperature` or `max_tokens` in each HTTP request instead.
 
 ### Domain mapping
 

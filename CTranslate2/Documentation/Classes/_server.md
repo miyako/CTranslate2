@@ -42,14 +42,7 @@ The command always begins with `ct2-server -s` (server mode). Named model paths 
 | `pooling: "last-token"` | `-l` | — |
 | `pooling: "mean"` | _(no flag)_ | Default |
 
-After the named options, remaining keys in `option` are emitted as long-form flags. Keys are transformed with underscores replaced by hyphens. The following keys are reserved and excluded from the general loop: `i`, `o`, `s`, `j`, `c`, `l`, `_`, `h`, `e`, `embeddings_model`, `r`, `rerank_model`, `g`, `chat_model`, `a`, `generate_model`, `t`, `chat_template`, `p`, `port`, `host`, `pooling`, `m`, `translate_model`, `HF_TOKEN`.
-
-| Value type | CLI form |
-| --- | --- |
-| Real / Integer | `--flag value` (always `.` as the decimal separator, via `_argNumber`; very small values may use exponent form such as `1E-05`) |
-| Text | `--flag escaped-value` |
-| Boolean `True` | `--flag` (no value) |
-| 4D.File (exists) | `--flag escaped-path` |
+No other keys in `option` are put on the command line. `ct2-server` has no long options: its argument parser reads any `--key` as `-` (read input from stdin), so the server would block and never start listening. Generation settings such as `temperature` or `max_tokens` are per-request parameters of the HTTP API.
 
 ## Examples
 
