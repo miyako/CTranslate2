@@ -9,13 +9,13 @@
 | huggingfaces | cs.event.huggingfaces | -> | Model download parameters |
 | options | Object | -> | Command-line options (mutated; model folder keys are set as downloads complete) |
 | formula | 4D.Function | -> | Internal response callback |
-| event | cs.event.event | -> | Callback functions |
+| event | cs.event.event | -> | Callback functions, or `Null` for no callbacks |
 
 ## Description
 
 `_Model` is the concrete implementation of [`_models`](_models.md). After calling `Super` it immediately triggers `download()` unless `offline` is `true`.
 
-It overrides three methods from `_models`:
+It overrides these methods from `_models`:
 
 ### models () → cs.event.models
 
@@ -39,9 +39,13 @@ Then calls `Super.onDownload($oid)` to remove the entry from `files` and trigger
 | --- | --- | --- | --- |
 | oid | Text | -> | OID of the completed download |
 
+### _onNothingToDownload ()
+
+Called by `download()` when no file needs downloading. Calls `start()` when one of `embeddings_model`, `translate_model`, `generate_model`, `rerank_model` or `chat_model` in `options` is an existing `4D.Folder` (the only form `_server` passes to `ct2-server`). Otherwise calls `event.onError` with code `2`, naming any model path that was given, and does not launch.
+
 ### start ()
 
-Overrides the virtual base. Creates a `cs.CTranslate2.workers.worker` wrapping `_server`, calls `worker.start(port, options)`, then fires `event.onSuccess` with the current options and model list.
+Overrides the virtual base. Launches at most once per instance; later calls (for example a duplicate download completion for files that share a Git OID) are ignored. Creates a `cs.CTranslate2.workers.worker` wrapping `_server`, calls `worker.start(port, options)`, then fires `event.onSuccess` with the current options and model list. `onSuccess` means the launch was requested, not that the server is ready to serve requests.
 
 ### Properties
 

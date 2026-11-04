@@ -21,7 +21,9 @@ Parameter defaults applied by the constructor:
 
 - `port`: defaults to `8080` if `0`, negative, or greater than `65535`
 - `HOME`: defaults to `Folder(fk home folder).folder(".CTranslate2")` if not provided or non-existent
-- `huggingfaces`: defaults to `keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16` (embedding) if `Null` or empty
+- `huggingfaces`: defaults to `keisuke-miyako/all-MiniLM-L6-v2-ct2-int8_float16` (embedding) if `Null` or empty; in that case `options` is also replaced with `{}`
+
+If `huggingfaces` is given but none of its entries resolves to a file to download, the server is started only when one of the model folder options below is an existing local folder; otherwise `event.onError` receives an error with code `2` (naming any path that was given) and nothing is launched. The server is launched at most once per wrapper attempt. `event.onSuccess` reports that the launch was requested; it does not mean the server is ready (poll `/v1/models`). `event` may be `Null`, in which case no callbacks are delivered. When files still need downloading, this requires an `event` component newer than 20.0.19 ([miyako/event#1](https://github.com/miyako/event/pull/1)); 20.0.19 and earlier raise error -10716 when the download starts.
 
 ### options properties
 
@@ -34,11 +36,11 @@ Parameter defaults applied by the constructor:
 | generate_model | 4D.Folder | `-a` | Path to a CTranslate2 text generation model directory |
 | port | Integer | `-p` | Port to listen on |
 | host | Text | `-h` | Host address to bind |
-| chat_template | Text | `-t` | Chat template string |
+| chat_template | Text or 4D.File | `-j` / `-t` | Jinja chat template: Text is sent on stdin with `-j`; an existing `4D.File` is passed as `-t path` |
 | pooling | Text | `-c` / `-l` | Pooling strategy: `"cls"` → `-c`, `"last-token"` → `-l`, `"mean"` (default, no flag) |
 | HF_TOKEN | Text | _(auth header)_ | Hugging Face access token for gated models |
 
-Additional options with underscore-separated names (e.g. `max_length`) are passed through as `--max-length value`. Boolean `true` values produce flags without a value.
+Other properties are not passed to `ct2-server`, which has no other command-line options. Set generation parameters such as `temperature` or `max_tokens` in each HTTP request instead.
 
 ### Domain mapping
 
@@ -70,6 +72,8 @@ var $CTranslate2 : cs.CTranslate2.CTranslate2
 $CTranslate2:=cs.CTranslate2.CTranslate2.new()
 ```
 
+If no server is listening on port 8080, this starts `ct2-server` with the default embedding model, downloading it into `HOME` first if needed.
+
 ### Embedding model
 
 ```4d
@@ -79,7 +83,7 @@ $homeFolder:=Folder(fk home folder).folder(".CTranslate2")
 var $event : cs.event.event
 $event:=cs.event.event.new()
 $event.onError:=Formula(ALERT($2.message))
-$event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
+$event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" launch requested"))  //not yet ready; poll /v1/models
 $event.onData:=Formula(MESSAGE(This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
 $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":download complete"))
 $event.onTerminate:=Formula(LOG EVENT(Into 4D debug message; (["process"; $1.pid; "terminated!"].join(" "))))
@@ -145,7 +149,7 @@ $responseEmbeddings:=$AIClient.embeddings.create($text)
 
 ```4d
 var $CTranslate2 : cs.CTranslate2.CTranslate2
-$CTranslate2:=cs.CTranslate2.CTranslate2.new()
+$CTranslate2:=cs.CTranslate2.CTranslate2.new()  //does nothing if a server is already listening on 8080
 $CTranslate2.terminate()
 ```
 

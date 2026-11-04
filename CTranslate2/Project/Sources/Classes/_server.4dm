@@ -48,11 +48,16 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		$command+=$option.host
 	End if 
 	
-	var $chat_template : Text
-	If (Value type:C1509($option.chat_template)=Is text:K8:3) && ($option.chat_template#"")
-		$command+=" -t "
-		$chat_template:=$option.chat_template
-	End if 
+	var $chat_template : Variant
+	Case of 
+		: (Value type:C1509($option.chat_template)=Is text:K8:3) && ($option.chat_template#"")
+			//-j reads the template from stdin until EOF; execute() posts it and closes the input
+			$command+=" -j "
+			$chat_template:=$option.chat_template
+		: (Value type:C1509($option.chat_template)=Is object:K8:27) && (OB Instance of:C1731($option.chat_template; 4D:C1709.File)) && ($option.chat_template.exists)
+			$command+=" -t "
+			$command+=This:C1470.escape(This:C1470.expand($option.chat_template).path)
+	End case 
 	
 	If (Value type:C1509($option.pooling)=Is text:K8:3) && ($option.pooling#"")
 		Case of 
@@ -71,41 +76,10 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		End case 
 	End if 
 	
-	var $arg : Object
-	var $valueType : Integer
-	var $key : Text
-	
-	For each ($arg; OB Entries:C1720($option))
-		Case of 
-			: (["i"; "o"; "s"; "j"; "c"; "l"; "_"; "h"; \
-				"e"; "embeddings_model"; \
-				"r"; "rerank_model"; \
-				"g"; "chat_model"; \
-				"a"; "generate_model"; \
-				"t"; "chat_template"; \
-				"p"; "port"; \
-				"h"; "host"; \
-				"pooling"; \
-				"m"; "translate_model"; "HF_TOKEN"].includes($arg.key))
-				continue
-		End case 
-		$valueType:=Value type:C1509($arg.value)
-		$key:=Replace string:C233($arg.key; "_"; "-"; *)
-		Case of 
-			: ($valueType=Is real:K8:4)
-				$command+=(" --"+$key+" "+String:C10($arg.value)+" ")
-			: ($valueType=Is text:K8:3)
-				$command+=(" --"+$key+" "+This:C1470.escape($arg.value)+" ")
-			: ($valueType=Is boolean:K8:9) && ($arg.value)
-				$command+=(" --"+$key+" ")
-			: ($valueType=Is object:K8:27) && (OB Instance of:C1731($arg.value; 4D:C1709.File))
-				$command+=(" --"+$key+" "+This:C1470.escape(This:C1470.expand($arg.value).path))
-			Else 
-				//
-		End case 
-	End for each 
+	//ct2-server has no long options: getopt reads "--key" as "-" (read stdin) and the server never starts listening
+	//other keys in $option are therefore not passed on the command line
 	
 	//SET TEXT TO PASTEBOARD($command)
 	
-	return This:C1470.controller.execute($command).worker
+	return This:C1470.controller.execute($command; $chat_template).worker
 	

@@ -98,7 +98,7 @@ Else
     */
     
     $event.onError:=Formula(ALERT($2.message))
-    $event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
+    $event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" launch requested"))  //not yet ready; poll /v1/models
     $event.onData:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
     $event.onData:=Formula(MESSAGE(This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
     $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":download complete"))
@@ -123,10 +123,12 @@ Else
 End if 
 ```
 
-Unless the server is already running (in which case the costructor does nothing), the following procedure runs in the background:
+Unless the server is already running (in which case the constructor does nothing), the following procedure runs in the background:
 
 1. The specified model is downloaded via HTTP
 2. The `ct2-embedding-cli` program is started in server mode
+
+If there is nothing to download (none of the `huggingfaces` resolves to a file), the server is started when one of the model options (`embeddings_model`, `translate_model`, `generate_model`, `rerank_model`, `chat_model`) is an existing local folder. Otherwise `event.onError` receives an error with code `2` and the server is not started. When the Hugging Face API cannot be reached, the configured folders are used as before. The server is launched at most once per wrapper attempt, and `onSuccess` means the launch was requested, not that the server is ready. `event` may be `Null`, in which case no callbacks are delivered. When files still need downloading, this requires an `event` component newer than 20.0.19 ([miyako/event#1](https://github.com/miyako/event/pull/1)); 20.0.19 and earlier raise error -10716 when the download starts.
 
 Now you can test the server:
 
